@@ -23,62 +23,30 @@ function [Rate_DL,Rate_OPT]=Main_fn(L,My,Mz,M_bar,K_DL,Pt,kbeams,Training_Size)
 % If you in any way use this code for research that results in 
 % publications, please cite our original article mentioned above.
 
+disp('-------------------------------------------------------------');
+
 %% System Model Parameters
 
 params.scenario='O1_28'; % DeepMIMO Dataset scenario: http://deepmimo.net/
-params.active_BS=3; % active basestation(/s) in the chosen scenario
-D_Lambda = 0.5; % Antenna spacing relative to the wavelength
-BW = 100e6; % Bandwidth
 
 Ut_row = 850; % user Ut row number
 Ut_element = 90; % user Ut position from the row chosen above
+
+% ERROR: nel paper è 1000 1300
 Ur_rows = [1000 1200]; % user Ur rows
 
-Validation_Size = 6200; % Validation dataset Size
-K = 512; % number of subcarriers
-miniBatchSize  = 500; % Size of the minibatch for the Deep Learning
+% we select BS 3 in the 'O1' scenario to be the LIS
+params.active_BS=3; % active basestation(/s) in the chosen scenario
+
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
 Mx = 1;  % number of LIS reflecting elements across the x axis
 M = Mx.*My.*Mz; % Total number of LIS reflecting elements 
-
-% Preallocation of output variables
-Rate_DL = zeros(1,length(Training_Size)); 
-Rate_OPT = Rate_DL;
-LastValidationRMSE = Rate_DL;
-
-%--- Accounting SNR in ach rate calculations
-%--- Definning Noisy channel measurements
-Gt=3;             % dBi
-Gr=3;             % dBi
-NF=5;             % Noise figure at the User equipment
-Process_Gain=10;  % Channel estimation processing gain
-noise_power_dB=-204+10*log10(BW/K)+NF-Process_Gain; % Noise power in dB
-SNR=10^(.1*(-noise_power_dB))*(10^(.1*(Gt+Gr+Pt)))^2; % Signal-to-noise ratio
-% channel estimation noise
-noise_power_bar=10^(.1*(noise_power_dB))/(10^(.1*(Gt+Gr+Pt))); 
-
-No_user_pairs = (Ur_rows(2)-Ur_rows(1))*181; % Number of (Ut,Ur) user pairs            
-RandP_all = randperm(No_user_pairs).'; % Random permutation of the available dataset
-
-%% Starting the code
-disp('======================================================================================================================');
-disp([' Calculating for M = ' num2str(M)]);
-Rand_M_bar_all = randperm(M);
-    
-%% Beamforming Codebook
-% BF codebook parameters
-over_sampling_x=1;            % The beamsteering oversampling factor in the x direction
-over_sampling_y=1;            % The beamsteering oversampling factor in the y direction
-over_sampling_z=1;            % The beamsteering oversampling factor in the z direction
-
-% Generating the BF codebook 
-[BF_codebook]=sqrt(Mx*My*Mz)*UPA_codebook_generator(Mx,My,Mz,over_sampling_x,over_sampling_y,over_sampling_z,D_Lambda);
-codebook_size=size(BF_codebook,2);
+D_Lambda = 0.5; % Antenna spacing relative to the wavelength
+BW = 100e6; % Bandwidth
+K = 512; % number of subcarriers
     
 %% DeepMIMO Dataset Generation
-disp('-------------------------------------------------------------');
-disp([' Calculating for K_DL = ' num2str(K_DL)]);          
-% ------  Inputs to the DeepMIMO dataset generation code ------------ % 
+
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
 params.num_ant_x= Mx;             % Number of the UPA antenna array on the x-axis 
 params.num_ant_y= My;             % Number of the UPA antenna array on the y-axis 
@@ -90,7 +58,8 @@ params.OFDM_sampling_factor=1;        % The constructed channels will be calcula
 params.OFDM_limit=K_DL*1;         % Only the first params.OFDM_limit subcarriers will be considered when constructing the channels
 params.num_paths=L;               % Maximum number of paths to be considered (a value between 1 and 25), e.g., choose 1 if you are only interested in the strongest path
 params.saveDataset=0;
-disp([' Calculating for L = ' num2str(params.num_paths)]);
+%disp([' Calculating for K_DL = ' num2str(K_DL)]);          
+%disp([' Calculating for L = ' num2str(params.num_paths)]);
 
 % ------------------ DeepMIMO "Ut" Dataset Generation -----------------%
 params.active_user_first=Ut_row; 
@@ -98,13 +67,9 @@ params.active_user_last=Ut_row;
 DeepMIMO_dataset=DeepMIMO_generator(params);
 Ht = single(DeepMIMO_dataset{1}.user{Ut_element}.channel);
 clear DeepMIMO_dataset
+disp(['Ht generated']);
 
 % ------------------ DeepMIMO "Ur" Dataset Generation -----------------%            
-%Validation part for the actual achievable rate perf eval
-Validation_Ind = RandP_all(end-Validation_Size+1:end);
-[~,VI_sortind] = sort(Validation_Ind);
-[~,VI_rev_sortind] = sort(VI_sortind);
-%initialization
 Ur_rows_step = 100; % access the dataset 100 rows at a time
 Ur_rows_grid=Ur_rows(1):Ur_rows_step:Ur_rows(2);
 Delta_H_max = single(0);
@@ -122,40 +87,86 @@ for pp = 1:1:numel(Ur_rows_grid)-1 % loop for Normalizing H
     end
 end
 clear Delta_H
-disp('=============================================================');
+disp(['Hr generated']);
+
+%% Deep Learning Dataset Generation
+
+No_user_pairs = (Ur_rows(2)-Ur_rows(1))*181; % Number of users (= Number of TX-RX pairs)
+% In the 'O1' scenario where every row consists of 181 points.
+% Since the number of BS antennas is one, the number of pairs is equal to the number of users.
+RandP_all = randperm(No_user_pairs).'; % Random permutation = shuffling users
+
+miniBatchSize  = 500; % Size of the minibatch for the Deep Learning
+Validation_Size = 6200; % Validation dataset Size
+%Validation part for the actual achievable rate perf eval
+Validation_Ind = RandP_all(end-Validation_Size+1:end); % Take some users for validation from the end of RandP_all
+[~,VI_sortind] = sort(Validation_Ind); % ?
+[~,VI_rev_sortind] = sort(VI_sortind); % ?
+
+% BF codebook parameters
+over_sampling_x=1;            % The beamsteering oversampling factor in the x direction
+over_sampling_y=1;            % The beamsteering oversampling factor in the y direction
+over_sampling_z=1;            % The beamsteering oversampling factor in the z direction
+% Generating the BF codebook 
+[BF_codebook]=sqrt(Mx*My*Mz)*UPA_codebook_generator(Mx,My,Mz,over_sampling_x,over_sampling_y,over_sampling_z,D_Lambda);
+codebook_size=size(BF_codebook,2);
+disp(['Codebook generated']);
+
+%--- Accounting SNR in each rate calculations
+%--- Defining Noisy channel measurements
+Gt=3;             % dBi
+Gr=3;             % dBi
+NF=5;             % Noise figure at the User equipment
+Process_Gain=10;  % Channel estimation processing gain
+noise_power_dB=-204+10*log10(BW/K)+NF-Process_Gain; % Noise power in dB
+SNR=10^(.1*(-noise_power_dB))*(10^(.1*(Gt+Gr+Pt)))^2; % Signal-to-noise ratio
+% channel estimation noise
+noise_power_bar=10^(.1*(noise_power_dB))/(10^(.1*(Gt+Gr+Pt))); 
+
 disp([' Calculating for M_bar = ' num2str(M_bar)]);          
-Rand_M_bar =unique(Rand_M_bar_all(1:M_bar));
-Ht_bar = reshape(Ht(Rand_M_bar,:),M_bar*K_DL,1);
 DL_input = single(zeros(M_bar*K_DL*2,No_user_pairs));
 DL_output = single(zeros(No_user_pairs,codebook_size));
 DL_output_un=  single(zeros(numel(Validation_Ind),codebook_size));
 Delta_H_bar_max = single(0);
 count=0;
+
+% The active channel sensors are randomly selected from the M UPA antennas
+Rand_M_bar_all = randperm(M);
+Rand_M_bar =unique(Rand_M_bar_all(1:M_bar));
+
+% Keep only the coefficients of Ht that are related to M_bar
+Ht_bar = reshape(Ht(Rand_M_bar,:),M_bar*K_DL,1);
+
 for pp = 1:1:numel(Ur_rows_grid)-1
     clear DeepMIMO_dataset 
     disp(['Starting received user access ' num2str(pp)]);
     params.active_user_first=Ur_rows_grid(pp);
     params.active_user_last=Ur_rows_grid(pp+1)-1;
     [DeepMIMO_dataset,params]=DeepMIMO_generator(params);
-    %% Construct Deep Learning inputs
+    
     u_step=100;
     Htx=repmat(Ht(:,1),1,u_step);
     Hrx=zeros(M,u_step);
     for u=1:u_step:params.num_user                        
         for uu=1:1:u_step
-            Hr = single(conj(DeepMIMO_dataset{1}.user{u+uu-1}.channel));               
+            Hr = single(conj(DeepMIMO_dataset{1}.user{u+uu-1}.channel)); % single precision, conj = complesso coniugato        
+            % Keep only the coefficients of Hr that are related to M_bar
             Hr_bar = reshape(Hr(Rand_M_bar,:),M_bar*K_DL,1);
+            
             %--- Constructing the sampled channel
             n1=sqrt(noise_power_bar/2)*(randn(M_bar*K_DL,1)+1j*randn(M_bar*K_DL,1));
             n2=sqrt(noise_power_bar/2)*(randn(M_bar*K_DL,1)+1j*randn(M_bar*K_DL,1));
-            H_bar = ((Ht_bar+n1).*(Hr_bar+n2));
+            H_bar = ((Ht_bar+n1).*(Hr_bar+n2)); % .* = element-wise multiplication
             DL_input(:,u+uu-1+((pp-1)*params.num_user))= reshape([real(H_bar) imag(H_bar)].',[],1);
+            disp(['Size of DL_input: ' size(DL_input)]);
+            
             Delta_H_bar = max(max(abs(H_bar)));
             if Delta_H_bar >= Delta_H_bar_max
                 Delta_H_bar_max = single(Delta_H_bar);
             end
             Hrx(:,uu)=Hr(:,1);
         end
+
         %--- Actual achievable rate for performance evaluation
         H = Htx.*Hrx;
         H_BF=H.'*BF_codebook;
@@ -177,12 +188,19 @@ for pp = 1:1:numel(Ur_rows_grid)-1
     end
 end
 clear u Delta_H_bar R Rn
+
 %-- Sorting back the DL_output_un
 DL_output_un = DL_output_un(VI_rev_sortind,:);
+
 %--- DL input normalization 
 DL_input= 1*(DL_input/Delta_H_bar_max); %%%%% Normalized from -1->1 %%%%%
 
 %% DL Beamforming
+
+% Preallocation of output variables
+Rate_DL = zeros(1,length(Training_Size)); 
+Rate_OPT = Rate_DL;
+LastValidationRMSE = Rate_DL;
 
 % ------------------ Training and Testing Datasets -----------------%
 DL_output_reshaped = reshape(DL_output.',1,1,size(DL_output,2),size(DL_output,1));
@@ -190,7 +208,7 @@ DL_output_reshaped_un = reshape(DL_output_un.',1,1,size(DL_output_un,2),size(DL_
 DL_input_reshaped= reshape(DL_input,size(DL_input,1),1,1,size(DL_input,2));
 for dd=1:1:numel(Training_Size)
     disp([' Calculating for Dataset Size = ' num2str(Training_Size(dd))]);
-    Training_Ind   = RandP_all(1:Training_Size(dd));
+    Training_Ind   = RandP_all(1:Training_Size(dd)); % get a random number of indeces equal to the content of one element of the Training_Size array
 
     XTrain = single(DL_input_reshaped(:,1,1,Training_Ind)); 
     YTrain = single(DL_output_reshaped(1,1,:,Training_Ind));
