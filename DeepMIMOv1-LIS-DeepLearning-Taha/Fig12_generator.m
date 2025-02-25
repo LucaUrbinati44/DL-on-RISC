@@ -38,11 +38,15 @@ kbeams=1;   %select the top kbeams, get their feedback and find the max actual a
 Pt=5; % transmit power (dB)
 L =1; % number of channel paths
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
-My_ar=[32 64]; % number of LIS reflecting elements across the y axis (32x32 blue curve, 64x64 red curve)
-Mz_ar=[32 64]; % number of LIS reflecting elements across the z axis
+%My_ar=[32 64]; % number of LIS reflecting elements across the y axis (32x32 blue curve, 64x64 red curve)
+%Mz_ar=[32 64]; % number of LIS reflecting elements across the z axis
+My_ar=[32]; % Semplificazione Luca
+Mz_ar=[32]; % Semplificazione Luca
 M_bar=8; % number of active elements
 K_DL=64; % number of subcarriers as input to the Deep Learning model (to reduce the neural network complexity)
-Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
+%Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
+Training_Size=[1e4]; % Semplificazione Luca
+
 
 % Preallocation of output variables (y-axis of Fig 12 for both blue and red curves)
 Rate_DLt=zeros(numel(My_ar),numel(Training_Size));  % numel = number of elements

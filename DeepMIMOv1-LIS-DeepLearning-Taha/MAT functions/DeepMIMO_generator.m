@@ -12,13 +12,18 @@ fprintf(' DeepMIMO Dataset Generation started \n')
 %base_path='./DeepMIMOv1-LIS-DeepLearning-Taha/';
 
 % Read scenario parameters
+% params.mat contiene una struct chiamata params che ha il campo params.user_grids 
+% insieme ad altre attributi (penso) che viene integrata con quella in input a questa funzione
+% e restituita poi esternamente a DeepMIMO_generator() per essere usata con i nuovi attributi
 file_scenario_params=strcat('./RayTracing Scenarios/',params.scenario,'/',params.scenario,'.params.mat');
 load(file_scenario_params)
 
 params.num_BS=num_BS;
 
+disp([' user_grids:', num2str(user_grids), ', size(user_grids) = ', num2str(size(user_grids))]);
+
 num_rows=max(min(user_grids(:,2),params.active_user_last)-max(user_grids(:,1),params.active_user_first)+1,0);
-params.num_user=sum(num_rows.*user_grids(:,3));                     % total number of users
+params.num_user=sum(num_rows.*user_grids(:,3));                     % total number of users (TODO: controllare)
  
 current_grid=min(find(max(params.active_user_first,user_grids(:,2))==user_grids(:,2)));
 user_first=sum((max(min(params.active_user_first,user_grids(:,2))-user_grids(:,1)+1,0)).*user_grids(:,3))-user_grids(current_grid,3)+1;
