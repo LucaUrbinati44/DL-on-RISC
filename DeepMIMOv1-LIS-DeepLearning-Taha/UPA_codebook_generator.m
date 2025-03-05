@@ -32,8 +32,13 @@ for i=1:1:length(theta_qz)
     F_CBz(:,i)=sqrt(1/Mz)*exp(-1j*kd*antz_index'*cos(theta_qz(i)));
 end
 
-F_CBxy=kron(F_CBy,F_CBx);
+F_CBxy=kron(F_CBy,F_CBx); % returns the Kronecker tensor product of matrices A and B
+disp([' size(F_CBx):', num2str(size(F_CBx))]);
+disp([' size(F_CBy):', num2str(size(F_CBy))]);
+disp([' size(F_CBz):', num2str(size(F_CBz))]);
+disp([' size(F_CBxy):', num2str(size(F_CBxy))]);
 F_CB=kron(F_CBz,F_CBxy);
+disp([' size(F_CB):', num2str(size(F_CB))]);
 
 beams_x=1:1:codebook_size_x;
 beams_y=1:1:codebook_size_y;
