@@ -1,12 +1,17 @@
-cd('C:/Users/Work/Desktop/deepMIMO/DeepMIMOv1-LIS-DeepLearning-Taha');
+cd('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha');
 
 clearvars
 close all
 clc
 
-addpath('C:/Users/Work/Desktop/deepMIMO/DeepMIMOv1-LIS-DeepLearning-Taha/DeepMIMO Dataset');
-addpath('C:/Users/Work/Desktop/deepMIMO/DeepMIMOv1-LIS-DeepLearning-Taha/MAT functions');
-addpath('C:/Users/Work/Desktop/deepMIMO/DeepMIMOv1-LIS-DeepLearning-Taha/RayTracing Scenarios');
+addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/DeepMIMO Dataset');
+addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/MAT functions');
+addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/RayTracing Scenarios/O1_28');
+
+rng(1, "twister") % Added for code replicability
+% rng("default") initializes the MATLAB random number generator
+% using the default algorithm and seed. The factory default is 
+% the Mersenne Twister generator with seed 0.
 
 %% Description:
 %
@@ -44,8 +49,8 @@ My_ar=[32]; % Semplificazione Luca
 Mz_ar=[32]; % Semplificazione Luca
 M_bar=8; % number of active elements
 K_DL=64; % number of subcarriers as input to the Deep Learning model (to reduce the neural network complexity)
-%Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
-Training_Size=[1e4]; % Semplificazione Luca
+Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
+%Training_Size=[1e4]; % Semplificazione Luca
 
 
 % Preallocation of output variables (y-axis of Fig 12 for both blue and red curves)
@@ -55,12 +60,14 @@ Rate_OPTt=zeros(numel(My_ar),numel(Training_Size));
 %% Figure Data Generation 
 
 for rr = 1:1:numel(My_ar)
-    save Fig10_data.mat L My_ar Mz_ar M_bar Training_Size K_DL Rate_DLt Rate_OPTt
     [Rate_DL,Rate_OPT]=Main_fn(L,My_ar(rr),Mz_ar(rr),M_bar,K_DL,Pt,kbeams,Training_Size);
     Rate_DLt(rr,:)=Rate_DL; Rate_OPTt(rr,:)=Rate_OPT;
+
+    sfile_DeepMIMO=strcat('./Fig12_data_', num2str(My_ar), num2str(Mz_ar), num2str(numel(Training_Size)), '.mat');
+    save(sfile_DeepMIMO, 'L', 'My_ar', 'Mz_ar', 'M_bar', 'Training_Size', 'K_DL', 'Rate_DLt', 'Rate_OPTt');
 end
 
-save Fig10_data.mat L My_ar Mz_ar M_bar Training_Size K_DL Rate_DLt Rate_OPTt 
+%save Fig12_data.mat L My_ar Mz_ar M_bar Training_Size K_DL Rate_DLt Rate_OPTt
 
 %% Figure Plot
 
@@ -77,21 +84,29 @@ save Fig10_data.mat L My_ar Mz_ar M_bar Training_Size K_DL Rate_DLt Rate_OPTt
 
 Colour = 'brgmcky';
 
-f10 = figure('Name', 'Figure10', 'units','pixels');
+f12 = figure('Name', 'Figure12', 'units','pixels');
 hold on; grid on; box on;
-title(['Achievable Rate for different dataset sizes using only ' num2str(M_bar) ' active elements'],'fontsize',12)
+title(['Data Scaling Curve with ' num2str(M_bar) ' active elements'],'fontsize',12)
 xlabel('Deep Learning Training Dataset Size (Thousands of Samples)','fontsize',14)
 ylabel('Achievable Rate (bps/Hz)','fontsize',14)
 set(gca,'FontSize',13)
-if ishandle(f10)
-    set(0, 'CurrentFigure', f10)
+if ishandle(f12)
+    set(0, 'CurrentFigure', f12)
     hold on; grid on;
     for rr=1:1:numel(My_ar)
         plot((Training_Size*1e-3),Rate_OPTt(rr,:),[Colour(rr) '*--'],'markersize',8,'linewidth',2, 'DisplayName',['Genie-Aided Reflection Beamforming, M = ' num2str(My_ar(rr)) '*' num2str(Mz_ar(rr))])
         plot((Training_Size*1e-3),Rate_DLt(rr,:),[Colour(rr) 's-'],'markersize',8,'linewidth',2, 'DisplayName', ['DL Reflection Beamforming, M = ' num2str(My_ar(rr)) '*' num2str(Mz_ar(rr))])
     end
-    legend('Location','SouthEast')
+    %legend('Location','SouthEast')
+    legend('Location','NorthWest')
     legend show
+    ylim([0 3]);
 end
 drawnow
 hold off
+
+sfile_DeepMIMO=strcat('./Fig12_', num2str(My_ar), num2str(Mz_ar), num2str(numel(Training_Size)), '.png');
+saveas(f12, sfile_DeepMIMO); % Save the figure to a file 
+close(f12); % Close the figure drawnow hold off
+
+disp('End of Fig12_generator.m');
