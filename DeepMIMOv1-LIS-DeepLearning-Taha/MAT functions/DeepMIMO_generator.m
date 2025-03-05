@@ -20,17 +20,35 @@ load(file_scenario_params)
 
 params.num_BS=num_BS;
 
-disp([' user_grids:', num2str(user_grids), ', size(user_grids) = ', num2str(size(user_grids))]);
+% user_grids contiene tutti i range di aree utenti come riportato nella figura
+% dello scenario O1 https://www.deepmimo.net/scenarios/o1-scenario/.
+% Noi però stiamo lavorando su user grid 1 che va da 1000 a 1200.
+disp(' user_grids:');
+disp(user_grids);
+disp([' size(user_grids) = ', num2str(size(user_grids))]);
+disp(params);
 
 num_rows=max(min(user_grids(:,2),params.active_user_last)-max(user_grids(:,1),params.active_user_first)+1,0);
+% min returns the smallest value between each of elements of array A compared to a scalar B.
 params.num_user=sum(num_rows.*user_grids(:,3));                     % total number of users (TODO: controllare)
  
+% current_grid restituisce sempre 1 perchè stiamo lavorando sempre con la griglia 1
 current_grid=min(find(max(params.active_user_first,user_grids(:,2))==user_grids(:,2)));
+
+% Sono gli id utenti limite contenuti dentro alla porzione di griglia 
+% definita da (active_user_first, active_user_last)
 user_first=sum((max(min(params.active_user_first,user_grids(:,2))-user_grids(:,1)+1,0)).*user_grids(:,3))-user_grids(current_grid,3)+1;
 user_last=user_first+params.num_user-1;
  
 BW=params.bandwidth*1e9;                                     % Bandwidth in Hz
  
+disp('num_rows: ');
+disp(num_rows);
+disp(['num_user: ', num2str(params.num_user)]);
+disp(['current_grid: ', num2str(current_grid)]);
+disp(['user_first: ', num2str(user_first)]);
+disp(['user_last: ', num2str(user_last)]);
+
 % Reading ray tracing data
 fprintf(' Reading the channel parameters of the ray-tracing scenario %s', params.scenario)
 count_done=0;
@@ -85,6 +103,8 @@ if params.saveDataset==1
     %sfile_DeepMIMO=strcat('./DeepMIMO Dataset/DeepMIMO_dataset.mat');
     sfile_DeepMIMO=strcat('./DeepMIMO Dataset/DeepMIMO_dataset_', params.filename, '.mat'); % Luca
     save(sfile_DeepMIMO,'DeepMIMO_dataset','-v7.3'); % save(filename, variables, options), 
+    sfile_DeepMIMO=strcat('./DeepMIMO Dataset/params_', params.filename, '.mat'); % Luca
+    save(sfile_DeepMIMO,'params','-v7.3'); % save(filename, variables, options), 
     % -v7.3 è utilizzato per salvare file MAT che possono contenere variabili di grandi dimensioni e supporta la compressione.
 end
 
