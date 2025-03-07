@@ -28,9 +28,9 @@ disp(user_grids);
 disp([' size(user_grids) = ', num2str(size(user_grids))]);
 disp(params);
 
-num_rows=max(min(user_grids(:,2),params.active_user_last)-max(user_grids(:,1),params.active_user_first)+1,0);
+num_rows=max(min(user_grids(:,2),params.active_user_last)-max(user_grids(:,1),params.active_user_first)+1,0); % 1200 - 1000
 % min returns the smallest value between each of elements of array A compared to a scalar B.
-params.num_user=sum(num_rows.*user_grids(:,3));                     % total number of users (TODO: controllare)
+params.num_user=sum(num_rows.*user_grids(:,3)); % (1200-1000)*181                     % total number of users
  
 % current_grid restituisce sempre 1 perchè stiamo lavorando sempre con la griglia 1
 current_grid=min(find(max(params.active_user_first,user_grids(:,2))==user_grids(:,2)));
@@ -42,10 +42,9 @@ user_last=user_first+params.num_user-1;
  
 BW=params.bandwidth*1e9;                                     % Bandwidth in Hz
  
-disp('num_rows: ');
-disp(num_rows);
-disp(['num_user: ', num2str(params.num_user)]);
-disp(['current_grid: ', num2str(current_grid)]);
+disp('num_rows: ', num2str(num_rows)); % 181
+disp(['num_user: ', num2str(params.num_user)]); 
+disp(['current_grid: ', num2str(current_grid)]); % 1
 disp(['user_first: ', num2str(user_first)]);
 disp(['user_last: ', num2str(user_last)]);
 
