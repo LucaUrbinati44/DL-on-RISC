@@ -211,10 +211,14 @@ else
     over_sampling_y=1;            % The beamsteering oversampling factor in the y direction
     over_sampling_z=1;            % The beamsteering oversampling factor in the z direction
     % Generating the BF codebook 
-    [BF_codebook]=sqrt(Mx*My*Mz)*UPA_codebook_generator(Mx,My,Mz,over_sampling_x,over_sampling_y,over_sampling_z,D_Lambda);
-    codebook_size=size(BF_codebook,2); % (1024, 1024) --> 1024
+    [BF_codebook]=sqrt(Mx*My*Mz)*UPA_codebook_generator(Mx,My,Mz,over_sampling_x,over_sampling_y,over_sampling_z,D_Lambda); % (1024, 1024)
+    codebook_size=size(BF_codebook,2);
+    % significa che:
+    %  - ogni riga è un possibile codebook, cioè 1024 valori di fasi per i 32x32=1024 elementi della RIS
+    %  - l'insieme delle righe sono tutti i possibili codebook. Sono anch'essi 1024 perchè sono stati ottenuti dalla DFT
+    % che implica che essi siano ortogonali tra loro (se ne moltiplico uno per il suo complesso coniugato ottengo 0)
     disp([' size(BF_codebook)', num2str(size(BF_codebook))]); % Luca
-    disp(['Codebook generated with size ', num2str(codebook_size)]);
+    disp([' Codebook size: ', num2str(codebook_size)]); % 1024
 
 
     %--- Accounting SNR in each rate calculations
@@ -224,7 +228,7 @@ else
     NF=5;             % Noise figure at the User equipment
     Process_Gain=10;  % Channel estimation processing gain
     noise_power_dB=-204+10*log10(BW/K)+NF-Process_Gain; % Noise power in dB
-    SNR = 10^(.1*(-noise_power_dB)) * (10^(.1*(Gt+Gr+Pt)))^2; % Signal-to-noise ratio. 
+    SNR = 10^(.1*(-noise_power_dB)) * (10^(.1*(Gt+Gr+Pt)))^2; % Signal-to-noise ratio: Pt / Noise 
     % Formula diversa da quella del paper pag 44307. Come mai?
     % La formula 10^(.1 * x) è usata per convertire un valore in dB a una scala lineare.
     % channel estimation noise
@@ -246,8 +250,10 @@ else
     Ht_bar = reshape(Ht(Rand_M_bar,:),M_bar*K_DL,1);
 
     u_step=100;
-    Htx=repmat(Ht(:,1),1,u_step); % perchè prende solo la prima colonna di Ht, cioè il carrier 1?
-    % repmat: replica Ht array verticale lungo le colonne per u_step volte
+    Htx=repmat(Ht(:,1),1,u_step); 
+    % repmat: prende Ht array verticale e forma una nuova variabile Htx con shape 1, u_step.
+    % in altre parole replica Ht lungo le colonne per u_step volte
+    % Perchè prende solo la prima colonna di Ht, cioè il carrier 1 quando invece ce ne sono K_DL? (spiegato sotto nella formula del rate)
 
     % Per ogni regione verticale
     for pp = 1:1:numel(Ur_rows_grid)-1
@@ -306,66 +312,105 @@ else
                 % Questo vettore colonna viene appeso verticalmente a DL_input per ogni utente della Griglia 1, un utente alla volta
                 % shape(DL_input) = (1024, 36200) perchè 
                 % 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
-                % numero link utenti RIS = numero totale utenti = (1200 - 1000) x 181 = 36200
+                % numero link tra utenti e RIS = numero totale utenti = (1200 - 1000) x 181 = 36200
                 DL_input(:,u+uu-1+((pp-1)*params.num_user))= reshape([real(H_bar) imag(H_bar)].',[],1); % salva H_bar in
                 %disp(['size(DL_input): ' num2str(size(DL_input))]); % size(DL_input) = 1024, 36200
                 
-                Delta_H_bar = max(max(abs(H_bar))); % Massimo di ogni colonna e poi massimo della riga risultate 
-                % --> Si ottiene il valore massimo della matrice 2D, e questo massimo viene ricavato 
-                % per tutti gli utenti e regioni
+                Delta_H_bar = max(max(abs(H_bar))); 
+                % Massimo di ogni colonna e poi massimo della riga risultate 
+                % --> Si ottiene il valore massimo della matrice 2D, e questo massimo viene ricavato per tutti gli utenti e regioni
+                % Delta_H_bar_max = denominatore formula 25 paper (pag 13)
                 if Delta_H_bar >= Delta_H_bar_max
                     Delta_H_bar_max = single(Delta_H_bar);
                 end
-                Hrx(:,uu)=Hr(:,1); % Perchè tiene solo la prima colonna?
+                Hrx(:,uu)=Hr(:,1); 
+                % Perchè prende solo la prima colonna di Hr, cioè il carrier 1 quando invece ce ne sono K_DL? (spiegato sotto nella formula del rate)
 
             end
 
             %--- Actual achievable rate for performance evaluation
-            H = Htx.*Hrx; % Perchè usa Htx e Hrx invece di Ht e Hr?
+            H = Htx.*Hrx;
+            %disp([' size(Ht(:,1)) = ' num2str(size(Ht(:,1)))]); % 1024, 1
+            %disp([' size(Htx) = ' num2str(size(Htx))]); % 1024, 100
+            %disp([' size(Hr(:,1)) = ' num2str(size(Ht(:,1)))]); % 1024, 1
+            %disp([' size(Hrx) = ' num2str(size(Hrx))]); % 1024, 100
             %disp([' size(H) = ' num2str(size(H))]); % 1024, 100
+            
             H_BF=H.'*BF_codebook;
-            % Nel paper Taha Enabling 2021: BF_codebook = psi piccolo = LIS interaction vector = reflection beamforming vector
+            % Nel paper (pag 7): BF_codebook = psi piccolo = LIS interaction vector = reflection beamforming vector.
             %disp([' size(H_BF) = ' num2str(size(H_BF))]); % 100, 1024
-            SNR_sqrt_var = abs(H_BF);
-            %disp([' size(SNR_sqrt_var) = ' num2str(size(SNR_sqrt_var))]); % 100, 1024
+            SNR_sqrt_var = abs(H_BF); 
+            % commento francesco: indica il mismatch sulle fasi. se il codebook è perfetto, è un array di 1, altrimenti è minore di 1.
+            % Sarà cmq minore di 1 per il path loss.
+            disp([' size(SNR_sqrt_var) = ' num2str(size(SNR_sqrt_var))]); % 100, 1024
+
+            %keyboard;
+
             for uu=1:1:u_step
                 if sum((Validation_Ind == u+uu-1+((pp-1)*params.num_user))) % per gli utenti che sono nel validation set, entra nell'if
-                    count=count+1;
-                    DL_output_un(count,:) = single( sum( log2( 1+( SNR*( (SNR_sqrt_var(uu,:)).^2 ) ) ), 1) );
-                    % returns the sum along dimension dim. For example, if A is a matrix, 
-                    % then sum(A,1) returns a row vector containing the sum of each column
-                    % Quindi ritorna la somma lungo 1024 che sono i carrier.
-                    % Rispetto alla formula 6 del paper manca la divisione per K. Come mai?
-                    % DL_output_un sembra che implementi la formula completa del rate
+                    count=count+1; % variabile inutile, potevano usare direttamente uu
+                    %DL_output_un(count,:) = single( sum( log2( 1+( SNR*( (SNR_sqrt_var(uu,:)).^2 ) ) ), 1) );
+                    DL_output_un(count,:) = single( log2( 1+( SNR*( SNR_sqrt_var(uu,:).^2 ) ) ) ); % sum not needed (Luca)
+                    % DL_output_un è l'output del genie-aided
+
+                    % Nel paper (pag 16) gli autori dichiarano di aver considerato un solo carrier per il calcolo del rate
+                    % "to reduce the computational complexity of the performance evaluation". 
+                    % Quindi rispetto alla formula 6 e 27 del paper (pag 7 e 16) manca la sommatoria sui carrier e la divisione per K.
+                    % Questo è il motivo per cui quando generano Htx e Hrx ci inseriscono solo un carrier. Sono coerenti.
+                    
+                    %disp([' size(DL_output_un(count,:)):', num2str(size(DL_output_un(count,:)))]); % 1, 1024
+                    % Poichè SNR_sqrt_var(uu,:) ritorna sempre un vettore (1, 1024) e il risultato finale DL_output_un(count,:) 
+                    % è sempre un vettore (1, 1024), allora significa che la somma lunga la direzione 1 è inutile
+                    %a = single( sum( log2( 1+( SNR*( (SNR_sqrt_var(uu,:)).^2 ) ) ), 1) );
+                    %b = single( log2( 1+( SNR*( (SNR_sqrt_var(uu,:)).^2 ) ) ) );
+                    %disp(['isequal(a, b): ', num2str(isequal(a, b))]);
+                    
+                    % Sono tutti diversi
+                    %disp([' DL_output_un(count,1):', num2str(DL_output_un(count,1))]);
+                    %disp([' DL_output_un(count,2):', num2str(DL_output_un(count,2))]);
+                    %disp([' DL_output_un(count,100):', num2str(DL_output_un(count,100))]);
+                    %disp([' DL_output_un(count,1024):', num2str(DL_output_un(count,1024))]);
+                    %keyboard;
                 end
             end
+
             %--- Label for the sampled channel
-            R = single(log2(1+(SNR_sqrt_var/Delta_H_max).^2)); % size(R) = 100, 1024
-            % Questa formula è simile al rate ma non è completa. Cos'è?
+            R = single(log2(1+(SNR_sqrt_var/Delta_H_max).^2));
+            %disp([' size(R):', num2str(size(R))]); % 100, 1024
+            % Ogni riga corrisponde a un vector of rates. Il numero di rates è pari al codebook size = 1024. Ogni rate è il risultato dell'aver utilizzato un certo codebook.
+            
+            % Questa formula è simile al rate ma manca la moltiplicazione per il SNR e viene divisa per Delta_H_max.
+            % Che cosa rappresenta questa formula?
             % Può essere un forma del rate normalizzata rispetto al SNR perchè avrebbero dovuto moltiplicarlo,
-            % ma poi anche dividerlo perciò si elide.
+            % ma poi anche dividerlo perciò si elide?
             % E' come se fosse un rate approssimato usato per il DL, mentre quello "vero" è quello in DL_output_un
-            %disp([' size(R):', num2str(size(R))]);
+
+            % Perchè normalizzano rispetto a Delta_H_max?
 
             %--- DL output normalization
             Delta_Out_max = max(R,[],2); % 100, 1
-            % returns the maximum element along dimension 2, i.e., 
-            % returns a column vector containing the maximum value of each row.
-            % Ritorna il massimo dei carrier per ogni 
+            % returns the maximum element along dimension 2, i.e., returns a column vector containing the maximum value of each row.
+            
             %disp([' size(Delta_Out_max) = ' num2str(size(Delta_Out_max))]); % 100, 1
 
             if ~sum(Delta_Out_max == 0) % Se non ci sono elementi nulli
-                % Normalizza la diagonale. Perchè solo la diagonale? A cosa mi serve normalizzare il rate?
-                Rn=diag(1./Delta_Out_max)*R; 
-                % Perchè normalizza solo la diagonale?
+                % Nel paper (pag 14) dice che every vector of rates r(s) is normalized using its maximum rate value (per-sample normalization).
+                % Dicono che serve per avere un modello che non sia biased towards some strong responses, i.e.,
+                % it gives the receivers equal importance regardless of how close or far they are from the LIS.
+                % Quindi ogni vettore di rates avrà come valore massimo il numero 1.
+                Rn=diag(1./Delta_Out_max)*R;
+                % diag(v) restituisce una matrice diagonale quadrata con gli elementi del vettore v sulla diagonale principale.
+                % Each row of R is scaled by the corresponding diagonal element
+
             end
             DL_output(u+((pp-1)*params.num_user):u+((pp-1)*params.num_user)+u_step-1,:) = Rn;
-            % DL_output è l'output golden, cioè l'output del genie-aided.
 
             %disp([' size(R) = ' num2str(size(R))]); % 100, 1024
             %disp([' size(Rn) = ' num2str(size(Rn))]); % 100, 1024
             %disp([' size(DL_output) = ' num2str(size(DL_output))]); % 36200, 1024
 
+            %keyboard;
+            
         end
 
         %keyboard; 
@@ -377,9 +422,10 @@ else
     %-- Sorting back the DL_output_un
     DL_output_un = DL_output_un(VI_rev_sortind,:);
 
-    %--- DL input normalization (questo l'ho capito)
-    %DL_input= 1*(DL_input/Delta_H_bar_max); %%%%% Normalized from -1->1 %%%%% Original
-    DL_input= DL_input/Delta_H_bar_max; % Normalized to 1, LUCA
+    %--- DL input normalization (come da formula 25 paper pag 13)
+    %DL_input= 1*(DL_input/Delta_H_bar_max); %%%%% Normalized from -1->1 %%%%% (commento originale)
+    % Secondo me il commento è sbagliato perchè non si sa se gli input saranno tra -1 e 1, ma sappiamo solo che il massimo sarà 1.
+    DL_input= DL_input/Delta_H_bar_max; % Normalized to 1 (LUCA)
     % Non so perchè hanno scritto questo commento alla riga sopra, però dividere per Delta_H_bar_max
     % significa che il numero massimo dentro a DL_input diventa 1, ma i numeri non cambiano da negativi a positivi,
     % a meno che Delta_H_bar_max non sia negativo, ma ho verificato che non è così (8.2934e-12).
@@ -425,10 +471,11 @@ else
     Rate_DL = zeros(1,length(Training_Size)); 
     Rate_OPT = Rate_DL;
     LastValidationRMSE = Rate_DL;
-    Rate_DL_fake = Rate_DL;
+    Rate_DL_fake = Rate_DL; % Luca
+    validation_accuracy = Rate_DL; % Luca
 
     % ------------------ Training and Testing Datasets -----------------%
-    DL_output_reshaped = reshape(DL_output.',1,1,size(DL_output,2),size(DL_output,1));
+    DL_output_reshaped = reshape(DL_output.',1,1,size(DL_output,2),size(DL_output,1)); % 1, 1, 1024, 36200
     DL_output_reshaped_un = reshape(DL_output_un.',1,1,size(DL_output_un,2),size(DL_output_un,1));
     DL_input_reshaped= reshape(DL_input,size(DL_input,1),1,1,size(DL_input,2));
 
@@ -446,10 +493,12 @@ else
         YValidation = single(DL_output_reshaped(1,1,:,Validation_Ind));
         YValidation_un = single(DL_output_reshaped_un);
 
-        disp([' size(XTrain) = ' num2str(size(XTrain))]);
-        disp([' size(YTrain) = ' num2str(size(YTrain))]);
-        disp([' size(XValidation) = ' num2str(size(XTrain))]);
-        disp([' size(YValidation) = ' num2str(size(YTrain))]);
+        %disp([' size(XTrain) = ' num2str(size(XTrain))]); % 1024, 1, 1, Training_Ind(dd)
+        %disp([' size(YTrain) = ' num2str(size(YTrain))]); % 1, 1, 1024, Training_Ind(dd)
+        %disp([' size(XValidation) = ' num2str(size(XValidation))]); % 1024, 1, 1, 6200
+        %disp([' size(YValidation) = ' num2str(size(YValidation))]); % 1, 1, 1024, 6200
+
+        keyboard;
         
         % ------------------ DL Model definition -----------------%
         layers = [
@@ -471,6 +520,8 @@ else
 
             fullyConnectedLayer(size(YTrain,3),'Name','Fully4')
             regressionLayer('Name','outReg')];
+            % Il layer di regressione utilizza i minimi quadrati (mean squared error, MSE)
+            % come funzione di perdita per impostazione predefinita.
 
         if Training_Size(dd) < miniBatchSize
             validationFrequency = Training_Size(dd);
@@ -517,39 +568,65 @@ else
         % poi bisogna prendere il migliore.
         
         % --------------------- Achievable Rate --------------------------%                    
-        [~,Indmax_OPT]= max(YValidation,[],3); % returns the maximum element along dimension dim. 
-        % For example, if A is a matrix, then max(A,[],2) returns a column vector containing the maximum value of each row.
-        % Quindi ritorna un vettore
+        %[~,Indmax_OPT]= max(YValidation,[],3);
+        [MaxR_OPT_debug,Indmax_OPT]= max(YValidation,[],3); % Luca
+        % returns the maximum element along dimension dim. For example, if A is a matrix, then max(A,[],2) returns 
+        % a column vector containing the maximum value of each row.
+        % Quindi ritorna un vettore lungo 6200 in cui ci sono gli indici corrispondenti al massimo di ogni validation sample
+        % che corrispondono ai valori pari a 1 perchè sono stati normalizzati.
+        % MaxR_OPT_debug corrisponde a r bar del paper (pag 14).
+        %disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 1, 1, 1, 6200
         Indmax_OPT = squeeze(Indmax_OPT); %Upper bound on achievable rates
+        %disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 6200, 1
         % squeeze(A) restituisce un array con gli stessi elementi dell'array di input A, ma con le dimensioni di lunghezza 1 rimosse
-        MaxR_OPT = single(zeros(numel(Indmax_OPT),1));   
+        % Ad esempio, se A è un array 3x1x1x2, squeeze(A) restituisce una matrice 3x2.
+        MaxR_OPT = single(zeros(numel(Indmax_OPT),1));
 
-        [MaxR_DL_fake,Indmax_DL] = maxk(YPredicted,kbeams,2); % max kbeams=1 from dimension 2, quindi trova il max di ogni riga
-        disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]); % 6200, 1
-        disp(['size(MaxR_DL_fake):', num2str(size(MaxR_DL_fake))]); % 6200, 1
+        %[~,Indmax_DL] = maxk(YPredicted,kbeams,2); % originale
+        [MaxR_DL_luca,Indmax_DL] = maxk(YPredicted,kbeams,2); % Luca
+        % max kbeams=1 from dimension 2, quindi trova il max di ogni riga
+        % MaxR_DL_luca corrisponde a r cappuccio del paper, cioè all'uscita della rete (pag 14).
+        %disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]); % 6200, 1
+        %disp(['size(MaxR_DL_luca):', num2str(size(MaxR_DL_luca))]); % 6200, 1
         MaxR_DL = single(zeros(size(Indmax_DL,1),1)); %True achievable rate indexes (size(MaxR_DL)=1)
+        % Poichè da YPredicted viene utilizzato solo l'indice del valore massimo, vuol dire che il modello di DL
+        % viene usato solamente per ottenere il codebook corrispondendte al massimo perchè quel rate proxy viene ignorato
 
-        for b=1:size(Indmax_DL,1)
+        for b=1:size(Indmax_DL,1) % 6200
             % YValidation_un = DL_output_reshaped_un = DL_output_un
-            MaxR_DL(b) = max(squeeze(YValidation_un(1,1,Indmax_DL(b,:),b))); %True achievable rates
+            %MaxR_DL(b) = max(squeeze(YValidation_un(1,1,Indmax_DL(b,:),b))); %True achievable rates
+            MaxR_DL(b) = squeeze(YValidation_un(1,1,Indmax_DL(b),b)); %True achievable rates (Luca)
             MaxR_OPT(b) = squeeze(YValidation_un(1,1,Indmax_OPT(b),b));
+
+            % Count the number of correct predictions (Luca)
+            if MaxR_DL(b) == MaxR_OPT(b)
+                validation_accuracy(dd) = validation_accuracy(dd) + 1;
+            end
+
+            % debug
             if b==1 || b==(size(Indmax_DL,1) - 1)
+                disp(['size(Indmax_DL(b,:)):', num2str(size(Indmax_DL(b,:)))]); % 1, 1
                 disp(['MaxR_DL(b):', num2str(MaxR_DL(b))]);
                 disp(['MaxR_OPT(b):', num2str(MaxR_OPT(b))]);
-                disp(['MaxR_DL_fake(b):', num2str(MaxR_DL_fake(b))]);
+                disp(['MaxR_OPT_debug(b):', num2str(MaxR_OPT_debug(b))]); % sempre = 1
+                disp(['MaxR_DL_luca(b):', num2str(MaxR_DL_luca(b))]); % sempre <= 1
             end
         end
+        % Questa mean fa la media dei risultati di ogni sample del validation set.
+        % (Equivalente a trovare la validation accuracy che poi viene plottata nei problemi di classificazione)
         Rate_DL(dd) = mean(MaxR_DL);
         Rate_OPT(dd) = mean(MaxR_OPT);
-        Rate_DL_fake(dd) = mean(MaxR_DL_fake);
+        Rate_DL_fake(dd) = mean(MaxR_DL_luca);
         % mean returns the mean of the elements of A along the first array dimension whose size does not equal 1.
-        LastValidationRMSE(dd) = traininfo.ValidationRMSE(end);                                          
+        LastValidationRMSE(dd) = traininfo.ValidationRMSE(end);
+        validation_accuracy(dd) = validation_accuracy(dd) / size(Indmax_DL,1); % Luca
         disp(['size(MaxR_DL):', num2str(size(MaxR_DL))]); % 6200, 1
         disp(['size(MaxR_OPT):', num2str(size(MaxR_OPT))]); % 6200, 1
         disp(['Rate_OPT(dd):', num2str(Rate_OPT(dd))]); % 1
         disp(['Rate_DL(dd):', num2str(Rate_DL(dd))]); % 1
         disp(['Rate_DL_fake(dd):', num2str(Rate_DL_fake(dd))]); % 1
         disp(['LastValidationRMSE(dd):', num2str(LastValidationRMSE(dd))]);
+        disp(['validation_accuracy(dd):', num2str(validation_accuracy(dd))]);
         disp(' ');
 
         %sfile_DeepMIMO=strcat('./DeepMIMO Dataset/trainedNet_', num2str(My), num2str(Mz), '_', num2str(dd), '.mat');
