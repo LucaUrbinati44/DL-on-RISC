@@ -29,8 +29,9 @@ disp('-------------------------------------------------------------');
 load_mat_files = 1;
 load_Delta_H_max = 1;
 load_DL_dataset = 1;
-load_Rates = 0;
+load_Rates = 1;
 save_mat_files = 0;
+load_fig7 = 1;
 
 %% System Model Parameters
 
@@ -71,11 +72,17 @@ params.saveDataset=0;
 filename_Ht=strcat('Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz));
 filename_Hr=strcat('Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
 filename_Delta_H_max=strcat('./DeepMIMO Dataset/Delta_H_max', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '.mat');
-filename_DL_input=strcat('./DeepMIMO Dataset/DL_input_', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output=strcat('./DeepMIMO Dataset/DL_output_', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_un=strcat('./DeepMIMO Dataset/DL_output_un_', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_Rate_DL=strcat('./DeepMIMO Dataset/Rate_DL_', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_Rate_OPT=strcat('./DeepMIMO Dataset/Rate_OPT_', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_input=strcat('./DeepMIMO Dataset/DL_input', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_User_Location=strcat('./DeepMIMO Dataset/User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_params=strcat('./DeepMIMO Dataset/params', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output=strcat('./DeepMIMO Dataset/DL_output', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_un=strcat('./DeepMIMO Dataset/DL_output_un', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_input_reshaped=strcat('./DeepMIMO Dataset/DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_reshaped=strcat('./DeepMIMO Dataset/DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_trainedNet=strcat('./DeepMIMO Dataset/trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar));
+filename_Rate_DL=strcat('./DeepMIMO Dataset/Rate_DL', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_Rate_OPT=strcat('./DeepMIMO Dataset/Rate_OPT', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_YPredictedFig7=strcat('./DeepMIMO Dataset/YPredictedFig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 
 % ------------------ DeepMIMO "Ut" Dataset Generation -----------------%
 params.active_user_first=Ut_row; 
@@ -185,11 +192,23 @@ No_user_pairs = (Ur_rows(2)-Ur_rows(1))*181; % Number of users (= Number of TX-R
 disp([' No_user_pairs = ' num2str(No_user_pairs)]);
 % In the 'O1' scenario where every row consists of 181 points.
 % Since the number of BS antennas is one, the number of pairs is equal to the number of users.
-RandP_all = randperm(No_user_pairs).'; % Random permutation = shuffled user indexes
+RandP_all = randperm(No_user_pairs).'; 
+% randperm(n) restituisce un vettore contenente una permutazione casuale di numeri interi da 1 a n, senza elementi ripetuti.
+% Serve per ottenere gli indici mischiati (shuffled)
 
 Validation_Size = 6200; % Validation dataset Size
 %Validation part for the actual achievable rate perf eval
 Validation_Ind = RandP_all(end-Validation_Size+1:end); % Take some user indexes for validation from the end of RandP_all
+
+% Calcola indici di Validation_Ind quando ordinato in ordine crescente
+[~,VI_sortind] = sort(Validation_Ind);
+% Calcola indici di VI_sortind, cioè degli indici precedenti, quando ordinati in ordine crescente
+[~,VI_rev_sortind] = sort(VI_sortind); 
+% L'idea dietro questi due ordinamenti consecutivi è di ottenere un array di indici (VI_rev_sortind)
+% che può essere utilizzato per riportare un array ordinato (l'output ~ del primo sort) 
+% alla sua disposizione originale (Validation_Ind). 
+
+u_step=100;
 
 %keyboard; % Pause
 
@@ -200,11 +219,6 @@ if load_DL_dataset == 1
     load(filename_DL_output_un);
     disp('Done');
 else   
-
-    [~,VI_sortind] = sort(Validation_Ind); % contiene gli indici che ordinano Validation_Ind in ordine crescente.
-    [~,VI_rev_sortind] = sort(VI_sortind); % 
-    % L'idea dietro questi due ordinamenti consecutivi è di ottenere un array di indici (VI_rev_sortind)
-    % che può essere utilizzato per riportare un array ordinato alla sua disposizione originale. 
 
     % BF codebook parameters
     over_sampling_x=1;            % The beamsteering oversampling factor in the x direction
@@ -236,6 +250,7 @@ else
 
 
     DL_input = single(zeros(M_bar*K_DL*2,No_user_pairs)); % Questo è il dataset: ogni entry è un sample che rappresenta una coppia utente-BS, 8x64x2(real/img)=1024 
+    User_Location = single(zeros(3,No_user_pairs)); % x, y, z location of users
     DL_output = single(zeros(No_user_pairs,codebook_size)); % Queste sono le label per ogni sample, cioè il rate (uno per ogni codebook)
     DL_output_un =  single(zeros(numel(Validation_Ind),codebook_size));
     Delta_H_bar_max = single(0);
@@ -249,7 +264,7 @@ else
     % Keep only the coefficients of Ht that are related to M_bar
     Ht_bar = reshape(Ht(Rand_M_bar,:),M_bar*K_DL,1);
 
-    u_step=100;
+    %u_step=100;
     Htx=repmat(Ht(:,1),1,u_step); 
     % repmat: prende Ht array verticale e forma una nuova variabile Htx con shape 1, u_step.
     % in altre parole replica Ht lungo le colonne per u_step volte
@@ -313,8 +328,11 @@ else
                 % shape(DL_input) = (1024, 36200) perchè 
                 % 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
                 % numero link tra utenti e RIS = numero totale utenti = (1200 - 1000) x 181 = 36200
-                DL_input(:,u+uu-1+((pp-1)*params.num_user))= reshape([real(H_bar) imag(H_bar)].',[],1); % salva H_bar in
+                DL_input(:,u+uu-1+((pp-1)*params.num_user)) = reshape([real(H_bar) imag(H_bar)].',[],1); % salva H_bar in
                 %disp(['size(DL_input): ' num2str(size(DL_input))]); % size(DL_input) = 1024, 36200
+                
+                % location of the user pu = [px; py; pz] in the x-y-z space
+                User_Location(:,u+uu-1+((pp-1)*params.num_user)) = single(DeepMIMO_dataset{1}.user{u+uu-1}.loc);
                 
                 Delta_H_bar = max(max(abs(H_bar))); 
                 % Massimo di ogni colonna e poi massimo della riga risultate 
@@ -342,7 +360,7 @@ else
             SNR_sqrt_var = abs(H_BF); 
             % commento francesco: indica il mismatch sulle fasi. se il codebook è perfetto, è un array di 1, altrimenti è minore di 1.
             % Sarà cmq minore di 1 per il path loss.
-            disp([' size(SNR_sqrt_var) = ' num2str(size(SNR_sqrt_var))]); % 100, 1024
+            %disp([' size(SNR_sqrt_var) = ' num2str(size(SNR_sqrt_var))]); % 100, 1024
 
             %keyboard;
 
@@ -432,7 +450,7 @@ else
     % non possiamo garantire che i valori saranno compresi tra -1 e 1 a meno che 
     % DL_input non contenga valori negativi e positivi simmetrici rispetto a zero. E' possibile?
     disp([' Delta_H_bar_max:', num2str(Delta_H_bar_max)]);
-    disp([' size(Delta_H_bar_max):', num2str(size(Delta_H_bar_max))]);
+    %disp([' size(Delta_H_bar_max):', num2str(size(Delta_H_bar_max))]); % 1, 1
 
     %keyboard; % Pause
 
@@ -443,10 +461,12 @@ else
         save(filename_DL_input,'DL_input','-v7.3');
         save(filename_DL_output,'DL_output','-v7.3');
         save(filename_DL_output_un,'DL_output_un','-v7.3');   
+        save(filename_User_Location,'User_Location','-v7.3');
+        save(filename_params,'params','-v7.3');
     end
 end
 
-keyboard; % Pause
+%keyboard; % Pause
 
 %% DL Beamforming
 
@@ -455,11 +475,7 @@ disp('---> DL Beamforming');
 
 
 if load_Rates == 1
-    disp('Loading trainedNet, traininfo, Rate_DL, Rate_OPT...');
-    %sfile_DeepMIMO=strcat('./DeepMIMO Dataset/trainedNet.mat');
-    %load(sfile_DeepMIMO);
-    %sfile_DeepMIMO=strcat('./DeepMIMO Dataset/traininfo.mat');
-    %load(sfile_DeepMIMO);
+    disp('Loading Rate_DL, Rate_OPT...');
     load(filename_Rate_DL);
     load(filename_Rate_OPT);
     disp('Done');
@@ -477,7 +493,7 @@ else
     % ------------------ Training and Testing Datasets -----------------%
     DL_output_reshaped = reshape(DL_output.',1,1,size(DL_output,2),size(DL_output,1)); % 1, 1, 1024, 36200
     DL_output_reshaped_un = reshape(DL_output_un.',1,1,size(DL_output_un,2),size(DL_output_un,1));
-    DL_input_reshaped= reshape(DL_input,size(DL_input,1),1,1,size(DL_input,2));
+    DL_input_reshaped = reshape(DL_input,size(DL_input,1),1,1,size(DL_input,2));
 
     % Per ogni punto del grafico, viene allenato un modello
     for dd=1:1:numel(Training_Size)
@@ -498,7 +514,7 @@ else
         %disp([' size(XValidation) = ' num2str(size(XValidation))]); % 1024, 1, 1, 6200
         %disp([' size(YValidation) = ' num2str(size(YValidation))]); % 1, 1, 1024, 6200
 
-        keyboard;
+        %keyboard;
         
         % ------------------ DL Model definition -----------------%
         layers = [
@@ -554,11 +570,14 @@ else
         elapsedTime = toc; % Misura il tempo trascorso in secondi
         elapsedTimeMinutes = elapsedTime / 60; % Converti il tempo trascorso in minuti
         disp(['Elapsed time is ', num2str(elapsedTimeMinutes), 'minutes']);
+
+        sfile_DeepMIMO=strcat(filename_trainedNet, '_Training_Size_', num2str(Training_Size(dd)), '.mat');
+        save(sfile_DeepMIMO,'trainedNet','-v7.3');
         
         %keyboard;
 
         tic
-        disp('Start DL testing...')
+        disp('Start DL prediction for Figure 12...')
         YPredicted = predict(trainedNet,XValidation); % Inferenza sul set di validazione usato come test: errore!
         disp('Done')
         toc
@@ -629,12 +648,7 @@ else
         disp(['validation_accuracy(dd):', num2str(validation_accuracy(dd))]);
         disp(' ');
 
-        %sfile_DeepMIMO=strcat('./DeepMIMO Dataset/trainedNet_', num2str(My), num2str(Mz), '_', num2str(dd), '.mat');
-        %save(sfile_DeepMIMO,'trainedNet','-v7.3');
-        %sfile_DeepMIMO=strcat('./DeepMIMO Dataset/traininfo_', num2str(My), num2str(Mz), '_', num2str(dd), '.mat');
-        %save(sfile_DeepMIMO,'traininfo','-v7.3');
-
-        keyboard;
+        %keyboard;
 
         clear trainedNet traininfo YPredicted
         clear layers options 
@@ -642,9 +656,150 @@ else
     end
 
     if save_mat_files == 1
+        save(filename_DL_input_reshaped, 'DL_input_reshaped', '-v7.3');
+        save(filename_DL_output_reshaped, 'DL_output_reshaped', '-v7.3');
         save(filename_Rate_DL,'Rate_DL','-v7.3');
         save(filename_Rate_OPT,'Rate_OPT','-v7.3');
     end
+end
+
+
+%% Fig 7 (Luca)
+
+disp('---> Plot Fig 7');
+
+if load_fig7 == 1
+    
+    disp('Loading DL_input_reshaped, DL_output_reshaped, trainedNet, loc, ...');  
+
+    % Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
+    load(filename_DL_input_reshaped);
+    % Concatena YTrain + YValidation, cioè utilizza DL_output_reshaped
+    load(filename_DL_output_reshaped);
+
+    % Carica modello pre-allenato caso Training_Size = 30000
+    dd = 1;
+    sfile_DeepMIMO=strcat(filename_trainedNet, '_Training_Size_', num2str(Training_Size(dd)), '.mat');
+    trainedNet = load(sfile_DeepMIMO).trainedNet;
+
+    if save_mat_files == 1
+        % Esegui predizione con DL_input_reshaped
+        tic
+        disp('Start DL prediction for Figure 7...')
+        YPredictedFig7 = predict(trainedNet,DL_input_reshaped); % Inferenza sul set di validazione usato come test: errore!
+        disp('Done')
+        toc
+        save(filename_YPredictedFig7,'YPredictedFig7','-v7.3'); 
+    else
+        load(filename_YPredictedFig7);
+    end
+
+    % Recupera gli indici dei codebook
+    [~,Indmax_OPT]= max(DL_output_reshaped,[],3);
+    %disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 1, 1, 1, 36200
+    Indmax_OPT = squeeze(Indmax_OPT);
+    %disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 36200, 1
+    
+    [~,Indmax_DL] = maxk(YPredictedFig7,kbeams,2);
+    %disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]); % 36200, 1
+
+    % Recupera locations loc
+    load(filename_User_Location);
+
+    User_Location_norm = single(zeros(3,No_user_pairs));
+    space_between_users = 0.2; % meters
+    for i=1:1:size(User_Location_norm,1)-1 % Lavora solo su x e y perchè z è costante
+        User_Location_norm(i, :) = round(( User_Location(i,:) - min(User_Location(i,:)) ) / space_between_users + 1);
+        %disp(min(User_Location(i,:)));
+        %disp(min(User_Location_norm(i,:)));
+        %disp(max(User_Location(i,:)));
+        %disp(max(User_Location_norm(i,:)));
+    end
+    %keyboard;
+        
+    % Grafico
+    % Il sistema di riferimento x,y è quello del grafico, NON quello dello scenario.
+    reversed_y = 1:200; %User_Location_norm(2, 1:181:end); % prendere un valore ogni 181, risultando in un vettore da 1 a 200
+    reversed_x = 1:181; %User_Location_norm(1, 1:max(User_Location_norm(1,:))); % prendere i primi 181 valori, risultando in un vettore da 1 a 181
+    disp(size(reversed_y)); % 200
+    disp(size(reversed_x)); % 181
+
+    % Matrice dei valori
+    values = single(zeros(numel(reversed_x), numel(reversed_y))); % 181x200
+    % Deve essere una matrice x x y, cioè 181x200
+    % Devo cambiare la shape di questa matrice in modo che in una riga ci siano gli indici da 1 a 200.
+    % Adesso invece in una riga ci sono prima gli indici da 1 a 100 del primo rettangolo di utenti,
+    % poi ci sono gli indici da 18101 a 18200 del secondo rettangolo di utenti (vedi foglio).
+
+    try
+        load(filename_params);
+        disp('Load params.num_user')
+    catch ME
+        disp(params.num_user);
+        params.num_user = u_step*181;
+        disp(params.num_user);
+        disp('Fix params.num_user');
+    end
+
+    %{
+    i=0;
+    for pp = 1:1:numel(Ur_rows_grid)-1 % Per ogni regione verticale
+        for u=1:u_step:params.num_user % Per ogni utente dentro una regione verticale a step di 100 (u_step)
+
+            % DL_output(u+((pp-1)*params.num_user):u+((pp-1)*params.num_user)+u_step-1,:) = Rn;
+
+            r = int32( (i+1)/2 ); % ogni due for loop interni, incrementa di 1
+            m = mod(i,2); % alterna i valori 0 e 1
+            c = u_step*m+1:u_step*m+u_step; % 1:100 when m=0, 101:200 when m=1
+            one_hundred_users = ( Indmax_OPT(u+((pp-1)*params.num_user):u+((pp-1)*params.num_user)+u_step-1) ).';
+            %one_hundred_users = Indmax_OPT;
+            % .' is for chaning the shape from column to row vector
+            size(one_hundred_users);
+
+            values(r, c) = one_hundred_users;
+            % Ad ogni riga leggo 100 valori
+            
+            i=i+1;
+
+            %disp(['r=', num2str(r)]);
+            %disp(['c=', num2str(c)]);
+            %disp(['i=', num2str(i)]);
+            %disp('---')
+
+            %keyboard;
+        end
+    end
+    %}
+
+    values = reshape(Indmax_OPT, numel(reversed_y), []).';
+    %values = reshape(Indmax_DL, numel(reversed_y), []).';
+    % 200 specifica il numero di colonne desiderato.
+    % [] lascia che MATLAB calcoli automaticamente il numero di righe necessario in base alla lunghezza del vettore Indmax_OPT.
+    % Trasposta la matrice risultante per ottenere 200 colonne e organizzare i valori riga per riga come richiesto.
+
+    % Creazione del grafico
+    f7 = figure('Name', 'Figure7', 'units','pixels');
+    imagesc(reversed_y, reversed_x, values); 
+    % Plotta la matrice values mappando ogni elemento a un pixel del grafico.
+    % imagesc associa ogni elemento della matrice values a una posizione nella griglia definita dagli assi x e y.
+    set(gca, 'YDir', 'reverse');
+    % Inverte la direzione dell'asse Y, facendo sì che 
+    % il punto (1,1) della matrice values corrisponda al punto in alto a sinistra del grafico.
+    colormap(jet); % Imposta la colormap arcobaleno
+    colorbar; % Aggiunge una barra dei colori
+    caxis([min(values(:)), max(values(:))]); % Imposta i limiti della scala dei colori
+
+    % Etichette e titolo
+    xlabel('Horizontal direction (reversed y-axis)');
+    ylabel('Vertical direction (reversed x-axis)');
+    title('(a) Original Codebook Beams');
+
+    sfile_DeepMIMO=strcat('./Fig7', '.png');
+    saveas(f7, sfile_DeepMIMO);
+    close(f7);
+
+    keyboard;
+
 end
 
 %% End of script
