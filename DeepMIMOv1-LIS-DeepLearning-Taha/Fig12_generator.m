@@ -8,6 +8,8 @@ addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/Dee
 addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/MAT functions');
 addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/RayTracing Scenarios/O1_28');
 
+output_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/output/';
+
 seed=0;
 rng(seed, "twister") % Added for code replicability
 % rng("default") initializes the MATLAB random number generator
@@ -55,7 +57,7 @@ Ur_rows = [1000 1200]; % original
 %Ur_rows = [1000 1300]; % paper
 
 %Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
-Training_Size=[1e4]; % Semplificazione Luca
+Training_Size=[1e4*3]; % Semplificazione Luca
 
 % Preallocation of output variables (y-axis of Fig 12 for both blue and red curves)
 Rate_DLt=zeros(numel(My_ar),numel(Training_Size));  % numel = number of elements
@@ -64,10 +66,10 @@ Rate_OPTt=zeros(numel(My_ar),numel(Training_Size));
 %% Figure Data Generation 
 
 for rr = 1:1:numel(My_ar)
-    [Rate_DL,Rate_OPT]=Main_fn(seed,L,My_ar(rr),Mz_ar(rr),M_bar,K_DL,Pt,kbeams,Ur_rows,Training_Size);
+    [Rate_DL,Rate_OPT]=Main_fn(output_folder,seed,L,My_ar(rr),Mz_ar(rr),M_bar,K_DL,Pt,kbeams,Ur_rows,Training_Size);
     Rate_DLt(rr,:)=Rate_DL; Rate_OPTt(rr,:)=Rate_OPT;
 
-    sfile_DeepMIMO=strcat('./Fig12_data', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '_', num2str(numel(Training_Size)), '.mat');
+    sfile_DeepMIMO=strcat(output_folder, 'Fig12data', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '_', num2str(numel(Training_Size)), '.mat');
     save(sfile_DeepMIMO, 'L', 'My_ar', 'Mz_ar', 'M_bar', 'Training_Size', 'K_DL', 'Rate_DLt', 'Rate_OPTt');
 end
 
@@ -109,7 +111,7 @@ end
 drawnow
 hold off
 
-sfile_DeepMIMO=strcat('./Fig12', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '_', num2str(numel(Training_Size)), '.png');
+sfile_DeepMIMO=strcat(output_folder, 'Fig12', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '_', num2str(numel(Training_Size)), '.png');
 saveas(f12, sfile_DeepMIMO); % Save the figure to a file 
 close(f12); % Close the figure drawnow hold off
 
