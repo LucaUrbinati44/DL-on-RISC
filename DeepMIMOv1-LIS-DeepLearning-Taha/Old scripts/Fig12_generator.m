@@ -4,11 +4,13 @@ clearvars
 close all
 %clc
 
-addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/output/DeepMIMO Dataset');
+addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/Output/DeepMIMO Dataset');
 addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/MAT functions');
 addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/RayTracing Scenarios/O1_28');
 
-output_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/output/';
+output_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/Output/';
+dataset_folder = 'DeepMIMO Dataset/';
+figure_folder = 'Figures'
 
 seed=0;
 rng(seed, "twister") % Added for code replicability
@@ -69,7 +71,7 @@ for rr = 1:1:numel(My_ar)
     [Rate_DL,Rate_OPT]=Main_fn(output_folder,seed,L,My_ar(rr),Mz_ar(rr),M_bar,K_DL,Pt,kbeams,Ur_rows,Training_Size);
     Rate_DLt(rr,:)=Rate_DL; Rate_OPTt(rr,:)=Rate_OPT;
 
-    sfile_DeepMIMO=strcat(output_folder, 'Fig12data', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '_', num2str(numel(Training_Size)), '.mat');
+    sfile_DeepMIMO=strcat(output_folder, dataset_folder, 'Fig12data', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '_', num2str(numel(Training_Size)), '.mat');
     save(sfile_DeepMIMO, 'L', 'My_ar', 'Mz_ar', 'M_bar', 'Training_Size', 'K_DL', 'Rate_DLt', 'Rate_OPTt');
 end
 

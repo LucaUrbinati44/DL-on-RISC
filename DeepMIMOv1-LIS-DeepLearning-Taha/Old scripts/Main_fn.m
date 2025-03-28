@@ -1,4 +1,4 @@
-function [Rate_DL,Rate_OPT]=Main_fn(output_folder,seed,L,My,Mz,M_bar,K_DL,Pt,kbeams,Ur_rows,Training_Size)
+function [Rate_DL,Rate_OPT]=Main_fn(output_folder,dataset_folder,seed,L,My,Mz,M_bar,K_DL,Pt,kbeams,Ur_rows,Training_Size)
 %% Description:
 %
 % This is the function called by the main script for ploting Figure 10 
@@ -71,18 +71,18 @@ params.saveDataset=0;
 %disp([' Calculating for L = ' num2str(params.num_paths)]);
 filename_Ht=strcat('Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz));
 filename_Hr=strcat('Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
-filename_Delta_H_max=strcat(output_folder, 'DeepMIMO Dataset/Delta_H_max', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '.mat');
-filename_DL_input=strcat(output_folder, 'DeepMIMO Dataset/DL_input', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_User_Location=strcat(output_folder, 'DeepMIMO Dataset/User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_params=strcat(output_folder, 'DeepMIMO Dataset/params', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output=strcat(output_folder, 'DeepMIMO Dataset/DL_output', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_un=strcat(output_folder, 'DeepMIMO Dataset/DL_output_un', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_input_reshaped=strcat(output_folder, 'DeepMIMO Dataset/DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_reshaped=strcat(output_folder, 'DeepMIMO Dataset/DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_trainedNet=strcat(output_folder, 'DeepMIMO Dataset/trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar));
-filename_Rate_DL=strcat(output_folder, 'DeepMIMO Dataset/Rate_DL', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_Rate_OPT=strcat(output_folder, 'DeepMIMO Dataset/Rate_OPT', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_YPredictedFig7=strcat(output_folder, 'DeepMIMO Dataset/YPredictedFig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_Delta_H_max=strcat(output_folder, dataset_folder, 'Delta_H_max', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '.mat');
+filename_DL_input=strcat(output_folder, dataset_folder, 'DL_input', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_User_Location=strcat(output_folder, dataset_folder, 'User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_params=strcat(output_folder, dataset_folder, 'params', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output=strcat(output_folder, dataset_folder, 'DL_output', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_un=strcat(output_folder, dataset_folder, 'DL_output_un', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_input_reshaped=strcat(output_folder, dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_reshaped=strcat(output_folder, dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_trainedNet=strcat(output_folder, dataset_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar));
+filename_Rate_DL=strcat(output_folder, dataset_folder, 'Rate_DL', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_Rate_OPT=strcat(output_folder, dataset_folder, 'Rate_OPT', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_YPredictedFig7=strcat(output_folder, dataset_folder, 'YPredictedFig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 
 % ------------------ DeepMIMO "Ut" Dataset Generation -----------------%
 params.active_user_first=Ut_row; 
@@ -90,9 +90,9 @@ params.active_user_last=Ut_row;
 
 if load_mat_files == 1
     disp(['Loading ', filename_Ht, '...']);
-    sfile_DeepMIMO=strcat(output_folder, 'DeepMIMO Dataset/DeepMIMO_dataset_', filename_Ht, '.mat');
+    sfile_DeepMIMO=strcat(output_folder, dataset_folder, 'DeepMIMO_dataset_', filename_Ht, '.mat');
     load(sfile_DeepMIMO);
-    sfile_DeepMIMO=strcat(output_folder, 'DeepMIMO Dataset/params_', filename_Ht, '.mat');
+    sfile_DeepMIMO=strcat(output_folder, dataset_folder, 'params_', filename_Ht, '.mat');
     load(sfile_DeepMIMO);
     disp('Done');
 else
@@ -140,9 +140,9 @@ else
 
         if load_mat_files == 1 %&& init == 0
             disp(['Loading ', filename_Hrpp, '...']);
-            sfile_DeepMIMO=strcat(output_folder, 'DeepMIMO Dataset/DeepMIMO_dataset_', filename_Hrpp, '.mat');
+            sfile_DeepMIMO=strcat(output_folder, dataset_folder, 'DeepMIMO_dataset_', filename_Hrpp, '.mat');
             load(sfile_DeepMIMO);
-            sfile_DeepMIMO=strcat(output_folder, 'DeepMIMO Dataset/params_', filename_Hrpp, '.mat');
+            sfile_DeepMIMO=strcat(output_folder, dataset_folder, 'params_', filename_Hrpp, '.mat');
             load(sfile_DeepMIMO);
             disp('Done');
             %init = 1;
@@ -284,9 +284,9 @@ else
 
         if load_mat_files == 1
             disp(['Loading ', filename_Hrpp, '...']);
-            sfile_DeepMIMO=strcat(output_folder, 'DeepMIMO Dataset/DeepMIMO_dataset_', filename_Hrpp, '.mat');
+            sfile_DeepMIMO=strcat(output_folder, dataset_folder, 'DeepMIMO_dataset_', filename_Hrpp, '.mat');
             load(sfile_DeepMIMO);
-            sfile_DeepMIMO=strcat(output_folder, 'DeepMIMO Dataset/params_', filename_Hrpp, '.mat');
+            sfile_DeepMIMO=strcat(output_folder, dataset_folder, 'params_', filename_Hrpp, '.mat');
             load(sfile_DeepMIMO);
             disp('Done');
         else
