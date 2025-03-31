@@ -1,20 +1,37 @@
-function []=DL_data_generator_3(output_folder,dataset_folder,seed,Mx,My,Mz,D_Lambda,BW,K,K_DL,Ur_rows,M_bar,Ur_rows_grid)
+function [RandP_all,Validation_Ind]=DL_data_generator_3(Mx,My,Mz,M_bar,D_Lambda,BW,K,K_DL,Pt,Ur_rows,Ut_element,Ur_rows_grid)
     
 %% Deep Learning Dataset Generation = Genie-Aided Reflection Beamforming
 
 disp('---> Deep Learning Dataset Generation');
 
-filename_DL_input=strcat(dataset_folder, 'DL_input', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_User_Location=strcat(dataset_folder, 'User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_params=strcat(dataset_folder, 'params', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output=strcat(dataset_folder, 'DL_output', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_un=strcat(dataset_folder, 'DL_output_un', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
+global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
+
+filename_Ht=strcat(DeepMIMO_dataset_folder, 'Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz), '.mat');
+filename_params_Ht=strcat(DeepMIMO_dataset_folder, 'params_Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz), '.mat');
+filename_Hr=strcat(DeepMIMO_dataset_folder, 'Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
+filename_params_Hr=strcat(DeepMIMO_dataset_folder, 'params_Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
+filename_Delta_H_max=strcat(DeepMIMO_dataset_folder, 'Delta_H_max', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '.mat');
+filename_User_Location=strcat(DeepMIMO_dataset_folder, 'User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+%filename_params=strcat(DeepMIMO_dataset_folder, 'params', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+
+filename_DL_input=strcat(DL_dataset_folder, 'DL_input', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output=strcat(DL_dataset_folder, 'DL_output', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_un=strcat(DL_dataset_folder, 'DL_output_un', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+
+filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+
+
+% Note: The axes of the antennas match the axes of the ray-tracing scenario
+M = Mx.*My.*Mz; % Total number of LIS reflecting elements 
 
 No_user_pairs = (Ur_rows(2)-Ur_rows(1))*181; % Number of users (= Number of TX-RX pairs) = Total numer of users in Grid 1
-disp([' No_user_pairs = ' num2str(No_user_pairs)]);
+%disp([' No_user_pairs = ' num2str(No_user_pairs)]);
 % In the 'O1' scenario where every row consists of 181 points.
 % Since the number of BS antennas is one, the number of pairs is equal to the number of users.
-RandP_all = randperm(No_user_pairs).'; 
+RandP_all = randperm(No_user_pairs).';
 % randperm(n) restituisce un vettore contenente una permutazione casuale di numeri interi da 1 a n, senza elementi ripetuti.
 % Serve per ottenere gli indici mischiati (shuffled)
 
@@ -89,14 +106,18 @@ else
         disp('Done');
     end
 
-    if load_mat_files == 1
+    if load_H_files == 1
         disp(['Loading ', filename_Ht, '...']);
-        sfile_DeepMIMO=strcat(dataset_folder, 'DeepMIMO_dataset_', filename_Ht, '.mat');
-        load(sfile_DeepMIMO);
-        sfile_DeepMIMO=strcat(dataset_folder, 'params_', filename_Ht, '.mat');
-        load(sfile_DeepMIMO);
+        load(filename_Ht);
+        load(filename_params_Ht);
         disp('Done');
-    end
+
+        Ht = single(DeepMIMO_dataset{1}.user{Ut_element}.channel);
+        %disp([' size(DeepMIMO_dataset) = ' num2str(size(DeepMIMO_dataset))]); % returns 1
+        %disp([' size(Ht) = ' num2str(size(Ht))]); % size(Ht) = 1024, 64
+        %keyboard; 
+        clear DeepMIMO_dataset
+    end    
     
     % Keep only the coefficients of Ht that are related to M_bar
     Ht_bar = reshape(Ht(Rand_M_bar,:),M_bar*K_DL,1);
@@ -113,27 +134,18 @@ else
         %disp(['Starting received user access ' num2str(pp)]);
         params.active_user_first=Ur_rows_grid(pp);
         params.active_user_last=Ur_rows_grid(pp+1)-1;
-        filename_Hrpp=strcat(filename_Hr, '_pp', num2str(pp));
+        filename_Hrpp=strcat(filename_Hr, '_pp', num2str(pp), '.mat');
+        filename_params_Hrpp=strcat(filename_params_Hr, '_pp', num2str(pp), '.mat');
         params.saveDataset=0; % Non lo salvo perchè uguale a quello già calcolato in precedenza.
         % Senza ricalcolare il dataset, si potrebbe re-importarlo.
         % Forse occupava troppo spazio e in un pc portatile non ci stava, così hanno deciso di fare clear 
         % e ricalcolarla al bisogno.
 
-        if load_mat_files == 1
+        if load_H_files == 1
             disp(['Loading ', filename_Hrpp, '...']);
-            sfile_DeepMIMO=strcat(dataset_folder, 'DeepMIMO_dataset_', filename_Hrpp, '.mat');
-            load(sfile_DeepMIMO);
-            sfile_DeepMIMO=strcat(dataset_folder, 'params_', filename_Hrpp, '.mat');
-            load(sfile_DeepMIMO);
+            load(filename_Hrpp);
+            load(filename_params_Hrpp);
             disp('Done');
-        else
-            params.saveDataset=1;
-            tic
-            params.filename = filename_Hrpp;
-            disp(['Generating ', filename_Hrpp, '...']);
-            [DeepMIMO_dataset,params]=DeepMIMO_generator(params);
-            disp('Done');
-            toc
         end
 
         Hrx=zeros(M,u_step);
@@ -297,12 +309,21 @@ else
     %disp([' size(DL_input) = ' num2str(size(DL_input))]);
     %disp([' size(DL_output) = ' num2str(size(DL_output))]);
 
+    DL_input_reshaped = reshape(DL_input,size(DL_input,1),1,1,size(DL_input,2));
+    DL_output_reshaped = reshape(DL_output.',1,1,size(DL_output,2),size(DL_output,1)); % 1, 1, 1024, 36200
+    DL_output_un_reshaped = reshape(DL_output_un.',1,1,size(DL_output_un,2),size(DL_output_un,1));
+
     if save_mat_files == 1
         save(filename_DL_input,'DL_input','-v7.3');
         save(filename_DL_output,'DL_output','-v7.3');
         save(filename_DL_output_un,'DL_output_un','-v7.3');   
+        
+        save(filename_DL_input_reshaped, 'DL_input_reshaped', '-v7.3');
+        save(filename_DL_output_reshaped, 'DL_output_reshaped', '-v7.3');
+        save(filename_DL_output_un_reshaped, 'DL_output_un_reshaped', '-v7.3');
+        
         save(filename_User_Location,'User_Location','-v7.3');
-        save(filename_params,'params','-v7.3');
+        %save(filename_params,'params','-v7.3');
     end
 end
 

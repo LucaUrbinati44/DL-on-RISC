@@ -1,6 +1,9 @@
-function []=Fig12_plot(output_folder,seed,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate_DLt)
+function []=Fig12_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate_DLt)
     
-    disp(['Plotting Fig12...']);  
+    disp('--> Plotting Fig12...');  
+
+    global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
+    global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
 
     Colour = 'brgmcky';
 
@@ -13,7 +16,7 @@ function []=Fig12_plot(output_folder,seed,M_bar,Ur_rows,Training_Size,Rate_OPTt,
     if ishandle(f12)
         set(0, 'CurrentFigure', f12)
         hold on; grid on;
-        for rr=1:1:numel(Training_Size)
+        for rr=1:1:numel(My_ar)
             plot((Training_Size*1e-3),Rate_OPTt(rr,:),[Colour(rr) '*--'],'markersize',8,'linewidth',2, 'DisplayName',['Genie-Aided Reflection Beamforming, M = ' num2str(My_ar(rr)) '*' num2str(Mz_ar(rr))])
             plot((Training_Size*1e-3),Rate_DLt(rr,:),[Colour(rr) 's-'],'markersize',8,'linewidth',2, 'DisplayName', ['DL Reflection Beamforming, M = ' num2str(My_ar(rr)) '*' num2str(Mz_ar(rr))])
         end
@@ -25,9 +28,11 @@ function []=Fig12_plot(output_folder,seed,M_bar,Ur_rows,Training_Size,Rate_OPTt,
     drawnow
     hold off
 
-    sfile_DeepMIMO=strcat(figure_folder, 'Fig12', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '_', num2str(numel(Training_Size)), '.png');
+    sfile_DeepMIMO=strcat(figure_folder, 'Fig12', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '.png');
     saveas(f12, sfile_DeepMIMO); % Save the figure to a file 
     close(f12); % Close the figure drawnow hold off
 
-    sfile_DeepMIMO=strcat(figure_folder, 'Fig12data', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '_', num2str(numel(Training_Size)), '.mat');
-    save(sfile_DeepMIMO, 'L', 'My_ar', 'Mz_ar', 'M_bar', 'Training_Size', 'K_DL', 'Rate_DLt', 'Rate_OPTt');
+    %sfile_DeepMIMO=strcat(figure_folder, 'Fig12data', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '_', num2str(numel(Training_Size)), '.mat');
+    %save(sfile_DeepMIMO, 'L', 'My_ar', 'Mz_ar', 'M_bar', 'Training_Size', 'K_DL', 'Rate_DLt', 'Rate_OPTt');
+
+    disp('Done');  

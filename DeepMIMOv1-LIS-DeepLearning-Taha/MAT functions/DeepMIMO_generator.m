@@ -42,7 +42,9 @@ user_last=user_first+params.num_user-1;
  
 BW=params.bandwidth*1e9;                                     % Bandwidth in Hz
  
-disp('num_rows: ', num2str(num_rows)); % 181
+%disp(['num_rows: ', num2str(num_rows)]); % 181
+disp('num_rows:');
+disp(num_rows);
 disp(['num_user: ', num2str(params.num_user)]); 
 disp(['current_grid: ', num2str(current_grid)]); % 1
 disp(['user_first: ', num2str(user_first)]);
@@ -96,15 +98,6 @@ for t=1:1:params.num_BS
           reverseStr = repmat(sprintf('\b'), 1, length(msg));
         end       
     end   
-end
-
-if params.saveDataset==1
-    %sfile_DeepMIMO=strcat('./DeepMIMO Dataset/DeepMIMO_dataset.mat');
-    sfile_DeepMIMO=strcat('./DeepMIMO Dataset/DeepMIMO_dataset_', params.filename, '.mat'); % Luca
-    save(sfile_DeepMIMO,'DeepMIMO_dataset','-v7.3'); % save(filename, variables, options), 
-    sfile_DeepMIMO=strcat('./DeepMIMO Dataset/params_', params.filename, '.mat'); % Luca
-    save(sfile_DeepMIMO,'params','-v7.3'); % save(filename, variables, options), 
-    % -v7.3 è utilizzato per salvare file MAT che possono contenere variabili di grandi dimensioni e supporta la compressione.
 end
 
 fprintf('\n DeepMIMO Dataset Generation completed \n')

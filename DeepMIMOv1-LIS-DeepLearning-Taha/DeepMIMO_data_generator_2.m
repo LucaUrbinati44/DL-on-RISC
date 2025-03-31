@@ -1,8 +1,17 @@
-function [Ur_rows_grid]=DeepMIMO_data_generator_2(output_folder,dataset_folder,seed,Mx,My,Mz,D_Lambda,BW,K,K_DL,L,Ur_rows)
+function [Ur_rows_grid]=DeepMIMO_data_generator_2(Mx,My,Mz,D_Lambda,BW,K,K_DL,L,Ut_row,Ut_element,Ur_rows,params)
 
 %% DeepMIMO Dataset Generation
 
 disp('---> DeepMIMO Dataset Generation');
+
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
+global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
+
+filename_Ht=strcat(DeepMIMO_dataset_folder, 'Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz), '.mat');
+filename_params_Ht=strcat(DeepMIMO_dataset_folder, 'params_Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz), '.mat');
+filename_Hr=strcat(DeepMIMO_dataset_folder, 'Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
+filename_params_Hr=strcat(DeepMIMO_dataset_folder, 'params_Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
+filename_Delta_H_max=strcat(DeepMIMO_dataset_folder, 'Delta_H_max', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '.mat');
 
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
 params.num_ant_x= Mx;             % Number of the UPA antenna array on the x-axis 
@@ -14,42 +23,12 @@ params.num_OFDM= K;                   % Number of OFDM subcarriers
 params.OFDM_sampling_factor=1;        % The constructed channels will be calculated only at the sampled subcarriers (to reduce the size of the dataset)
 params.OFDM_limit=K_DL*1;         % Only the first params.OFDM_limit subcarriers will be considered when constructing the channels
 params.num_paths=L;               % Maximum number of paths to be considered (a value between 1 and 25), e.g., choose 1 if you are only interested in the strongest path
-params.saveDataset=0;
 %disp([' Calculating for K_DL = ' num2str(K_DL)]);          
 %disp([' Calculating for L = ' num2str(params.num_paths)]);
-filename_Ht=strcat('Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz));
-filename_Hr=strcat('Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
-filename_Delta_H_max=strcat(dataset_folder, 'Delta_H_max', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '.mat');
 
 % ------------------ DeepMIMO "Ut" Dataset Generation -----------------%
 params.active_user_first=Ut_row; 
 params.active_user_last=Ut_row;
-
-if load_mat_files == 1
-    disp(['Loading ', filename_Ht, '...']);
-    sfile_DeepMIMO=strcat(dataset_folder, 'DeepMIMO_dataset_', filename_Ht, '.mat');
-    load(sfile_DeepMIMO);
-    sfile_DeepMIMO=strcat(dataset_folder, 'params_', filename_Ht, '.mat');
-    load(sfile_DeepMIMO);
-    disp('Done');
-else
-    params.saveDataset=1;
-    tic
-    params.filename = filename_Ht;
-    disp(['Generating ', filename_Ht, '...']);
-    DeepMIMO_dataset=DeepMIMO_generator(params);
-    disp('Done');
-    toc
-end
-
-% .channel restituisce la matrice di canale tra l'active base station {1}, che in realtà è la RIS
-% e l'utente {Ut_element} che in realtà è la BS trasmettitore
-Ht = single(DeepMIMO_dataset{1}.user{Ut_element}.channel);
-%disp([' size(DeepMIMO_dataset) = ' num2str(size(DeepMIMO_dataset))]); % returns 1
-disp([' size(Ht) = ' num2str(size(Ht))]); % size(Ht) = 1024, 64
-%keyboard; 
-clear DeepMIMO_dataset
-
 
 Ur_rows_step = 100; % access the dataset 100 rows at a time
 % indica la posizione del RX lungo asse y, cioè la sua posizione nella riga, quindi la colonna della griglia degli utenti
@@ -62,6 +41,32 @@ if load_Delta_H_max == 1
     load(filename_Delta_H_max);
     disp('Done');
 else
+
+    if load_H_files == 1
+        disp(['Loading ', filename_Ht, '...']);
+        load(filename_Ht);
+        load(filename_params_Ht);
+        disp('Done');
+    else
+        tic
+        disp(['Generating ', filename_Ht, '...']);
+        DeepMIMO_dataset=DeepMIMO_generator(params);
+        disp('Done');
+        toc
+
+        save(filename_Ht,'DeepMIMO_dataset','-v7.3'); % save(filename, variables, options), 
+        save(filename_params_Ht,'params','-v7.3');
+        % -v7.3 è utilizzato per salvare file MAT che possono contenere variabili di grandi dimensioni e supporta la compressione.
+    end
+    
+    % .channel restituisce la matrice di canale tra l'active base station {1}, che in realtà è la RIS
+    % e l'utente {Ut_element} che in realtà è la BS trasmettitore
+    Ht = single(DeepMIMO_dataset{1}.user{Ut_element}.channel);
+    %disp([' size(DeepMIMO_dataset) = ' num2str(size(DeepMIMO_dataset))]); % returns 1
+    %disp([' size(Ht) = ' num2str(size(Ht))]); % size(Ht) = 1024, 64
+    %keyboard; 
+    clear DeepMIMO_dataset
+
     % ------------------ DeepMIMO "Ur" Dataset Generation -----------------%            
     Delta_H_max = single(0); % initilizzato a 0
 
@@ -70,23 +75,23 @@ else
         clear DeepMIMO_dataset
         params.active_user_first=Ur_rows_grid(pp);
         params.active_user_last=Ur_rows_grid(pp+1)-1; 
-        filename_Hrpp=strcat(filename_Hr, '_pp', num2str(pp));
+        filename_Hrpp=strcat(filename_Hr, '_pp', num2str(pp), '.mat');
+        filename_params_Hrpp=strcat(filename_params_Hr, '_pp', num2str(pp), '.mat');
 
-        if load_mat_files == 1
+        if load_H_files == 1
             disp(['Loading ', filename_Hrpp, '...']);
-            sfile_DeepMIMO=strcat(dataset_folder, 'DeepMIMO_dataset_', filename_Hrpp, '.mat');
-            load(sfile_DeepMIMO);
-            sfile_DeepMIMO=strcat(dataset_folder, 'params_', filename_Hrpp, '.mat');
-            load(sfile_DeepMIMO);
+            load(filename_Hrpp);
+            load(filename_params_Hrpp);
             disp('Done');
         else
-            params.saveDataset=1;
             tic
-            params.filename = filename_Hrpp;
             disp(['Generating ', filename_Hrpp, '...']);
             [DeepMIMO_dataset,params]=DeepMIMO_generator(params);
             disp('Done');
             toc
+
+            save(filename_Hrpp,'DeepMIMO_dataset','-v7.3');
+            save(filename_params_Hrpp,'params','-v7.3');
         end
 
         % Per ogni griglia verticale, lavora su ogni utente contenuto all'interno
@@ -100,7 +105,7 @@ else
             end    
         end
 
-        disp([' size(Hr) = ' num2str(size(Hr))]);
+        %disp([' size(Hr) = ' num2str(size(Hr))]);
         %keyboard; 
     end
     clear Delta_H

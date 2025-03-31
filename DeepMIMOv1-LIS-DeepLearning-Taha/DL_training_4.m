@@ -1,22 +1,19 @@
-function [Rate_OPT,Rate_DL]=DL_training_4(Training_Size)
+function [Rate_OPT,Rate_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size_dd,RandP_all,Validation_Ind)
 
 %% DL Beamforming
 
-disp('---> DL Beamforming');
+disp(['---> DL Beamforming for Training_Size ', num2str(Training_Size_dd)]);
 
-filename_DL_input_reshaped=strcat(dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size), '.mat');
-filename_DL_output_reshaped=strcat(dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size), '.mat');
-filename_trainedNet=strcat(dataset_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size), '.mat');
-filename_Rate_DL=strcat(dataset_folder, 'Rate_DL', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size), '.mat');
-filename_Rate_OPT=strcat(dataset_folder, 'Rate_OPT', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size), '.mat');
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
+global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
 
-if load_DL_dataset == 1
-    disp(['Loading DL_input and DL_output...']);
-    load(filename_DL_input);
-    load(filename_DL_output);
-    load(filename_DL_output_un);
-    disp('Done');
-end
+filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+
+filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_Rate_DL=strcat(network_folder, 'Rate_DL', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_Rate_OPT=strcat(network_folder, 'Rate_OPT', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 
 if load_Rates == 1
     disp('Loading Rate_DL, Rate_OPT...');
@@ -25,27 +22,30 @@ if load_Rates == 1
     disp('Done');
 else
 
+    disp('Loading DL_input and DL_output...');
+    load(filename_DL_input_reshaped);
+    load(filename_DL_output_reshaped);
+    load(filename_DL_output_un_reshaped);
+    disp('Done');
+
     miniBatchSize  = 500; % Size of the minibatch for the Deep Learning
 
     % Preallocation of output variables
-    Rate_DL = zeros(1,length(Training_Size)); 
+    %Rate_DL = zeros(1,length(Training_Size)); 
+    Rate_DL = 0;
     Rate_OPT = Rate_DL;
     LastValidationRMSE = Rate_DL;
     Rate_DL_fake = Rate_DL; % Luca
     validation_accuracy = Rate_DL; % Luca
 
     % ------------------ Training and Testing Datasets -----------------%
-    DL_output_reshaped = reshape(DL_output.',1,1,size(DL_output,2),size(DL_output,1)); % 1, 1, 1024, 36200
-    DL_output_reshaped_un = reshape(DL_output_un.',1,1,size(DL_output_un,2),size(DL_output_un,1));
-    DL_input_reshaped = reshape(DL_input,size(DL_input,1),1,1,size(DL_input,2));
-
     % Per ogni punto del grafico, viene allenato un modello
     %for dd=1:1:numel(Training_Size)
     %disp([' Calculating for Dataset Size = ' num2str(Training_Size(dd))]);
-    disp([' Calculating for Dataset Size = ' num2str(Training_Size)]);
+    disp([' Calculating for Dataset Size = ' num2str(Training_Size_dd)]);
     % Get a random number of indeces equal to the content of one element of the Training_Size array
     %Training_Ind   = RandP_all(1:Training_Size(dd));
-    Training_Ind   = RandP_all(1:Training_Size);
+    Training_Ind   = RandP_all(1:Training_Size_dd);
 
     % Use the indexes to extract the actual sampled used for training from DL_input.
     % This is why DL_input is designed to be No_user_pairs log while in reality it is shorter and equal to Training_Ind = Training_Size(dd).
@@ -53,7 +53,7 @@ else
     YTrain = single(DL_output_reshaped(1,1,:,Training_Ind));
     XValidation = single(DL_input_reshaped(:,1,1,Validation_Ind));
     YValidation = single(DL_output_reshaped(1,1,:,Validation_Ind));
-    YValidation_un = single(DL_output_reshaped_un);
+    YValidation_un = single(DL_output_un_reshaped);
 
     %disp([' size(XTrain) = ' num2str(size(XTrain))]); % 1024, 1, 1, Training_Ind(dd)
     %disp([' size(YTrain) = ' num2str(size(YTrain))]); % 1, 1, 1024, Training_Ind(dd)
@@ -90,10 +90,10 @@ else
     %else
     %    validationFrequency = floor(Training_Size(dd)/miniBatchSize);
     %end
-    if Training_Size < miniBatchSize
-        validationFrequency = Training_Size;
+    if Training_Size_dd < miniBatchSize
+        validationFrequency = Training_Size_dd;
     else
-        validationFrequency = floor(Training_Size/miniBatchSize);
+        validationFrequency = floor(Training_Size_dd/miniBatchSize);
     end
     VerboseFrequency = validationFrequency;
     options = trainingOptions('sgdm', ...   
@@ -163,7 +163,7 @@ else
     % viene usato solamente per ottenere il codebook corrispondendte al massimo perchè quel rate proxy viene ignorato
 
     for b=1:size(Indmax_DL,1) % 6200
-        % YValidation_un = DL_output_reshaped_un = DL_output_un
+        % YValidation_un = DL_output_un_reshaped = DL_output_un
         %MaxR_DL(b) = max(squeeze(YValidation_un(1,1,Indmax_DL(b,:),b))); %True achievable rates
         MaxR_DL(b) = squeeze(YValidation_un(1,1,Indmax_DL(b),b)); %True achievable rates (Luca)
         MaxR_OPT(b) = squeeze(YValidation_un(1,1,Indmax_OPT(b),b));
@@ -224,8 +224,6 @@ else
     %end
 
     if save_mat_files == 1
-        save(filename_DL_input_reshaped, 'DL_input_reshaped', '-v7.3');
-        save(filename_DL_output_reshaped, 'DL_output_reshaped', '-v7.3');
         save(filename_Rate_DL,'Rate_DL','-v7.3');
         save(filename_Rate_OPT,'Rate_OPT','-v7.3');
         save(filename_trainedNet,'trainedNet','-v7.3');

@@ -1,18 +1,20 @@
-function []=Fig7_plot(filename_DL_input_reshaped, ...
-                        filename_DL_output_reshaped, ...
-                        filename_trainedNet, ...
-                        filename_YPredictedFig7, ...
-                        Ur_rows, ...
-                        kbeams, ...
-                        output_folder, ...
-                        save_mat_files, ...
-                        correct_fig7)
+function []=Fig7_plot(Mx,My,Mz,M_bar,Ur_rows,kbeams,correct_fig7)
 %% Description:
 %
 % This is the function called by the main script for ploting Figure 10 
 % in the original article mentioned below.
 
-disp(['Plotting Fig7 with ', num2str(correct_fig7), '...']);  
+disp(['---> Plotting Fig7 with ', num2str(correct_fig7), '...']);
+
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
+global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
+
+Training_Size=30000;
+
+filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size), '.mat');
+filename_YPredictedFig7=strcat(network_folder, 'YPredictedFig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 
 % Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
 load(filename_DL_input_reshaped);
@@ -20,9 +22,7 @@ load(filename_DL_input_reshaped);
 load(filename_DL_output_reshaped);
 
 % Carica modello pre-allenato caso completo che copre tutta la grid size
-Training_Size = 30000;
-sfile_DeepMIMO=strcat(filename_trainedNet, '_Training_Size_', num2str(Training_Size), '.mat');
-trainedNet = load(sfile_DeepMIMO).trainedNet;
+trainedNet = load(filename_trainedNet).trainedNet;
 
 if save_mat_files == 1
     % Esegui predizione con DL_input_reshaped
@@ -158,9 +158,11 @@ colormap(parula); % Imposta la colormap arcobaleno
 colorbar; % Aggiunge una barra dei colori
 caxis([min_colorbar, max_colorbar]); % Imposta i limiti della scala dei colori
 
-sfile_DeepMIMO=strcat(figure_folder, 'Fig7', '_correct', num2str(correct_fig7), '.png');
+sfile_DeepMIMO=strcat(figure_folder, 'Fig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_correct', num2str(correct_fig7), '.png');
 saveas(f7, sfile_DeepMIMO);
 close(f7);
+
+disp('Done');
 
 %keyboard;
 

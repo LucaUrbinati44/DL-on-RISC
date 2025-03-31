@@ -1,19 +1,35 @@
-cd();
-
 clearvars
 close all
 %clc
 
-base_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha';
-output_folder = [base_folder, '/Output/'];
-dataset_folder = [output_folder, 'DeepMIMO Dataset/'];
+base_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/';
+output_folder = [base_folder, 'Output/'];
+
+global DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
+DeepMIMO_dataset_folder = [output_folder, 'DeepMIMO Dataset/'];
+DL_dataset_folder = [output_folder, 'DL Dataset/'];
+network_folder = [output_folder, 'Neural Network/'];
 figure_folder = [output_folder, 'Figures/'];
 
-addpath([output_folder, 'DeepMIMO Dataset New']);
+folders = {DeepMIMO_dataset_folder, DL_dataset_folder, network_folder, figure_folder};
+for i = 1:length(folders)
+    if ~exist(folders{i}, 'dir') % Controlla se la cartella esiste
+        mkdir(folders{i}); % Crea la cartella se non esiste
+        disp(['Cartella creata: ', folders{i}]);
+    else
+        disp(['La cartella esiste già: ', folders{i}]);
+    end
+end
+        
+addpath(DeepMIMO_dataset_folder);
+addpath(DL_dataset_folder);
+addpath(figure_folder);
 addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/MAT functions');
 addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/RayTracing Scenarios/O1_28');
 
+cd(base_folder);
 
+global seed;
 seed=0;
 rng(seed, "twister") % Added for code replicability
 % rng("default") initializes the MATLAB random number generator
@@ -23,16 +39,13 @@ rng(seed, "twister") % Added for code replicability
 %%
 
 % Luca variables to control the flow
-global load_mat_files;
-load_mat_files = 1;
-global load_Delta_H_max;
-load_Delta_H_max = 1;
-global load_DL_dataset;
-load_DL_dataset = 1;
-global load_Rates;
-load_Rates = 1;
-global save_mat_files;
-save_mat_files = 0;
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
+
+load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
+load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
+load_DL_dataset  = 0; % load output from DL_data_generator_3.m
+load_Rates       = 0; % load output from DL_training_4.m
+save_mat_files   = 1;
 
 plot_fig12 = 1;
 plot_fig7 = 1;
@@ -55,12 +68,10 @@ L =1; % number of channel paths
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
 %My_ar=[32 64]; % number of LIS reflecting elements across the y axis (32x32 blue curve, 64x64 red curve)
 %Mz_ar=[32 64]; % number of LIS reflecting elements across the z axis
-My_ar=[32]; % Semplificazione Luca
-Mz_ar=[32]; % Semplificazione Luca
-
-% Note: The axes of the antennas match the axes of the ray-tracing scenario
-Mx = 1;  % number of LIS reflecting elements across the x axis
-M = Mx.*My.*Mz; % Total number of LIS reflecting elements 
+%My_ar=[32]; % Semplificazione Luca
+%Mz_ar=[32]; % Semplificazione Luca
+My_ar=[64]; % Semplificazione Luca
+Mz_ar=[64]; % Semplificazione Luca
 
 M_bar=8; % number of active elements
 
@@ -72,55 +83,56 @@ K_DL=64; % number of subcarriers as input to the Deep Learning model (to reduce 
 Ur_rows = [1000 1200]; % original
 %Ur_rows = [1000 1300]; % paper
 
-%Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
-Training_Size=[1e4*3]; % Semplificazione Luca
+Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
+%Training_Size=[1e4*3]; % Semplificazione Luca
 
 % Preallocation of output variables (y-axis of Fig 12 for both blue and red curves)
 Rate_DLt=zeros(numel(My_ar),numel(Training_Size));  % numel = number of elements
 Rate_OPTt=zeros(numel(My_ar),numel(Training_Size));
 
-%% DeepMIMO Dataset Generation
+for rr = 1:1:numel(My_ar)
 
-[Ur_rows_grid]=DeepMIMO_data_generator_2(output_folder,dataset_folder,seed,Mx,My,Mz,D_Lambda,BW,K,K_DL,L);
+    % Note: The axes of the antennas match the axes of the ray-tracing scenario
+    Mx = 1;  % number of LIS reflecting elements across the x axis
+    My=My_ar(rr);
+    Mz=Mz_ar(rr);
 
-%% Deep Learning Dataset Generation = Genie-Aided Reflection Beamforming
+    %% DeepMIMO Dataset Generation
 
-DL_data_generator_3(output_folder,dataset_folder,seed,Mx,My,Mz,D_Lambda,BW,K,K_DL,Ur_rows,M_bar,Ur_rows_grid);
+    [Ur_rows_grid]=DeepMIMO_data_generator_2(Mx,My,Mz,D_Lambda,BW,K,K_DL,L,Ut_row,Ut_element,Ur_rows,params);
 
-%% DL Beamforming
+    %% Deep Learning Dataset Generation = Genie-Aided Reflection Beamforming
 
-for dd=1:1:numel(Training_Size)
-    [Rate_OPT,Rate_DL] = DL_training_4(Training_Size);
-    Rate_OPTt(dd,:)=Rate_OPT;
-    Rate_DLt(dd,:)=Rate_DL;
+    [RandP_all,Validation_Ind]=DL_data_generator_3(Mx,My,Mz,M_bar,D_Lambda,BW,K,K_DL,Pt,Ur_rows,Ut_element,Ur_rows_grid);
+
+    %% DL Beamforming
+
+    for dd=1:1:numel(Training_Size)
+        [Rate_OPT,Rate_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
+        Rate_OPTt(rr,dd)=Rate_OPT;
+        Rate_DLt(rr,dd)=Rate_DL;
+    end
+
+    %keyboard;
+
 end
 
 %% Fig 12
-
 if plot_fig12 == 1
-    Fig12_plot(output_folder,seed,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate_DLt);
+    Fig12_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate_DLt);
 end
 
 %% Fig 7 (Luca)
 
 if plot_fig7 == 1
-
     for i=1:1:2
         correct_fig7 = i-1;
-        Fig7_plot(filename_DL_input_reshaped, ...
-                    filename_DL_output_reshaped, ...
-                    filename_trainedNet, ...
-                    filename_YPredictedFig7, ...
-                    Ur_rows, ...
-                    kbeams, ...
-                    output_folder, ...
-                    save_mat_files, ...
-                    correct_fig7);
+        Fig7_plot(Mx,My,Mz,M_bar,Ur_rows,kbeams,correct_fig7);
     end
 end
 
 %% End of script
 
-disp('--> End of script. If you continue, you will lose access to all variables');
+%disp('--> End of script. If you continue, you will lose access to all variables');
 
 %keyboard;
