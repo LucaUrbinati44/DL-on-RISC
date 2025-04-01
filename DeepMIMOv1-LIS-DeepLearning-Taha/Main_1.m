@@ -43,9 +43,9 @@ global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
 
 load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
 load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
-load_DL_dataset  = 0; % load output from DL_data_generator_3.m
-load_Rates       = 0; % load output from DL_training_4.m
-save_mat_files   = 1;
+load_DL_dataset  = 1; % load output from DL_data_generator_3.m
+load_Rates       = 1; % load output from DL_training_4.m
+save_mat_files   = 0;
 
 plot_fig12 = 1;
 plot_fig7 = 1;
@@ -66,12 +66,15 @@ Pt=5; % transmit power (dB)
 L =1; % number of channel paths
 
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
-%My_ar=[32 64]; % number of LIS reflecting elements across the y axis (32x32 blue curve, 64x64 red curve)
-%Mz_ar=[32 64]; % number of LIS reflecting elements across the z axis
+My_ar=[32 64]; % number of LIS reflecting elements across the y axis (32x32 blue curve, 64x64 red curve)
+Mz_ar=[32 64]; % number of LIS reflecting elements across the z axis
 %My_ar=[32]; % Semplificazione Luca
 %Mz_ar=[32]; % Semplificazione Luca
-My_ar=[64]; % Semplificazione Luca
-Mz_ar=[64]; % Semplificazione Luca
+%My_ar=[64]; % Semplificazione Luca
+%Mz_ar=[64]; % Semplificazione Luca
+disp('RIS sizes: ');
+disp(My_ar);
+disp(Mz_ar);
 
 M_bar=8; % number of active elements
 
