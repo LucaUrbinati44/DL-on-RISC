@@ -12,6 +12,7 @@ filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_se
 filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 
 filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_trainedNet_scaler=strcat(network_folder, 'trainedNet_scaler', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 filename_Rate_DL=strcat(network_folder, 'Rate_DL', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 filename_Rate_OPT=strcat(network_folder, 'Rate_OPT', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 
@@ -35,7 +36,7 @@ else
     Rate_DL = 0;
     Rate_OPT = Rate_DL;
     LastValidationRMSE = Rate_DL;
-    Rate_DL_fake = Rate_DL; % Luca
+    %Rate_DL_fake = Rate_DL; % Luca
     validation_accuracy = Rate_DL; % Luca
 
     % ------------------ Training and Testing Datasets -----------------%
@@ -63,8 +64,40 @@ else
     %keyboard;
     
     % ------------------ DL Model definition -----------------%
+    % E’ la stessa definita dagli autori a pag 16.
     layers = [
         imageInputLayer([size(XTrain,1),1,1],'Name','input')
+        % An image input layer inputs 2-D images to a neural network and applies data normalization.
+        % Inputs:
+        % Normalization — Data normalization: 
+        %   Data normalization to apply every time data is forward propagated through the input layer, specified as one of the following:
+        %   "zerocenter" (default) — Subtract the mean specified by Mean.
+        % NormalizationDimension — Normalization dimension
+        %   "auto" (default) | "channel" | "element" | "all" 
+        %   --> channel-wise
+        % Mean — Mean for zero-center and z-score normalization
+        %   [] (default) | 3-D array | numeric scalar 
+        %   --> If Mean is [], then the software automatically sets the property at training or initialization time:
+        %       The trainnet function calculates the mean using the training data and uses the resulting value.
+        % StandardDeviation — Standard deviation for z-score normalization
+        %   [] (default) | 3-D array | numeric scalar
+        %   --> If StandardDeviation is [], then the software automatically sets the property at training or initialization time:
+        %       The trainnet function calculates the standard deviation using the training data and uses the resulting value. 
+        % Min — Minimum value for rescaling
+        %   [] (default) | 3-D array | numeric scalar
+        %   --> To specify the Min property, the Normalization must be "rescale-symmetric" or "rescale-zero-one".
+        % Max — Maximum value for rescaling
+        %   [] (default) | 3-D array | numeric scalar
+        %   --> To specify the Min property, the Normalization must be "rescale-symmetric" or "rescale-zero-one".
+        % SplitComplexInputs — Flag to split input data into real and imaginary components
+        %   0 (false) (default) | 1 (true)
+        % Name — Layer name
+        %   "" (default) | character vector | string scalar
+
+        % Il parametro 'Normalization' è di default impostato a "zerocenter", che significa che ogni canale dell'immagine in input
+        % viene normalizzato sottraendo la media dei pixel. Non viene effettuata una divisione per la deviazione standard, 
+        % quindi non si tratta di una normalizzazione standard score (Z-score) ma solo di una centralizzazione rispetto alla media.
+
 
         fullyConnectedLayer(size(YTrain,3),'Name','Fully1')
         reluLayer('Name','relu1')
@@ -108,9 +141,11 @@ else
         'ValidationData',{XValidation,YValidation}, ...
         'ValidationFrequency',validationFrequency, ...
         'Plots','none', ... % 'training-progress'
-        'Verbose',0, ...    % 1  
+        'Verbose',1, ...    % 1  
         'ExecutionEnvironment', 'cpu', ...
         'VerboseFrequency',VerboseFrequency);
+        % ResetInputNormalization — Opzione per ripristinare la normalizzazione del livello di input
+        %   1 (true) (predefinito) | 0 (false)
 
     % ------------- DL Model Training and Prediction -----------------%
     tic
@@ -128,12 +163,16 @@ else
     %keyboard;
 
     tic
-    disp('Start DL prediction for Figure 12...')
+    disp('Start DL prediction...')
     YPredicted = predict(trainedNet,XValidation); % Inferenza sul set di validazione usato come test: errore!
     disp('Done')
     toc
+    
+    trainedNet_scaler = trainedNet.Layers(1).Mean; % Estrae la media del primo layer (imageInputLayer)
 
     disp(['size(YPredicted) = ' num2str(size(YPredicted))]); % 6200, 1024
+    disp(['size(trainedNet_scaler) = ' num2str(size(trainedNet_scaler))]); % 1, 1
+
     % Ogni sample in uscita al modello ha un array i rate pari al codebook size,
     % poi bisogna prendere il migliore.
     
@@ -211,7 +250,7 @@ else
     disp(['size(MaxR_OPT):', num2str(size(MaxR_OPT))]); % 6200, 1
     disp(['Rate_OPT:', num2str(Rate_OPT)]); % 1
     disp(['Rate_DL:', num2str(Rate_DL)]); % 1
-    disp(['Rate_DL_fake:', num2str(Rate_DL_fake)]); % 1
+    %disp(['Rate_DL_fake:', num2str(Rate_DL_fake)]); % 1
     disp(['LastValidationRMSE:', num2str(LastValidationRMSE)]);
     disp(['validation_accuracy:', num2str(validation_accuracy)]);
     disp(' ');
@@ -224,6 +263,7 @@ else
     %end
 
     if save_mat_files == 1
+        save(filename_trainedNet_scaler,'trainedNet_scaler','-v7.3');
         save(filename_Rate_DL,'Rate_DL','-v7.3');
         save(filename_Rate_OPT,'Rate_OPT','-v7.3');
         save(filename_trainedNet,'trainedNet','-v7.3');
