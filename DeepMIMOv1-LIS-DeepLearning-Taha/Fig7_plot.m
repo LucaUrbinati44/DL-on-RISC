@@ -1,172 +1,179 @@
-function []=Fig7_plot(Mx,My,Mz,M_bar,Ur_rows,kbeams,correct_fig7)
+function []=Fig7_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams)
 %% Description:
 %
 % This is the function called by the main script for ploting Figure 10 
 % in the original article mentioned below.
-
-disp(['---> Plotting Fig7 with ', num2str(correct_fig7), '...']);
 
 global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
 global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
 
 Training_Size=30000;
 
-filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size), '.mat');
-filename_YPredictedFig7=strcat(network_folder, 'YPredictedFig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-
-% Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
-load(filename_DL_input_reshaped);
-% Concatena YTrain + YValidation, cioè utilizza DL_output_reshaped
-load(filename_DL_output_reshaped);
-
-% Carica modello pre-allenato caso completo che copre tutta la grid size
-trainedNet = load(filename_trainedNet).trainedNet;
-
-if save_mat_files == 1
-    % Esegui predizione con DL_input_reshaped
-    tic
-    disp('Start DL prediction for Figure 7...')
-    YPredictedFig7 = predict(trainedNet,DL_input_reshaped); % Inferenza sul set di validazione usato come test: errore!
-    disp('Done')
-    toc
-    save(filename_YPredictedFig7,'YPredictedFig7','-v7.3'); 
-else
-    load(filename_YPredictedFig7);
-end
-
-% Recupera gli indici dei codebook
-[~,Indmax_OPT] = max(DL_output_reshaped,[],3);
-%disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 1, 1, 1, 36200
-Indmax_OPT = squeeze(Indmax_OPT);
-%disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 36200, 1
-Indmax_OPT = Indmax_OPT.'; % 1, 36200
-
-[~,Indmax_DL] = maxk(YPredictedFig7,kbeams,2);
-%disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]); % 36200, 1
-
-% Grafico
-x = 1:(Ur_rows(2)-1000);
-y = 1:181;
-
-% Matrice dei valori
-values_OPT = reshape(Indmax_OPT, numel(y), []); % 181x200
-% MATLAB divide il vettore Indmax_OPT in blocchi di lunghezza pari a [] e 
-% li organizza in numel(y) righe.
-% I primi [] elementi di Indmax_OPT diventano la prima riga della matrice.
-% I successivi [] elementi diventano la seconda riga, e così via.
-% Il numero di colonne [] viene calcolato come length(Indmax_OPT) / numel(y).
-values_DL = reshape(Indmax_DL, numel(y), []); % 181x200
-
-f7 = figure('Name', 'Figure7', 'units','pixels', 'Position', [100, 100, 2600, 300]); % typ 800x400
-
-% Calcolo minimi e massimi colorbar comuni ai due grafici per avere due colorbar uguali
-min_colorbar = min([min(values_OPT(:)), min(values_DL(:))]);
-max_colorbar = max([max(values_OPT(:)), max(values_DL(:))]);
-
-% Test imagesc
-% Di default imagesc plotta nell'angolo in alto a sinistra il primo elemento dell'immagine di ingresso c(1,1)
-%c = reshape(1:1:100, 10, 10).';
-%imagesc(c); 
-% Per spostare il punto in cui vogliamo spostare il valore c(1,1), bisogna indicare le coordinate di dove vogliamo
-% il primo punto e l'ultimo punto della matrice c, nell'esempio (10,10) e (1,1), rispettivamente.
-% Per trovare quali numeri mettere, bisogna prima plottare la matrice senza range, e poi inserirli successivamente
-% utilizzando i valori che sono riportati sugli assi della prima figura come sistema di riferimento.
-%c = reshape(1:1:100, 10, 10).';
-%imagesc([10, 1], [10, 1], c); 
-
-if correct_fig7 == 0
-    offset=-2; % Per avere un tick in alto per far vedere il 181 utente
-    y_ticks = (1+offset):20:(181+offset);
-    y_ticks_notflipped = y_ticks-offset-1; % Ordina l'array al contrario
-    y_ticks_string = string(y_ticks_notflipped); % Converte i valori in un array di stringhe
-    y_ticks_labels = cellstr(y_ticks_string); % Converte in un array di celle
-    %y_ticks_labels(end) = '';
-else
-    x_ticks = Ur_rows(1):100:(Ur_rows(2));
-    x_ticks_new = x_ticks - 1000;
-    x_ticks_new(1) = 1;
-
-    x_ticks_flipped = fliplr(x_ticks); % Ordina l'array al contrario
-    x_ticks_string = string(x_ticks_flipped); % Converte i valori in un array di stringhe
-    x_ticks_labels = cellstr(x_ticks_string); % Converte in un array di celle
-
-    offset=3; % Per avere un tick in alto per far vedere il 181 utente
-    y_ticks = (1+offset):20:(181+offset);
-    y_ticks_flipped = fliplr(y_ticks-offset-1); % Ordina l'array al contrario
-    y_ticks_string = string(y_ticks_flipped); % Converte i valori in un array di stringhe
-    y_ticks_labels = cellstr(y_ticks_string); % Converte in un array di celle
-    y_ticks_labels(end) = '';
-end
-
-% Subplot 1
-subplot(1, 2, 1); % 1 riga, 2 colonne, primo subplot
-title('(a) Original Codebook Beams');
-
-% Plotta la matrice values mappando ogni elemento a un pixel del grafico.
-%imagesc(values_OPT); 
-imagesc([numel(x), 1], [numel(y), 1], values_OPT); % values(1,1) in basso a destra
-
-yticks(y_ticks);
-yticklabels(y_ticks_labels); % The result is {'180', '160', '140', '120', '100', '80', '60', '40', '20', ''}
-
-xlabel('Horizontal direction (reversed y-axis)');
-ylabel('Vertical direction (reversed x-axis)');
-
-
-% ordinamento corretto assi secondo scenario fig 6
-if correct_fig7 == 1
-    % Questi comandi non vanno bene perchè cambiano anche l'ordine dei dati plottati
-    %set(gca, 'XDir', 'reverse'); 
-    %set(gca, 'YDir', 'reverse');
+for i=1:1:2
     
-    xticks(x_ticks_new); % The result is [1, 100, 200]
-    xticklabels(x_ticks_labels); % The result is {'1200', '1100', '1000'}
+    correct_fig7 = i-1;
 
-    xlabel('Horizontal direction');
-    ylabel('Vertical direction'); 
+    for rr=1:1:numel(My_ar)
+
+        disp(['---> Plotting Fig7 with ', num2str(My_ar(rr)), ' and ' num2str(correct_fig7), '...']);
+
+        filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
+        filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
+        filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size), '.mat');
+        filename_YPredictedFig7=strcat(network_folder, 'YPredictedFig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
+
+        % Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
+        load(filename_DL_input_reshaped);
+        % Concatena YTrain + YValidation, cioè utilizza DL_output_reshaped
+        load(filename_DL_output_reshaped);
+
+        % Carica modello pre-allenato caso completo che copre tutta la grid size
+        trainedNet = load(filename_trainedNet).trainedNet;
+
+        if save_mat_files == 1
+            % Esegui predizione con DL_input_reshaped
+            tic
+            disp('Start DL prediction for Figure 7...')
+            YPredictedFig7 = predict(trainedNet,DL_input_reshaped); % Inferenza sul set di validazione usato come test: errore!
+            disp('Done')
+            toc
+            save(filename_YPredictedFig7,'YPredictedFig7','-v7.3'); 
+        else
+            load(filename_YPredictedFig7);
+        end
+
+        % Recupera gli indici dei codebook
+        [~,Indmax_OPT] = max(DL_output_reshaped,[],3);
+        %disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 1, 1, 1, 36200
+        Indmax_OPT = squeeze(Indmax_OPT);
+        %disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 36200, 1
+        Indmax_OPT = Indmax_OPT.'; % 1, 36200
+
+        [~,Indmax_DL] = maxk(YPredictedFig7,kbeams,2);
+        %disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]); % 36200, 1
+
+        % Grafico
+        x = 1:(Ur_rows(2)-1000);
+        y = 1:181;
+
+        % Matrice dei valori
+        values_OPT = reshape(Indmax_OPT, numel(y), []); % 181x200
+        % MATLAB divide il vettore Indmax_OPT in blocchi di lunghezza pari a [] e 
+        % li organizza in numel(y) righe.
+        % I primi [] elementi di Indmax_OPT diventano la prima riga della matrice.
+        % I successivi [] elementi diventano la seconda riga, e così via.
+        % Il numero di colonne [] viene calcolato come length(Indmax_OPT) / numel(y).
+        values_DL = reshape(Indmax_DL, numel(y), []); % 181x200
+
+        f7 = figure('Name', 'Figure7', 'units','pixels', 'Position', [100, 100, 2600, 300]); % typ 800x400
+
+        % Calcolo minimi e massimi colorbar comuni ai due grafici per avere due colorbar uguali
+        min_colorbar = min([min(values_OPT(:)), min(values_DL(:))]);
+        max_colorbar = max([max(values_OPT(:)), max(values_DL(:))]);
+
+        % Test imagesc
+        % Di default imagesc plotta nell'angolo in alto a sinistra il primo elemento dell'immagine di ingresso c(1,1)
+        %c = reshape(1:1:100, 10, 10).';
+        %imagesc(c); 
+        % Per spostare il punto in cui vogliamo spostare il valore c(1,1), bisogna indicare le coordinate di dove vogliamo
+        % il primo punto e l'ultimo punto della matrice c, nell'esempio (10,10) e (1,1), rispettivamente.
+        % Per trovare quali numeri mettere, bisogna prima plottare la matrice senza range, e poi inserirli successivamente
+        % utilizzando i valori che sono riportati sugli assi della prima figura come sistema di riferimento.
+        %c = reshape(1:1:100, 10, 10).';
+        %imagesc([10, 1], [10, 1], c); 
+
+        if correct_fig7 == 0
+            offset=-2; % Per avere un tick in alto per far vedere il 181 utente
+            y_ticks = (1+offset):20:(181+offset);
+            y_ticks_notflipped = y_ticks-offset-1; % Ordina l'array al contrario
+            y_ticks_string = string(y_ticks_notflipped); % Converte i valori in un array di stringhe
+            y_ticks_labels = cellstr(y_ticks_string); % Converte in un array di celle
+            %y_ticks_labels(end) = '';
+        else
+            x_ticks = Ur_rows(1):100:(Ur_rows(2));
+            x_ticks_new = x_ticks - 1000;
+            x_ticks_new(1) = 1;
+
+            x_ticks_flipped = fliplr(x_ticks); % Ordina l'array al contrario
+            x_ticks_string = string(x_ticks_flipped); % Converte i valori in un array di stringhe
+            x_ticks_labels = cellstr(x_ticks_string); % Converte in un array di celle
+
+            offset=3; % Per avere un tick in alto per far vedere il 181 utente
+            y_ticks = (1+offset):20:(181+offset);
+            y_ticks_flipped = fliplr(y_ticks-offset-1); % Ordina l'array al contrario
+            y_ticks_string = string(y_ticks_flipped); % Converte i valori in un array di stringhe
+            y_ticks_labels = cellstr(y_ticks_string); % Converte in un array di celle
+            y_ticks_labels(end) = '';
+        end
+
+        % Subplot 1
+        subplot(1, 2, 1); % 1 riga, 2 colonne, primo subplot
+        title('(a) Original Codebook Beams');
+
+        % Plotta la matrice values mappando ogni elemento a un pixel del grafico.
+        %imagesc(values_OPT); 
+        imagesc([numel(x), 1], [numel(y), 1], values_OPT); % values(1,1) in basso a destra
+
+        yticks(y_ticks);
+        yticklabels(y_ticks_labels); % The result is {'180', '160', '140', '120', '100', '80', '60', '40', '20', ''}
+
+        xlabel('Horizontal direction (reversed y-axis)');
+        ylabel('Vertical direction (reversed x-axis)');
+
+
+        % ordinamento corretto assi secondo scenario fig 6
+        if correct_fig7 == 1
+            % Questi comandi non vanno bene perchè cambiano anche l'ordine dei dati plottati
+            %set(gca, 'XDir', 'reverse'); 
+            %set(gca, 'YDir', 'reverse');
+            
+            xticks(x_ticks_new); % The result is [1, 100, 200]
+            xticklabels(x_ticks_labels); % The result is {'1200', '1100', '1000'}
+
+            xlabel('Horizontal direction');
+            ylabel('Vertical direction'); 
+        end
+
+        colormap(parula); % Imposta la colormap arcobaleno
+        colorbar; % Aggiunge una barra dei colori
+        caxis([min_colorbar, max_colorbar]); % Imposta i limiti della scala dei colori
+
+
+
+        % Subplot 2
+        subplot(1, 2, 2); % 1 riga, 2 colonne, secondo subplot
+        title('(b) Predicted Codebook Beams');
+
+        imagesc([numel(x), 1], [numel(y), 1], values_DL); % values(1,1) in basso a destra
+
+        yticks(y_ticks);
+        yticklabels(y_ticks_labels); % The result is {'180', '160', '140', '120', '100', '80', '60', '40', '20', ''}
+
+        xlabel('Horizontal direction (reversed y-axis)');
+        ylabel('Vertical direction (reversed x-axis)');
+
+        if correct_fig7 == 1    
+            xticks(x_ticks_new); % The result is [1, 100, 200]
+            xticklabels(x_ticks_labels); % The result is {'1200', '1100', '1000'}
+
+            xlabel('Horizontal direction');
+            ylabel('Vertical direction');   
+        end
+
+        colormap(parula); % Imposta la colormap arcobaleno
+        colorbar; % Aggiunge una barra dei colori
+        caxis([min_colorbar, max_colorbar]); % Imposta i limiti della scala dei colori
+
+        sfile_DeepMIMO=strcat(figure_folder, 'Fig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_correct', num2str(correct_fig7), '.png');
+        saveas(f7, sfile_DeepMIMO);
+        close(f7);
+
+        disp('Done');
+
+        %keyboard;
+
+    end
 end
-
-colormap(parula); % Imposta la colormap arcobaleno
-colorbar; % Aggiunge una barra dei colori
-caxis([min_colorbar, max_colorbar]); % Imposta i limiti della scala dei colori
-
-
-
-% Subplot 2
-subplot(1, 2, 2); % 1 riga, 2 colonne, secondo subplot
-title('(b) Predicted Codebook Beams');
-
-imagesc([numel(x), 1], [numel(y), 1], values_DL); % values(1,1) in basso a destra
-
-yticks(y_ticks);
-yticklabels(y_ticks_labels); % The result is {'180', '160', '140', '120', '100', '80', '60', '40', '20', ''}
-
-xlabel('Horizontal direction (reversed y-axis)');
-ylabel('Vertical direction (reversed x-axis)');
-
-if correct_fig7 == 1    
-    xticks(x_ticks_new); % The result is [1, 100, 200]
-    xticklabels(x_ticks_labels); % The result is {'1200', '1100', '1000'}
-
-    xlabel('Horizontal direction');
-    ylabel('Vertical direction');   
-end
-
-colormap(parula); % Imposta la colormap arcobaleno
-colorbar; % Aggiunge una barra dei colori
-caxis([min_colorbar, max_colorbar]); % Imposta i limiti della scala dei colori
-
-sfile_DeepMIMO=strcat(figure_folder, 'Fig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_correct', num2str(correct_fig7), '.png');
-saveas(f7, sfile_DeepMIMO);
-close(f7);
-
-disp('Done');
-
-%keyboard;
-
-
 
 
 
