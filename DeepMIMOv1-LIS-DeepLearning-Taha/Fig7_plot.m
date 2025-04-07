@@ -4,8 +4,8 @@ function []=Fig7_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams)
 % This is the function called by the main script for ploting Figure 10 
 % in the original article mentioned below.
 
-global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
-global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files load_mat;
+global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
 Training_Size=30000;
 
@@ -19,18 +19,23 @@ for i=1:1:2
 
         filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
         filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
-        filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size), '.mat');
+        filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size), '.mat');        
         filename_YPredictedFig7=strcat(network_folder, 'YPredictedFig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
+        filename_YPredictedFig7_mat=strcat(network_folder_py, 'YPredictedFig7_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
 
-        % Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
-        load(filename_DL_input_reshaped);
-        % Concatena YTrain + YValidation, cioè utilizza DL_output_reshaped
-        load(filename_DL_output_reshaped);
-
-        % Carica modello pre-allenato caso completo che copre tutta la grid size
-        trainedNet = load(filename_trainedNet).trainedNet;
+        filename_fig7=strcat(figure_folder, 'Fig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_correct', num2str(correct_fig7), '.png');
+        filename_fig7_mat=strcat(figure_folder_py, 'Fig7_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_correct', num2str(correct_fig7), '.png');        
 
         if save_mat_files == 1
+
+            % Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
+            load(filename_DL_input_reshaped);
+            % Concatena YTrain + YValidation, cioè utilizza DL_output_reshaped
+            load(filename_DL_output_reshaped);
+
+            % Carica modello pre-allenato caso completo che copre tutta la grid size
+            trainedNet = load(filename_trainedNet).trainedNet;
+            
             % Esegui predizione con DL_input_reshaped
             tic
             disp('Start DL prediction for Figure 7...')
@@ -39,7 +44,11 @@ for i=1:1:2
             toc
             save(filename_YPredictedFig7,'YPredictedFig7','-v7.3'); 
         else
-            load(filename_YPredictedFig7);
+            if load_mat == 1
+                load(filename_YPredictedFig7_mat);
+            else
+                load(filename_YPredictedFig7);
+            end
         end
 
         % Recupera gli indici dei codebook
@@ -164,8 +173,12 @@ for i=1:1:2
         colorbar; % Aggiunge una barra dei colori
         caxis([min_colorbar, max_colorbar]); % Imposta i limiti della scala dei colori
 
-        sfile_DeepMIMO=strcat(figure_folder, 'Fig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_correct', num2str(correct_fig7), '.png');
-        saveas(f7, sfile_DeepMIMO);
+        if load_mat == 1
+            saveas(f7, filename_fig7_mat);
+        else
+            saveas(f7, filename_fig7);
+        end
+        
         close(f7);
 
         disp('Done');

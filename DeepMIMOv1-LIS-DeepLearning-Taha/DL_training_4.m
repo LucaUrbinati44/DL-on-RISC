@@ -11,7 +11,13 @@ filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed
 filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 
+filename_XTrain=strcat(DL_dataset_folder, 'XTrain', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_YTrain=strcat(DL_dataset_folder, 'YTrain', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_XValidation=strcat(DL_dataset_folder, 'XValidation', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_YValidation=strcat(DL_dataset_folder, 'YValidation', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+
 filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_trainedNet_tf=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd));
 filename_trainedNet_scaler=strcat(network_folder, 'trainedNet_scaler', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 filename_Rate_DL=strcat(network_folder, 'Rate_DL', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 filename_Rate_OPT=strcat(network_folder, 'Rate_OPT', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
@@ -68,29 +74,41 @@ else
     layers = [
         imageInputLayer([size(XTrain,1),1,1],'Name','input')
         % An image input layer inputs 2-D images to a neural network and applies data normalization.
+        % Data in this layout has the data format "SSCB" (spatial, spatial, channel, batch).
+        % MATLAB normalizza per ciascun canale (asse 3), calcolando la media e deviazione standard sui dati lungo l’asse 4 (batch).
+        % Poichè il numero di canali è 1, c'è un unico valore di mean per tutto il tensore di ingresso.
+        
         % Inputs:
-        % Normalization — Data normalization: 
-        %   Data normalization to apply every time data is forward propagated through the input layer, specified as one of the following:
-        %   "zerocenter" (default) — Subtract the mean specified by Mean.
+        
+        % Normalization — Data normalization: Data normalization to apply every time data is forward propagated 
+        % through the input layer, specified as one of the following:
+        %   "zerocenter" (default) — Subtract the mean specified by Mean PER CANALE!
+        
         % NormalizationDimension — Normalization dimension
         %   "auto" (default) | "channel" | "element" | "all" 
         %   --> channel-wise
+        
         % Mean — Mean for zero-center and z-score normalization
         %   [] (default) | 3-D array | numeric scalar 
         %   --> If Mean is [], then the software automatically sets the property at training or initialization time:
         %       The trainnet function calculates the mean using the training data and uses the resulting value.
+        
         % StandardDeviation — Standard deviation for z-score normalization
         %   [] (default) | 3-D array | numeric scalar
         %   --> If StandardDeviation is [], then the software automatically sets the property at training or initialization time:
         %       The trainnet function calculates the standard deviation using the training data and uses the resulting value. 
+        
         % Min — Minimum value for rescaling
         %   [] (default) | 3-D array | numeric scalar
         %   --> To specify the Min property, the Normalization must be "rescale-symmetric" or "rescale-zero-one".
+        
         % Max — Maximum value for rescaling
         %   [] (default) | 3-D array | numeric scalar
         %   --> To specify the Min property, the Normalization must be "rescale-symmetric" or "rescale-zero-one".
+        
         % SplitComplexInputs — Flag to split input data into real and imaginary components
         %   0 (false) (default) | 1 (true)
+        
         % Name — Layer name
         %   "" (default) | character vector | string scalar
 
@@ -171,7 +189,7 @@ else
     trainedNet_scaler = trainedNet.Layers(1).Mean; % Estrae la media del primo layer (imageInputLayer)
 
     disp(['size(YPredicted) = ' num2str(size(YPredicted))]); % 6200, 1024
-    disp(['size(trainedNet_scaler) = ' num2str(size(trainedNet_scaler))]); % 1, 1
+    disp(['size(trainedNet_scaler) = ' num2str(size(trainedNet_scaler))]); % vettore 1×1×C --> nel nostro caso è uno scalare 1,1
 
     % Ogni sample in uscita al modello ha un array i rate pari al codebook size,
     % poi bisogna prendere il migliore.
@@ -267,6 +285,14 @@ else
         save(filename_Rate_DL,'Rate_DL','-v7.3');
         save(filename_Rate_OPT,'Rate_OPT','-v7.3');
         save(filename_trainedNet,'trainedNet','-v7.3');
+        % https://it.mathworks.com/help/deeplearning/networks-from-external-platforms.html
+        %exportONNXNetwork(trainedNet, filename_trainedNet_onnx);
+        exportNetworkToTensorFlow(trainedNet,filename_trainedNet_tf)
+
+        save(filename_XTrain,'XTrain','-v7.3');
+        save(filename_YTrain,'YTrain','-v7.3');
+        save(filename_XValidation,'XValidation','-v7.3');
+        save(filename_YValidation,'YValidation','-v7.3');
     end
 end
 

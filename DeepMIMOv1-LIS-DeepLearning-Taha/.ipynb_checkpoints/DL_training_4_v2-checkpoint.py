@@ -144,6 +144,8 @@ if __name__ == "__main__":
     DL_input_reshaped = np.random.rand(M, 1, 1, dataset_size) 
     DL_output_reshaped = np.random.rand(1, 1, M, dataset_size)
 
+    print(f"First sample: {DL_input_reshaped[:,0,0,0]}")
+
     # Call the training function
     model, history, Y_predicted = dl_training_4(DL_input_reshaped, DL_output_reshaped, training_size, validation_size)
 
@@ -159,16 +161,3 @@ if __name__ == "__main__":
     #np.save(os.path.join(output_folder, 'history.npy'), history.history)
     #np.save(os.path.join(output_folder, 'Y_predicted.npy'), Y_predicted)
     #print("History and Y_predicted saved successfully.")
-
-
-
-
-    
-    
-    
-    
-    
-
-
-
-

@@ -3,13 +3,24 @@ close all
 %clc
 
 base_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/';
-output_folder = [base_folder, 'Output/'];
+output_folder = [base_folder, 'Output Matlab/'];
+output_folder_py = [base_folder, 'Output Python/'];
 
-global DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
+global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
+
+seed=0;
+rng(seed, "twister") % Added for code replicability
+% rng("default") initializes the MATLAB random number generator
+% using the default algorithm and seed. The factory default is 
+% the Mersenne Twister generator with seed 0.
+
 DeepMIMO_dataset_folder = [output_folder, 'DeepMIMO Dataset/'];
 DL_dataset_folder = [output_folder, 'DL Dataset/'];
 network_folder = [output_folder, 'Neural Network/'];
 figure_folder = [output_folder, 'Figures/'];
+
+network_folder_py = [output_folder_py, 'Neural Network/'];
+figure_folder_py = [output_folder_py, 'Figures/'];
 
 folders = {DeepMIMO_dataset_folder, DL_dataset_folder, network_folder, figure_folder};
 for i = 1:length(folders)
@@ -24,22 +35,16 @@ end
 addpath(DeepMIMO_dataset_folder);
 addpath(DL_dataset_folder);
 addpath(figure_folder);
+addpath(figure_folder_py);
 addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/MAT functions');
 addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/RayTracing Scenarios/O1_28');
 
 cd(base_folder);
 
-global seed;
-seed=0;
-rng(seed, "twister") % Added for code replicability
-% rng("default") initializes the MATLAB random number generator
-% using the default algorithm and seed. The factory default is 
-% the Mersenne Twister generator with seed 0.
-
 %%
 
 % Luca variables to control the flow
-global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files load_mat;
 
 load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
 load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
@@ -47,7 +52,9 @@ load_DL_dataset  = 1; % load output from DL_data_generator_3.m
 load_Rates       = 1; % load output from DL_training_4.m
 save_mat_files   = 0;
 
-plot_fig12 = 1;
+load_mat         = 1;
+
+plot_fig12 = 0;
 plot_fig7 = 1;
 
 %% System Model parameters
@@ -88,6 +95,7 @@ Ur_rows = [1000 1200]; % original
 
 Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
 %Training_Size=[1e4*3]; % Semplificazione Luca
+%Training_Size=[26000 30000];
 
 % Preallocation of output variables (y-axis of Fig 12 for both blue and red curves)
 Rate_DLt=zeros(numel(My_ar),numel(Training_Size));  % numel = number of elements
@@ -112,6 +120,7 @@ for rr = 1:1:numel(My_ar)
 
     for dd=1:1:numel(Training_Size)
         [Rate_OPT,Rate_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
+        %[Rate_OPT,Rate_DL]=DL_predict_5(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
         Rate_OPTt(rr,dd)=Rate_OPT;
         Rate_DLt(rr,dd)=Rate_DL;
     end
@@ -128,10 +137,7 @@ end
 %% Fig 7 (Luca)
 
 if plot_fig7 == 1
-    for i=1:1:2
-        correct_fig7 = i-1;
-        Fig7_plot(Mx,My,Mz,M_bar,Ur_rows,kbeams,correct_fig7);
-    end
+    Fig7_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams);
 end
 
 %% End of script

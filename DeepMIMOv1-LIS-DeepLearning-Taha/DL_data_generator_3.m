@@ -23,7 +23,6 @@ filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed
 filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 
-
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
 M = Mx.*My.*Mz; % Total number of LIS reflecting elements 
 
@@ -309,7 +308,7 @@ else
     %disp([' size(DL_input) = ' num2str(size(DL_input))]);
     %disp([' size(DL_output) = ' num2str(size(DL_output))]);
 
-    DL_input_reshaped = reshape(DL_input,size(DL_input,1),1,1,size(DL_input,2));
+    DL_input_reshaped = reshape(DL_input,size(DL_input,1),1,1,size(DL_input,2)); % 1024, 1, 1, 36200
     DL_output_reshaped = reshape(DL_output.',1,1,size(DL_output,2),size(DL_output,1)); % 1, 1, 1024, 36200
     DL_output_un_reshaped = reshape(DL_output_un.',1,1,size(DL_output_un,2),size(DL_output_un,1));
 
