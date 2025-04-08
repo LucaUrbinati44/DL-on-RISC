@@ -26,12 +26,30 @@ for i=1:1:2
         filename_fig7=strcat(figure_folder, 'Fig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_correct', num2str(correct_fig7), '.png');
         filename_fig7_mat=strcat(figure_folder_py, 'Fig7_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_correct', num2str(correct_fig7), '.png');        
 
+        % Concatena YTrain + YValidation, cioè utilizza DL_output_reshaped
+        load(filename_DL_output_reshaped);
+
+        %%%%%% TEMP
+        %% Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
+        %load(filename_DL_input_reshaped);
+        %
+        %% Carica modello pre-allenato caso completo che copre tutta la grid size
+        %trainedNet = load(filename_trainedNet).trainedNet;
+        %
+        %% Esegui predizione con DL_input_reshaped
+        %tic
+        %disp('Start DL prediction for Figure 7...')
+        %YPredictedFig7_orig = predict(trainedNet,DL_input_reshaped); % Inferenza sul set di validazione usato come test: errore!
+        %disp('Done')
+        %toc
+        %
+        %[~,Indmax_DL_orig] = maxk(YPredictedFig7_orig,kbeams,2);
+        %%%%%% TEMP
+
         if save_mat_files == 1
 
             % Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
             load(filename_DL_input_reshaped);
-            % Concatena YTrain + YValidation, cioè utilizza DL_output_reshaped
-            load(filename_DL_output_reshaped);
 
             % Carica modello pre-allenato caso completo che copre tutta la grid size
             trainedNet = load(filename_trainedNet).trainedNet;
@@ -40,12 +58,19 @@ for i=1:1:2
             tic
             disp('Start DL prediction for Figure 7...')
             YPredictedFig7 = predict(trainedNet,DL_input_reshaped); % Inferenza sul set di validazione usato come test: errore!
+            % Mini-batch size = 128 (default)
             disp('Done')
             toc
             save(filename_YPredictedFig7,'YPredictedFig7','-v7.3'); 
         else
             if load_mat == 1
-                load(filename_YPredictedFig7_mat);
+                disp('Import YPredictedFig7 from Python')
+                %load(filename_YPredictedFig7_mat);
+                YPredictedFig7 = h5read(filename_YPredictedFig7_mat, '/YPredictedFig7_mat');
+                YPredictedFig7 = YPredictedFig7'; % Transpose perchè per la disposizione dei dati in memoria:
+                % HDF5 (e quindi h5py) usa la convenzione row-major (C-style)
+                % mentre MATLAB usa column-major (Fortran-style)
+                disp('Done')
             else
                 load(filename_YPredictedFig7);
             end
@@ -60,6 +85,20 @@ for i=1:1:2
 
         [~,Indmax_DL] = maxk(YPredictedFig7,kbeams,2);
         %disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]); % 36200, 1
+
+        %tolerance = 1e-0;
+        %diff = abs(Indmax_DL(:) - Indmax_DL_orig(:));
+        %differenceMask = diff > tolerance;
+        %%areEqual = all(diff <= tolerance);
+        %
+        %Indmax_DL_diff = Indmax_DL(differenceMask);
+        %Indmax_DL_orig_diff = Indmax_DL_orig(differenceMask);
+        %
+        %for i = 1:length(Indmax_DL_diff)
+        %    fprintf('Indmax_DL_diff = %d, Indmax_DL_orig_diff = %d\n', Indmax_DL_diff(i), Indmax_DL_orig_diff(i));
+        %end
+
+        %keyboard;
 
         % Grafico
         x = 1:(Ur_rows(2)-1000);

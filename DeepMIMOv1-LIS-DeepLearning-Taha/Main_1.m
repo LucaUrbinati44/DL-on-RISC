@@ -22,7 +22,7 @@ figure_folder = [output_folder, 'Figures/'];
 network_folder_py = [output_folder_py, 'Neural Network/'];
 figure_folder_py = [output_folder_py, 'Figures/'];
 
-folders = {DeepMIMO_dataset_folder, DL_dataset_folder, network_folder, figure_folder};
+folders = {DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py};
 for i = 1:length(folders)
     if ~exist(folders{i}, 'dir') % Controlla se la cartella esiste
         mkdir(folders{i}); % Crea la cartella se non esiste

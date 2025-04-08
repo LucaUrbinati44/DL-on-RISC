@@ -15,6 +15,7 @@ filename_Delta_H_max=strcat(DeepMIMO_dataset_folder, 'Delta_H_max', '_seed', num
 filename_User_Location=strcat(DeepMIMO_dataset_folder, 'User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 %filename_params=strcat(DeepMIMO_dataset_folder, 'params', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 
+filename_RandP_all=strcat(DL_dataset_folder, 'RandP_all', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 filename_DL_input=strcat(DL_dataset_folder, 'DL_input', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 filename_DL_output=strcat(DL_dataset_folder, 'DL_output', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 filename_DL_output_un=strcat(DL_dataset_folder, 'DL_output_un', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
@@ -31,6 +32,9 @@ No_user_pairs = (Ur_rows(2)-Ur_rows(1))*181; % Number of users (= Number of TX-R
 % In the 'O1' scenario where every row consists of 181 points.
 % Since the number of BS antennas is one, the number of pairs is equal to the number of users.
 RandP_all = randperm(No_user_pairs).';
+%save(filename_RandP_all,'RandP_all','-v7.3');
+%return
+
 % randperm(n) restituisce un vettore contenente una permutazione casuale di numeri interi da 1 a n, senza elementi ripetuti.
 % Serve per ottenere gli indici mischiati (shuffled)
 
@@ -313,6 +317,9 @@ else
     DL_output_un_reshaped = reshape(DL_output_un.',1,1,size(DL_output_un,2),size(DL_output_un,1));
 
     if save_mat_files == 1
+
+        save(filename_RandP_all,'RandP_all','-v7.3');
+
         save(filename_DL_input,'DL_input','-v7.3');
         save(filename_DL_output,'DL_output','-v7.3');
         save(filename_DL_output_un,'DL_output_un','-v7.3');   
