@@ -44,18 +44,19 @@ cd(base_folder);
 %%
 
 % Luca variables to control the flow
-global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files load_mat;
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat;
 
 load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
 load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
 load_DL_dataset  = 1; % load output from DL_data_generator_3.m
 load_Rates       = 1; % load output from DL_training_4.m
+training         = 0; % 1 for training the network, 0 from loaoding it from file
 save_mat_files   = 0;
 
-load_mat         = 1;
+load_mat         = 0; % load mat files generated in Python
 
-plot_fig12 = 0;
-plot_fig7 = 1;
+plot_fig12 = 1;
+plot_fig7 = 0;
 
 %% System Model parameters
 disp('---> System Model Parameters');

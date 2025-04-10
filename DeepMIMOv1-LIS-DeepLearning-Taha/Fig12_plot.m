@@ -2,9 +2,12 @@ function []=Fig12_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate
     
     disp('--> Plotting Fig12...');  
 
-    global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
-    global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
+    global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat;
+    global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
+    filename_fig12=strcat(figure_folder, 'Fig12', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
+    filename_fig12_mat=strcat(figure_folder_py, 'Fig12_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
+    
     Colour = 'brgmcky';
     Marker = {'--o', '-o'; '--square', '-square'};
     %disp(size(Marker));
@@ -31,8 +34,12 @@ function []=Fig12_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate
     drawnow
     hold off
 
-    sfile_DeepMIMO=strcat(figure_folder, 'Fig12', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
-    saveas(f12, sfile_DeepMIMO); % Save the figure to a file 
+    if load_mat == 1
+        saveas(f12, filename_fig12_mat);
+    else
+        saveas(f12, filename_fig12);
+    end
+
     close(f12); % Close the figure drawnow hold off
 
     %sfile_DeepMIMO=strcat(figure_folder, 'Fig12data', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar), num2str(Mz_ar), '_Mbar', num2str(M_bar), '_', num2str(numel(Training_Size)), '.mat');

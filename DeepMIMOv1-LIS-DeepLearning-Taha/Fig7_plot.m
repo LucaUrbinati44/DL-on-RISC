@@ -4,7 +4,7 @@ function []=Fig7_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams)
 % This is the function called by the main script for ploting Figure 10 
 % in the original article mentioned below.
 
-global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files load_mat;
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat;
 global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
 Training_Size=30000;
@@ -30,20 +30,20 @@ for i=1:1:2
         load(filename_DL_output_reshaped);
 
         %%%%%% TEMP
-        %% Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
-        %load(filename_DL_input_reshaped);
-        %
-        %% Carica modello pre-allenato caso completo che copre tutta la grid size
-        %trainedNet = load(filename_trainedNet).trainedNet;
-        %
-        %% Esegui predizione con DL_input_reshaped
-        %tic
-        %disp('Start DL prediction for Figure 7...')
-        %YPredictedFig7_orig = predict(trainedNet,DL_input_reshaped); % Inferenza sul set di validazione usato come test: errore!
-        %disp('Done')
-        %toc
-        %
-        %[~,Indmax_DL_orig] = maxk(YPredictedFig7_orig,kbeams,2);
+        % Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
+        load(filename_DL_input_reshaped);
+        
+        % Carica modello pre-allenato caso completo che copre tutta la grid size
+        trainedNet = load(filename_trainedNet).trainedNet;
+        
+        % Esegui predizione con DL_input_reshaped
+        tic
+        disp('Start DL prediction for Figure 7...')
+        YPredictedFig7_orig = predict(trainedNet,DL_input_reshaped); % Inferenza sul set di validazione usato come test: errore!
+        disp('Done')
+        toc
+        
+        [~,Indmax_DL_orig] = maxk(YPredictedFig7_orig,kbeams,2);
         %%%%%% TEMP
 
         if save_mat_files == 1
@@ -65,7 +65,6 @@ for i=1:1:2
         else
             if load_mat == 1
                 disp('Import YPredictedFig7 from Python')
-                %load(filename_YPredictedFig7_mat);
                 YPredictedFig7 = h5read(filename_YPredictedFig7_mat, '/YPredictedFig7_mat');
                 YPredictedFig7 = YPredictedFig7'; % Transpose perchè per la disposizione dei dati in memoria:
                 % HDF5 (e quindi h5py) usa la convenzione row-major (C-style)
@@ -86,17 +85,17 @@ for i=1:1:2
         [~,Indmax_DL] = maxk(YPredictedFig7,kbeams,2);
         %disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]); % 36200, 1
 
-        %tolerance = 1e-0;
-        %diff = abs(Indmax_DL(:) - Indmax_DL_orig(:));
-        %differenceMask = diff > tolerance;
-        %%areEqual = all(diff <= tolerance);
-        %
-        %Indmax_DL_diff = Indmax_DL(differenceMask);
-        %Indmax_DL_orig_diff = Indmax_DL_orig(differenceMask);
-        %
-        %for i = 1:length(Indmax_DL_diff)
-        %    fprintf('Indmax_DL_diff = %d, Indmax_DL_orig_diff = %d\n', Indmax_DL_diff(i), Indmax_DL_orig_diff(i));
-        %end
+        tolerance = 1;
+        diff = abs(Indmax_DL(:) - Indmax_DL_orig(:));
+        differenceMask = diff >= tolerance;
+        %areEqual = all(diff <= tolerance);
+        
+        Indmax_DL_diff = Indmax_DL(differenceMask);
+        Indmax_DL_orig_diff = Indmax_DL_orig(differenceMask);
+        
+        for i = 1:length(Indmax_DL_diff)
+            fprintf('Indmax_DL_diff = %d, Indmax_DL_orig_diff = %d\n', Indmax_DL_diff(i), Indmax_DL_orig_diff(i));
+        end
 
         %keyboard;
 
