@@ -55,8 +55,10 @@ save_mat_files   = 0;
 
 load_mat         = 0; % load mat files generated in Python
 
-plot_fig12 = 1;
+plot_fig12 = 0;
 plot_fig7 = 0;
+plot_figC = 0;
+plot_figD = 1;
 
 %% System Model parameters
 disp('---> System Model Parameters');
@@ -98,9 +100,14 @@ Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 1
 %Training_Size=[1e4*3]; % Semplificazione Luca
 %Training_Size=[26000 30000];
 
+Validation_Size = 6200; % Validation dataset Size
+
 % Preallocation of output variables (y-axis of Fig 12 for both blue and red curves)
 Rate_DLt=zeros(numel(My_ar),numel(Training_Size));  % numel = number of elements
 Rate_OPTt=zeros(numel(My_ar),numel(Training_Size));
+
+MaxR_DLt = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
+MaxR_OPTt = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
 
 for rr = 1:1:numel(My_ar)
 
@@ -115,15 +122,18 @@ for rr = 1:1:numel(My_ar)
 
     %% Deep Learning Dataset Generation = Genie-Aided Reflection Beamforming
 
-    [RandP_all,Validation_Ind]=DL_data_generator_3(Mx,My,Mz,M_bar,D_Lambda,BW,K,K_DL,Pt,Ur_rows,Ut_element,Ur_rows_grid);
+    [RandP_all,Validation_Ind]=DL_data_generator_3(Mx,My,Mz,M_bar,D_Lambda,BW,K,K_DL,Pt,Ur_rows,Ut_element,Ur_rows_grid,Validation_Size);
 
     %% DL Beamforming
 
     for dd=1:1:numel(Training_Size)
-        [Rate_OPT,Rate_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
+        [Rate_OPT,Rate_DL,MaxR_OPT,MaxR_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
         %[Rate_OPT,Rate_DL]=DL_predict_5(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
         Rate_OPTt(rr,dd)=Rate_OPT;
         Rate_DLt(rr,dd)=Rate_DL;
+
+        MaxR_DLt(rr,dd,:) = MaxR_DL;
+        MaxR_OPTt(rr,dd,:) = MaxR_OPT;
     end
 
     %keyboard;
@@ -139,6 +149,23 @@ end
 
 if plot_fig7 == 1
     Fig7_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams);
+end
+
+%% Fig C (Luca)
+
+if plot_figC == 1
+    % con plot_index=1 si può usare solo plot_test_only=1 (per ora perchè bisogna plottare gli indici il cui rate è superiore alla soglia (non so se è di interesse))
+    plot_index     = 0;
+    plot_rate      = 1;
+    plot_test_only = 1;
+    plot_threshold = 1;
+    threshold      = 5; % [bps/Hz]
+    FigC_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_DLt,MaxR_OPTt,Validation_Ind,plot_index,plot_rate,plot_test_only,plot_threshold,threshold);
+end
+
+if plot_figD == 1
+    plot_test_only = 1;
+    FigD_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_DLt,MaxR_OPTt,Validation_Ind,plot_test_only)
 end
 
 %% End of script

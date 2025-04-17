@@ -76,6 +76,9 @@ for i=1:1:2
         end
 
         % Recupera gli indici dei codebook
+        % Come mai ho usato DL_output_reshaped invece di YValidation per ottenere Indmax_OPT in Fig7?
+        % Perchè dovevo plottare tutti gli utenti nella griglia e DL_output_reshaped li contiene tutti,
+        % mentre YValidation ne contiene un sottoinsieme.
         [~,Indmax_OPT] = max(DL_output_reshaped,[],3);
         %disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 1, 1, 1, 36200
         Indmax_OPT = squeeze(Indmax_OPT);
@@ -85,6 +88,7 @@ for i=1:1:2
         [~,Indmax_DL] = maxk(YPredictedFig7,kbeams,2);
         %disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]); % 36200, 1
 
+        %%%%%% TEMP
         tolerance = 1;
         diff = abs(Indmax_DL(:) - Indmax_DL_orig(:));
         differenceMask = diff >= tolerance;
@@ -96,6 +100,7 @@ for i=1:1:2
         for i = 1:length(Indmax_DL_diff)
             fprintf('Indmax_DL_diff = %d, Indmax_DL_orig_diff = %d\n', Indmax_DL_diff(i), Indmax_DL_orig_diff(i));
         end
+        %%%%%% TEMP
 
         %keyboard;
 

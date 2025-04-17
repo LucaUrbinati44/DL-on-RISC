@@ -1,4 +1,4 @@
-function [Rate_OPT,Rate_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size_dd,RandP_all,Validation_Ind)
+function [Rate_OPT,Rate_DL,MaxR_OPT,MaxR_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size_dd,RandP_all,Validation_Ind)
 
 %% DL Beamforming
 
@@ -26,16 +26,25 @@ filename_Rate_OPT=strcat(network_folder, 'Rate_OPT', '_seed', num2str(seed), '_g
 filename_Rate_DL_mat=strcat(network_folder_py, 'Rate_DL_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 filename_Rate_OPT_mat=strcat(network_folder_py, 'Rate_OPT_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 
+filename_MaxR_DL=strcat(network_folder, 'MaxR_DL', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_MaxR_OPT=strcat(network_folder, 'MaxR_OPT', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_MaxR_DL_mat=strcat(network_folder_py, 'MaxR_DL_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_MaxR_OPT_mat=strcat(network_folder_py, 'MaxR_OPT_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+
 if load_Rates == 1
     if load_mat == 1
         disp('Loading Rate_DL_mat, Rate_OPT_mat...');
         load(filename_Rate_DL_mat);
         load(filename_Rate_OPT_mat);
+        load(filename_MaxR_DL_mat);
+        load(filename_MaxR_OPT_mat);
         disp('Done');
     else
         disp('Loading Rate_DL, Rate_OPT...');
         load(filename_Rate_DL);
         load(filename_Rate_OPT);
+        load(filename_MaxR_DL);
+        load(filename_MaxR_OPT);
         disp('Done');
     end
 
@@ -314,6 +323,9 @@ else
         
     %end
 
+    %save(filename_MaxR_DL,'MaxR_DL','-v7.3');
+    %save(filename_MaxR_OPT,'MaxR_OPT','-v7.3');
+
 
     %%%%% TEMP
     if load_mat == 1
@@ -325,9 +337,14 @@ else
     if save_mat_files == 1
         save(filename_Rate_DL,'Rate_DL','-v7.3');
         save(filename_Rate_OPT,'Rate_OPT','-v7.3');
+        save(filename_MaxR_DL,'MaxR_DL','-v7.3');
+        save(filename_MaxR_OPT,'MaxR_OPT','-v7.3');
+
         if load_mat == 1
             save(filename_Rate_DL_mat,'Rate_DL','-v7.3');
             save(filename_Rate_OPT_mat,'Rate_OPT','-v7.3');
+            save(filename_MaxR_DL_mat,'MaxR_DL','-v7.3');
+            save(filename_MaxR_OPT_mat,'MaxR_OPT','-v7.3');
         end
 
         save(filename_trainedNet_scaler,'trainedNet_scaler','-v7.3');

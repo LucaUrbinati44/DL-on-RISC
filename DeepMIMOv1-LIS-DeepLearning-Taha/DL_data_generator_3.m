@@ -1,4 +1,4 @@
-function [RandP_all,Validation_Ind]=DL_data_generator_3(Mx,My,Mz,M_bar,D_Lambda,BW,K,K_DL,Pt,Ur_rows,Ut_element,Ur_rows_grid)
+function [RandP_all,Validation_Ind]=DL_data_generator_3(Mx,My,Mz,M_bar,D_Lambda,BW,K,K_DL,Pt,Ur_rows,Ut_element,Ur_rows_grid,Validation_Size)
     
 %% Deep Learning Dataset Generation = Genie-Aided Reflection Beamforming
 
@@ -23,6 +23,7 @@ filename_DL_output_un=strcat(DL_dataset_folder, 'DL_output_un', '_seed', num2str
 filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_output_un_complete_reshaped=strcat(DL_dataset_folder, 'DL_output_un_complete_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
 
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
 M = Mx.*My.*Mz; % Total number of LIS reflecting elements 
@@ -38,7 +39,6 @@ RandP_all = randperm(No_user_pairs).';
 % randperm(n) restituisce un vettore contenente una permutazione casuale di numeri interi da 1 a n, senza elementi ripetuti.
 % Serve per ottenere gli indici mischiati (shuffled)
 
-Validation_Size = 6200; % Validation dataset Size
 %Validation part for the actual achievable rate perf eval
 Validation_Ind = RandP_all(end-Validation_Size+1:end); % Take some user indexes for validation from the end of RandP_all
 
@@ -95,6 +95,7 @@ else
     User_Location = single(zeros(3,No_user_pairs)); % x, y, z location of users
     DL_output = single(zeros(No_user_pairs,codebook_size)); % Queste sono le label per ogni sample, cioè il rate (uno per ogni codebook)
     DL_output_un =  single(zeros(numel(Validation_Ind),codebook_size));
+    DL_output_un_complete =  single(zeros(No_user_pairs,codebook_size));
     Delta_H_bar_max = single(0);
     count=0;
 
@@ -244,6 +245,8 @@ else
                     %disp([' DL_output_un(count,1024):', num2str(DL_output_un(count,1024))]);
                     %keyboard;
                 end
+
+                DL_output_un_complete(u+uu-1+((pp-1)*params.num_user), :) = single( log2( 1+( SNR*( SNR_sqrt_var(uu,:).^2 ) ) ) ); % Luca
             end
 
             %--- Target output preparation
@@ -315,6 +318,11 @@ else
     DL_input_reshaped = reshape(DL_input,size(DL_input,1),1,1,size(DL_input,2)); % 1024, 1, 1, 36200
     DL_output_reshaped = reshape(DL_output.',1,1,size(DL_output,2),size(DL_output,1)); % 1, 1, 1024, 36200
     DL_output_un_reshaped = reshape(DL_output_un.',1,1,size(DL_output_un,2),size(DL_output_un,1));
+    DL_output_un_complete_reshaped = reshape(DL_output_un_complete.',1,1,size(DL_output_un_complete,2),size(DL_output_un_complete,1));
+
+    %keyboard;
+
+    %save(filename_DL_output_un_complete_reshaped, 'DL_output_un_complete_reshaped', '-v7.3');
 
     if save_mat_files == 1
 
@@ -327,6 +335,7 @@ else
         save(filename_DL_input_reshaped, 'DL_input_reshaped', '-v7.3');
         save(filename_DL_output_reshaped, 'DL_output_reshaped', '-v7.3');
         save(filename_DL_output_un_reshaped, 'DL_output_un_reshaped', '-v7.3');
+        save(filename_DL_output_un_complete_reshaped, 'DL_output_un_complete_reshaped', '-v7.3');
         
         save(filename_User_Location,'User_Location','-v7.3');
         %save(filename_params,'params','-v7.3');

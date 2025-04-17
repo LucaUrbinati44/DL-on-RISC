@@ -22,8 +22,8 @@ function []=Fig12_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate
         set(0, 'CurrentFigure', f12)
         hold on; grid on;
         for rr=1:1:numel(My_ar)
-            plot((Training_Size*1e-3),Rate_OPTt(rr,:),[Colour(rr) Marker{rr, 1}],'markersize',6,'linewidth',1.5, 'DisplayName',['Genie-Aided Reflection Beamforming, M = ' num2str(My_ar(rr)) 'x' num2str(Mz_ar(rr))])
-            plot((Training_Size*1e-3),Rate_DLt(rr,:),[Colour(rr) Marker{rr, 2}],'markersize',6,'linewidth',1.5, 'DisplayName', ['DL Reflection Beamforming, M = ' num2str(My_ar(rr)) 'x' num2str(Mz_ar(rr))])
+            plot((Training_Size*1e-3),Rate_OPTt(rr,:),[Colour(rr) Marker{rr, 1}],'markersize',6,'linewidth',1.5, 'DisplayName',['Genie-Aided, M = ' num2str(My_ar(rr)) 'x' num2str(Mz_ar(rr))])
+            plot((Training_Size*1e-3),Rate_DLt(rr,:),[Colour(rr) Marker{rr, 2}],'markersize',6,'linewidth',1.5, 'DisplayName', ['DL, M = ' num2str(My_ar(rr)) 'x' num2str(Mz_ar(rr))])
         end
         %legend('Location','SouthEast')
         lgd = legend('Location','East');
