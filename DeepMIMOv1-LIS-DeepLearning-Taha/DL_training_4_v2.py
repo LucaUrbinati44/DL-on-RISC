@@ -235,7 +235,6 @@ for i, ris in enumerate(My_ar):
         end_folder = '_seed' + str(seed) + '_grid' + str(Ur_rows[1]) + '_M' + str(My) + str(Mz) + '_Mbar' + str(M_bar)
         end_folder_Training_Size_dd = end_folder + '_' + str(Training_Size_dd)
 
-        #Training_Size_dd = Training_Size[j]
         print(f"\nTraining_Size_dd: {Training_Size_dd}")
 
         Rate_DL_py = 0
@@ -244,33 +243,6 @@ for i, ris in enumerate(My_ar):
 
         # %% [markdown]
         # ## Directly import XTrain
-
-        #Import .mat files of datasets splits
-        filename_XTrain = DL_dataset_folder + 'XTrain' + end_folder_Training_Size_dd + '.mat'
-        filename_YTrain = DL_dataset_folder + 'YTrain' + end_folder_Training_Size_dd + '.mat'
-        filename_XValidation = DL_dataset_folder + 'XValidation' + end_folder_Training_Size_dd + '.mat'
-        filename_YValidation = DL_dataset_folder + 'YValidation' + end_folder_Training_Size_dd + '.mat'
-
-        #print(filename_XTrain)
-        #print(filename_YTrain)
-        #print(filename_XValidation)
-        #print(filename_YValidation)
-
-        # Load the data using h5py for MATLAB v7.3 files
-        with h5py.File(filename_XTrain, 'r') as f:
-            X_train = np.array(f['XTrain'][:], dtype=force_datatype)
-        with h5py.File(filename_YTrain, 'r') as f:
-            Y_train = np.array(f['YTrain'][:], dtype=force_datatype)
-        with h5py.File(filename_XValidation, 'r') as f:
-            X_val = np.array(f['XValidation'][:], dtype=force_datatype)
-        with h5py.File(filename_YValidation, 'r') as f:
-            Y_val = np.array(f['YValidation'][:], dtype=force_datatype)
-
-        #print(X_train.shape)
-        #print(Y_train.shape)
-        #print(X_val.shape)
-        #print(Y_val.shape)
-        print(f"\nY_train.dtype: {Y_train.dtype}")
 
         # %% [markdown]
         # ## Load Dataset DL_input_reshaped
@@ -337,6 +309,8 @@ for i, ris in enumerate(My_ar):
         X_val = np.array(DL_input_reshaped[Validation_Ind, :, :, :], dtype=force_datatype).squeeze()
         Y_val = np.array(DL_output_reshaped[Validation_Ind, :, :, :], dtype=force_datatype).squeeze()
 
+        print(f"\nY_train.dtype: {Y_train.dtype}")
+        
         #print(X_train.shape)
         #print(Y_train.shape)
         #print(X_val.shape)
@@ -554,6 +528,4 @@ for i, ris in enumerate(My_ar):
         if load_model_flag == 1:
             print(f"Rate_DL_py_load: {Rate_DL_py_load}")
         print(f"Rate_DL_py: {Rate_DL_py}")
-
-        #Rate_DLt_py[ris, j] = Rate_DL_py #(len(My_ar), len(Training_Size))
 
