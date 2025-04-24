@@ -4,7 +4,7 @@ function [Rate_OPT,Rate_DL,MaxR_OPT,MaxR_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_row
 
 disp(['---> DL Beamforming for Training_Size ', num2str(Training_Size_dd)]);
 
-global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat;
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat_py;
 global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
 filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
@@ -16,6 +16,7 @@ filename_YTrain=strcat(DL_dataset_folder, 'YTrain', '_seed', num2str(seed), '_gr
 filename_XValidation=strcat(DL_dataset_folder, 'XValidation', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 filename_YValidation=strcat(DL_dataset_folder, 'YValidation', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 
+filename_traininfo=strcat(network_folder, 'traininfo', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 filename_trainedNet_tf=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd));
 filename_trainedNet_scaler=strcat(network_folder, 'trainedNet_scaler', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
@@ -32,14 +33,14 @@ filename_MaxR_DL_mat=strcat(network_folder_py, 'MaxR_DL_mat', '_seed', num2str(s
 filename_MaxR_OPT_mat=strcat(network_folder_py, 'MaxR_OPT_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
 
 if load_Rates == 1
-    if load_mat == 1
+    if load_mat_py == 1
         disp('Loading Rate_DL_mat, Rate_OPT_mat...');
         load(filename_Rate_DL_mat);
         load(filename_Rate_OPT_mat);
         load(filename_MaxR_DL_mat);
         load(filename_MaxR_OPT_mat);
         disp('Done');
-    else
+    else %if load_mat_py == 0 || load_mat_py == 2
         disp('Loading Rate_DL, Rate_OPT...');
         load(filename_Rate_DL);
         load(filename_Rate_OPT);
@@ -101,6 +102,8 @@ else
             % Data in this layout has the data format "SSCB" (spatial, spatial, channel, batch).
             % MATLAB normalizza per ciascun canale (asse 3), calcolando la media e deviazione standard sui dati lungo l’asse 4 (batch).
             % Poichè il numero di canali è 1, c'è un unico valore di mean per tutto il tensore di ingresso.
+            % MATLAB calcola una sola volta mean e variance su tutto il training set, prima dell’allenamento.
+
             
             % Inputs:
             
@@ -157,8 +160,8 @@ else
 
             fullyConnectedLayer(size(YTrain,3),'Name','Fully4')
             regressionLayer('Name','outReg')];
-            % Il layer di regressione utilizza i minimi quadrati (mean squared error, MSE)
-            % come funzione di perdita per impostazione predefinita.
+            % A regression layer computes the half-mean-squared-error loss for regression tasks.
+            % https://www.mathworks.com/help//releases/R2021a/deeplearning/ref/regressionlayer.html?searchHighlight=regressionLayer&searchResultIndex=1
 
         %if Training_Size(dd) < miniBatchSize
         %    validationFrequency = Training_Size(dd);
@@ -182,9 +185,9 @@ else
             'Shuffle','every-epoch', ...
             'ValidationData',{XValidation,YValidation}, ...
             'ValidationFrequency',validationFrequency, ...
-            'Plots','none', ... % 'training-progress'
+            'Plots', 'training-progress', ... % 'none'
             'Verbose',1, ...    % 1  
-            'ExecutionEnvironment', 'cpu', ...
+            'ExecutionEnvironment', 'gpu', ...
             'VerboseFrequency',VerboseFrequency);
             % ResetInputNormalization — Opzione per ripristinare la normalizzazione del livello di input
             %   1 (true) (predefinito) | 0 (false)
@@ -192,8 +195,8 @@ else
         % ------------- DL Model Training and Prediction -----------------%
         tic
         disp('Start DL training...')
-        %[trainedNet,traininfo] = trainNetwork(XTrain,YTrain,layers,options);    
-        [trainedNet,~] = trainNetwork(XTrain,YTrain,layers,options);    
+        [trainedNet,traininfo] = trainNetwork(XTrain,YTrain,layers,options);    
+        %[trainedNet,~] = trainNetwork(XTrain,YTrain,layers,options);    
         disp('Done')
         toc;
         elapsedTime = toc; % Misura il tempo trascorso in secondi
@@ -203,7 +206,7 @@ else
         %sfile_DeepMIMO=strcat(filename_trainedNet, '_Training_Size_', num2str(Training_Size(dd)), '.mat');
         %save(sfile_DeepMIMO,'trainedNet','-v7.3');
         
-        %keyboard;
+        keyboard;
 
     else
 
@@ -213,14 +216,14 @@ else
     end
 
 
-    if load_mat == 1
+    if load_mat_py == 1
         disp('Import YPredicted from Python')
         YPredicted = h5read(filename_YPredicted_mat, '/YPredicted_mat');
         YPredicted = YPredicted'; % Transpose perchè per la disposizione dei dati in memoria:
         % HDF5 (e quindi h5py) usa la convenzione row-major (C-style)
         % mentre MATLAB usa column-major (Fortran-style)
         disp('Done')
-    else
+    elseif load_mat_py == 0
         tic
         disp('Start DL prediction...')
         YPredicted = predict(trainedNet,XValidation); % Inferenza sul set di validazione usato come test: errore!
@@ -275,13 +278,13 @@ else
         end
 
         % debug
-        if b==1 || b==(size(Indmax_DL,1) - 1)
-            disp(['size(Indmax_DL(b,:)):', num2str(size(Indmax_DL(b,:)))]); % 1, 1
-            disp(['MaxR_DL(b):', num2str(MaxR_DL(b))]);
-            disp(['MaxR_OPT(b):', num2str(MaxR_OPT(b))]);
-            disp(['MaxR_OPT_debug(b):', num2str(MaxR_OPT_debug(b))]); % sempre = 1
-            disp(['MaxR_DL_luca(b):', num2str(MaxR_DL_luca(b))]); % sempre <= 1
-        end
+        %if b==1 || b==(size(Indmax_DL,1) - 1)
+        %    disp(['size(Indmax_DL(b,:)):', num2str(size(Indmax_DL(b,:)))]); % 1, 1
+        %    disp(['MaxR_DL(b):', num2str(MaxR_DL(b))]);
+        %    disp(['MaxR_OPT(b):', num2str(MaxR_OPT(b))]);
+        %    disp(['MaxR_OPT_debug(b):', num2str(MaxR_OPT_debug(b))]); % sempre = 1
+        %    disp(['MaxR_DL_luca(b):', num2str(MaxR_DL_luca(b))]); % sempre <= 1
+        %end
     end
     % Questa mean fa la media dei risultati di ogni sample del validation set.
     % (Equivalente a trovare la validation accuracy che poi viene plottata nei problemi di classificazione)
@@ -326,9 +329,11 @@ else
     %save(filename_MaxR_DL,'MaxR_DL','-v7.3');
     %save(filename_MaxR_OPT,'MaxR_OPT','-v7.3');
 
+    save(filename_traininfo,'traininfo','-v7.3');
+
 
     %%%%% TEMP
-    if load_mat == 1
+    if load_mat_py == 1
         save(filename_Rate_DL_mat,'Rate_DL','-v7.3');
         save(filename_Rate_OPT_mat,'Rate_OPT','-v7.3');
     end
@@ -340,7 +345,7 @@ else
         save(filename_MaxR_DL,'MaxR_DL','-v7.3');
         save(filename_MaxR_OPT,'MaxR_OPT','-v7.3');
 
-        if load_mat == 1
+        if load_mat_py == 1
             save(filename_Rate_DL_mat,'Rate_DL','-v7.3');
             save(filename_Rate_OPT_mat,'Rate_OPT','-v7.3');
             save(filename_MaxR_DL_mat,'MaxR_DL','-v7.3');

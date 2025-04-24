@@ -4,7 +4,7 @@ function []=Fig7_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams)
 % This is the function called by the main script for ploting Figure 10 
 % in the original article mentioned below.
 
-global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat;
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat_py;
 global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
 Training_Size=30000;
@@ -63,14 +63,14 @@ for i=1:1:2
             toc
             save(filename_YPredictedFig7,'YPredictedFig7','-v7.3'); 
         else
-            if load_mat == 1
+            if load_mat_py == 1
                 disp('Import YPredictedFig7 from Python')
                 YPredictedFig7 = h5read(filename_YPredictedFig7_mat, '/YPredictedFig7_mat');
                 YPredictedFig7 = YPredictedFig7'; % Transpose perchè per la disposizione dei dati in memoria:
                 % HDF5 (e quindi h5py) usa la convenzione row-major (C-style)
                 % mentre MATLAB usa column-major (Fortran-style)
                 disp('Done')
-            else
+            elseif load_mat_py == 0
                 load(filename_YPredictedFig7);
             end
         end
@@ -216,9 +216,9 @@ for i=1:1:2
         colorbar; % Aggiunge una barra dei colori
         caxis([min_colorbar, max_colorbar]); % Imposta i limiti della scala dei colori
 
-        if load_mat == 1
+        if load_mat_py == 1
             saveas(f7, filename_fig7_mat);
-        else
+        elseif load_mat_py == 0
             saveas(f7, filename_fig7);
         end
         

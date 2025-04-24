@@ -4,7 +4,7 @@ function []=FigD_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_DLt
 % This is the function called by the main script for ploting Figure 10 
 % in the original article mentioned below.
 
-global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat;
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat_py;
 global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
 filename_figD=strcat(figure_folder, 'FigD', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
