@@ -4,7 +4,7 @@ close all
 
 base_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/';
 output_folder = [base_folder, 'Output Matlab/'];
-output_folder_py = [base_folder, 'Output Python/'];
+output_folder_py = [base_folder, 'Output_Python/'];
 
 global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
@@ -19,10 +19,11 @@ DL_dataset_folder = [output_folder, 'DL Dataset/'];
 network_folder = [output_folder, 'Neural Network/'];
 figure_folder = [output_folder, 'Figures/'];
 
-network_folder_py = [output_folder_py, 'Neural Network/'];
+network_folder_py = [output_folder_py, 'Neural_Network/'];
 figure_folder_py = [output_folder_py, 'Figures/'];
+network_folder_out_RateDLpy = [network_folder_py, 'RateDLpy/'];
 
-folders = {DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py};
+folders = {DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py network_folder_out_RateDLpy};
 for i = 1:length(folders)
     if ~exist(folders{i}, 'dir') % Controlla se la cartella esiste
         mkdir(folders{i}); % Crea la cartella se non esiste
@@ -44,7 +45,7 @@ cd(base_folder);
 %%
 
 % Luca variables to control the flow
-global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat;
+global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat_py;
 
 load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
 load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
@@ -53,12 +54,12 @@ load_Rates       = 1; % load output from DL_training_4.m
 training         = 0; % 1 for training the network, 0 from loaoding it from file
 save_mat_files   = 0;
 
-load_mat         = 0; % load mat files generated in Python
+load_mat_py      = 2; % 2: load py generated files, 1: load mat-python-mat files, 0: load mat generated files
 
-plot_fig12 = 0;
+plot_fig12 = 1;
 plot_fig7 = 0;
 plot_figC = 0;
-plot_figD = 1;
+plot_figD = 0;
 
 %% System Model parameters
 disp('---> System Model Parameters');
@@ -73,7 +74,7 @@ params.active_BS=3; % active basestation(/s) in the chosen scenario
 
 kbeams=1;   %select the top kbeams, get their feedback and find the max actual achievable rate 
 Pt=5; % transmit power (dB)
-L =1; % number of channel paths
+L=1; % number of channel paths
 
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
 My_ar=[32 64]; % number of LIS reflecting elements across the y axis (32x32 blue curve, 64x64 red curve)
@@ -98,13 +99,15 @@ Ur_rows = [1000 1200]; % original
 
 Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
 %Training_Size=[1e4*3]; % Semplificazione Luca
-%Training_Size=[26000 30000];
+%Training_Size=[10000];
 
 Validation_Size = 6200; % Validation dataset Size
 
 % Preallocation of output variables (y-axis of Fig 12 for both blue and red curves)
-Rate_DLt=zeros(numel(My_ar),numel(Training_Size));  % numel = number of elements
 Rate_OPTt=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_mat=zeros(numel(My_ar),numel(Training_Size));  % numel = number of elements
+Rate_DLt_py_20=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_40=zeros(numel(My_ar),numel(Training_Size));
 
 MaxR_DLt = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
 MaxR_OPTt = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
@@ -130,10 +133,27 @@ for rr = 1:1:numel(My_ar)
         [Rate_OPT,Rate_DL,MaxR_OPT,MaxR_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
         %[Rate_OPT,Rate_DL]=DL_predict_5(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
         Rate_OPTt(rr,dd)=Rate_OPT;
-        Rate_DLt(rr,dd)=Rate_DL;
+        Rate_DLt_mat(rr,dd)=Rate_DL;
 
         MaxR_DLt(rr,dd,:) = MaxR_DL;
         MaxR_OPTt(rr,dd,:) = MaxR_OPT;
+
+        % Load Rate_DL_py from Python
+        Training_Size_dd = Training_Size(dd);
+        end_folder = strcat('_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My), ' ', ''), strrep(num2str(Mz), ' ', ''), '_Mbar', num2str(M_bar));
+        
+        end_folder_Training_Size_dd_max_epochs_20 = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(20));
+        filename_Rate_DL_py_20 = strcat(network_folder_out_RateDLpy, 'Rate_DL_py', end_folder_Training_Size_dd_max_epochs_20, '.mat');
+        %load(filename_Rate_DL_py);
+        %info = h5info(filename_Rate_DL_py);
+        Rate_DL_py_20 = h5read(filename_Rate_DL_py_20, '/Rate_DL_py');
+        Rate_DLt_py_20(rr,dd)= Rate_DL_py_20;
+
+        end_folder_Training_Size_dd_max_epochs_40 = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(40));
+        filename_Rate_DL_py_40 = strcat(network_folder_out_RateDLpy, 'Rate_DL_py', end_folder_Training_Size_dd_max_epochs_40, '.mat');
+        Rate_DL_py_40 = h5read(filename_Rate_DL_py_40, '/Rate_DL_py');
+        %Rate_DL_py_40 = 5;
+        Rate_DLt_py_40(rr,dd)= Rate_DL_py_40;
     end
 
     %keyboard;
@@ -142,7 +162,7 @@ end
 
 %% Fig 12
 if plot_fig12 == 1
-    Fig12_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate_DLt);
+    Fig12_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate_DLt_mat,Rate_DLt_py_20,Rate_DLt_py_40);
 end
 
 %% Fig 7 (Luca)
