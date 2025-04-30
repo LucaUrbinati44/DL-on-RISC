@@ -40,10 +40,11 @@ import importlib
 import time
 from datetime import datetime
 import subprocess
-import psutil 
+import psutil
 
 # Imposta float32 come tipo predefinito in Keras
 tf.keras.backend.set_floatx('float32')
+
 
 # Tipo da usare esplicitamente (es. in numpy)
 force_datatype = np.float32
@@ -58,7 +59,6 @@ print(f"\nUsing GPU: {tf.config.list_physical_devices('GPU')}")
 print(tf.config.list_physical_devices('GPU'))
 
 tf.config.optimizer.set_jit(False)  # XLA off
-
 
 # %%
 log_dir = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/tensorboard_logs/"
@@ -95,13 +95,13 @@ except:
 
 # %% Define functions
 
-def model_predict(xv, model_py, YValidation_un2):
+def model_predict(xval, model_py, YValidation_un2):
 
     print(f"\nStart DL prediction...")
 
-    #print(xv.shape)  # (6200, 1024)
+    #print(xval.shape)  # (6200, 1024)
 
-    YPredicted = model_py.predict(xv, verbose=1, batch_size=128)
+    YPredicted = model_py.predict(xval, verbose=1, batch_size=128)
 
     #print(YPredicted.shape)
 
@@ -208,16 +208,16 @@ Mx = 1
 M_bar=8
 Ur_rows = [1000, 1200]
 #              0    1      2      3      4      5      6
-#Training_Size=[2, 10000, 14000, 18000, 22000, 26000, 30000]
-#Training_Size=[10000, 14000, 18000, 22000, 26000, 30000]
-Training_Size=[2]
+Training_Size=[2, 10000, 14000, 18000, 22000, 26000, 30000]
+#Training_Size=[14000, 18000, 22000, 26000, 30000]
+#Training_Size=[2]
 
 
 load_model_flag = 1
 max_epochs_load = 20
 
-train_model_flag = 1
-max_epochs = 20
+train_model_flag = 0
+max_epochs = 0
 
 # %%
 
@@ -237,16 +237,8 @@ for i, ris in enumerate(My_ar):
 
         print(f"\nTraining_Size_dd: {Training_Size_dd}")
 
-        Rate_DL_py = 0
+        ## Load Dataset DL_input_reshaped
 
-        #os._exit(0)
-
-        # %% [markdown]
-        # ## Directly import XTrain
-
-        # %% [markdown]
-        # ## Load Dataset DL_input_reshaped
-        
         filename_DL_input_reshaped = DL_dataset_folder + 'DL_input_reshaped' + end_folder + '.mat'
         filename_DL_output_reshaped = DL_dataset_folder + 'DL_output_reshaped' + end_folder + '.mat'
         filename_RandP_all = DL_dataset_folder + 'RandP_all' + end_folder + '.mat'
@@ -259,17 +251,19 @@ for i, ris in enumerate(My_ar):
         with h5py.File(filename_RandP_all, 'r') as f:
             RandP_all = np.array(f['RandP_all'][:], dtype=force_datatype)
 
-        #print(DL_input_reshaped.shape)
-        #print(DL_output_reshaped.shape)
-        #print(RandP_all.shape)
+        print(DL_input_reshaped.shape)
+        print(DL_output_reshaped.shape)
+        print(RandP_all.shape)
 
         #print(np.min(DL_input_reshaped))
         #print(np.max(DL_input_reshaped))
         #print(np.min(DL_output_reshaped))
         #print(np.max(DL_output_reshaped))
 
-        # %% [markdown]
-        # ## Load Rates
+
+
+        # %%
+        ## Load Rates
 
         # Costruzione del nome file
         filename_DL_output_un_reshaped = DL_dataset_folder + 'DL_output_un_reshaped' + end_folder + '.mat'
@@ -284,8 +278,10 @@ for i, ris in enumerate(My_ar):
         YValidation_un2 = np.transpose(YValidation_un, (3, 2, 1, 0))  # conversione a (b, z, y, x)
         #print(YValidation_un2.shape)
 
-        # %% [markdown]
-        # ## Dataset split originale
+
+
+        # %%
+        ## Dataset split originale
 
         # Flatten the input and output arrays if necessary
         #X = DL_input_reshaped.reshape(DL_input_reshaped.shape[0], -1).astype(np.float32)
@@ -310,25 +306,22 @@ for i, ris in enumerate(My_ar):
         Y_val = np.array(DL_output_reshaped[Validation_Ind, :, :, :], dtype=force_datatype).squeeze()
 
         print(f"\nY_train.dtype: {Y_train.dtype}")
-        
         #print(X_train.shape)
         #print(Y_train.shape)
         #print(X_val.shape)
         #print(Y_val.shape)
 
-        # %% [markdown]
-        # ## Recreate the same network in Python
 
-        # ### Load normalization parameters from Matlab trained model
+        ## Recreate the same network in Python
 
-        filename_trainedNet_scaler = network_folder_in + 'trainedNet_scaler' + end_folder_Training_Size_dd + '.mat'
+        ### Load normalization parameters from Matlab trained model
+        #filename_trainedNet_scaler = network_folder_in + 'trainedNet_scaler' + end_folder_Training_Size_dd + '.mat'
+        #with h5py.File(filename_trainedNet_scaler, 'r') as f:
+        #    trainedNet_scaler = f['trainedNet_scaler'][:][0][0]
 
-        with h5py.File(filename_trainedNet_scaler, 'r') as f:
-            trainedNet_scaler = f['trainedNet_scaler'][:][0][0]
-
-        #print(trainedNet_scaler.shape)
-        print(f"\ntrainedNet_scaler: {trainedNet_scaler}") # should be -5.1904644e-06 for Training_Size_dd=30000
-
+        ### Compute normalization parameters from Training Dataset
+        trainedNet_scaler = np.mean(np.mean(X_train, axis=1))    
+        print(f"\ntrainedNet_scaler: {trainedNet_scaler}")
 
         # This layer will shift and scale inputs into a distribution centered around 0 with standard deviation 1. 
         # It accomplishes this by precomputing the mean and variance of the data, and calling (input - mean) / sqrt(var) at runtime.
@@ -343,13 +336,9 @@ for i, ris in enumerate(My_ar):
         #print(variance_array.shape)
         #print(variance_array[0])
 
-        # %% [markdown]
-        # ### Normalize data
-
-        # %%
+        ### Normalize data
         # Normalizzazione manuale se già hai mean_array e variance_array da MATLAB
         X_train_normalized = np.array((X_train - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
-
         X_val_normalized = np.array((X_val - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
 
         #print(mean_array)
@@ -357,20 +346,18 @@ for i, ris in enumerate(My_ar):
 
         normalized = 1
 
-        # %%
         #print(X_train[0][0:5])
         #print(mean_array[0:5])
         #print(X_train_normalized[0][0:5])
 
-        # %% [markdown]
-        # ## DL Model Definition
+        ## DL Model Definition
 
         if normalized == 1:
-            xt = X_train_normalized
-            xv = X_val_normalized
+            xtrain = X_train_normalized
+            xval = X_val_normalized
         else:
-            xt = X_train
-            xv = X_val
+            xtrain = X_train
+            xval = X_val
 
         # Define the neural network architecture
         model_py = Sequential([
@@ -402,8 +389,10 @@ for i, ris in enumerate(My_ar):
 
         #print(model_py.loss)
 
-        # %% [markdown]
-        # ## DL Model Training
+
+
+        # %%
+        ## DL Model Training
 
         # ------------------ Training Options ------------------ #
         mini_batch_size = 500
@@ -421,11 +410,11 @@ for i, ris in enumerate(My_ar):
 
         # For the output filenames
         end_folder_Training_Size_dd_max_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs_new)
-        filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py' + end_folder_Training_Size_dd_max_epochs + '.mat'
-        model_type = 'model_py' + end_folder_Training_Size_dd_max_epochs
-        
-        tensorboard_logs = log_dir + model_type
-        tensorboard_callback = TensorBoard(log_dir=tensorboard_logs, histogram_freq=1)
+        filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py_valOld' + end_folder_Training_Size_dd_max_epochs + '.mat'
+        model_type = 'model_py_valOld' + end_folder_Training_Size_dd_max_epochs
+
+        #tensorboard_logs = log_dir + model_type
+        #tensorboard_callback = TensorBoard(log_dir=tensorboard_logs, histogram_freq=1)
 
         #if Training_Size_dd < mini_batch_size:
         #    validationFrequency = Training_Size_dd
@@ -455,25 +444,25 @@ for i, ris in enumerate(My_ar):
 
         if load_model_flag == 1:
             end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
-            model_type_load = 'model_py' + end_folder_Training_Size_dd_max_epochs_load
+            model_type_load = 'model_py_valOld' + end_folder_Training_Size_dd_max_epochs_load
 
             model_py = load_model(saved_models + model_type_load + '.keras', custom_objects={'mse_custom': mse_custom})
             print(f"\nModel {saved_models + model_type_load + '.keras'} loaded")
 
-            Rate_DL_py_load = model_predict(xv, model_py, YValidation_un2)
+            Rate_DL_py_load = model_predict(xval, model_py, YValidation_un2)
             print(f"Rate_DL_py: {Rate_DL_py_load}")
 
             learning_rate = model_py.optimizer.learning_rate.numpy()
             print(f"Learning rate loaded model: {learning_rate}")
-        
+
 
         if train_model_flag == 1:
             print("\nStart DL training...")
             start_time = time.time()
 
             history = model_py.fit(
-                xt, Y_train,
-                validation_data=(xv, Y_val),
+                xtrain, Y_train,
+                validation_data=(xval, Y_val),
                 #train_dataset, 
                 #validation_data=val_dataset
                 batch_size=mini_batch_size,
@@ -487,7 +476,6 @@ for i, ris in enumerate(My_ar):
             elapsed_time = time.time() - start_time
             print(f"Training completed in {elapsed_time / 60:.2f} minutes.")
 
-            # %%
             # Save the trained model
             #The saved .keras file contains:
             # - The model's configuration (architecture)
@@ -502,15 +490,15 @@ for i, ris in enumerate(My_ar):
             #np.save(os.path.join(output_folder, 'Y_predicted.npy'), Y_predicted)
             #print("History and Y_predicted saved successfully.")
 
-
-        # %% [markdown]
-        # ## DL Model Prediction
+        # %%
+        ## DL Model Prediction
         # # SOSTITUIRE X_val CON X_test!!!
-        Rate_DL_py = model_predict(xv, model_py, YValidation_un2)
+        Rate_DL_py = model_predict(xval, model_py, YValidation_un2)
 
         # Scrittura in formato HDF5 (compatibile MATLAB v7.3)
         with h5py.File(filename_Rate_DL_py, 'w') as f:
             f.create_dataset('Rate_DL_py', data=Rate_DL_py)
+            print(f"\Rate_DL_py saved in {filename_Rate_DL_py}")
 
         filename_Rate_OPT = network_folder_in + 'Rate_OPT' + end_folder_Training_Size_dd + '.mat'
 
@@ -529,3 +517,5 @@ for i, ris in enumerate(My_ar):
             print(f"Rate_DL_py_load: {Rate_DL_py_load}")
         print(f"Rate_DL_py: {Rate_DL_py}")
 
+        # Free memory
+        tf.keras.backend.clear_session()

@@ -94,45 +94,82 @@ except:
 
 # %% Define functions
 
-def model_predict(xtest, model_py, YValidation_un2):
+def model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test, save_files=1):
 
-    print(f"\nStart DL prediction...")
+    if test == 1:
+        t = 'test'
+        x = xtest
+        y = Y_test
+        YValidation_un = YValidation_un_test
+    else:
+        t = 'val'
+        x = xval
+        y = Y_val
+        YValidation_un = YValidation_un_val
+        
+    filename_MaxR_OPT_py = network_folder_out_RateDLpy + 'MaxR_OPT_py_'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    filename_MaxR_DL_py = network_folder_out_RateDLpy + 'MaxR_DL_py_'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    filename_Rate_OPT_py = network_folder_out_RateDLpy + 'Rate_OPT_py_'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py_'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+        
+    print(f"\nStart DL prediction {t} set...")
 
-    #print(xtest.shape)  # (6200, 1024)
+    Indmax_OPT_py = np.argmax(y, axis=1)
+    print(f'Indmax_OPT_py.shape: {Indmax_OPT_py.shape}')
+    print(f'np.min(Indmax_OPT_py): {np.min(Indmax_OPT_py)}')
+    print(f'np.max(Indmax_OPT_py): {np.max(Indmax_OPT_py)}')
+    print(Indmax_OPT_py[0:5])
 
-    YPredicted = model_py.predict(xtest, verbose=1, batch_size=128)
-
-    #print(YPredicted.shape)
+    YPredicted = model_py.predict(x, verbose=1, batch_size=128)
+    print(f'x.shape: {x.shape}')  # (3100, 1024)
+    print(f'YPredicted.shape: {YPredicted.shape}')
 
     Indmax_DL_py = np.argmax(YPredicted, axis=1)
-    #print(Indmax_DL_py.shape)
-    print(np.min(Indmax_DL_py))
-    print(np.max(Indmax_DL_py))
-
+    print(f'Indmax_DL_py.shape: {Indmax_DL_py.shape}')
     # Questi devono essere numeri interi
-
-    Indmax_DL = Indmax_DL_py
+    print(f'np.min(Indmax_DL_py): {np.min(Indmax_DL_py)}')
+    print(f'np.max(Indmax_DL_py): {np.max(Indmax_DL_py)}')
+    print(Indmax_DL_py[0:5])
 
     #validation_accuracy = 0
-    MaxR_DL = np.zeros((Indmax_DL.shape[0],), dtype=np.float32)
-    #MaxR_OPT = np.zeros((len(Indmax_OPT),), dtype=np.float32)
+    MaxR_OPT_py = np.zeros((Indmax_OPT_py.shape[0],), dtype=np.float32)
+    MaxR_DL_py = np.zeros((Indmax_DL_py.shape[0],), dtype=np.float32)
 
     # Ciclo di confronto
-    for b in range(Indmax_DL.shape[0]):
-        #MaxR_DL[b] = YValidation_un[b, Indmax_DL[b], 0, 0]
-        MaxR_DL[b] = YValidation_un2[0, 0, Indmax_DL[b], b]
-        #MaxR_OPT[b] = YValidation_un[b, Indmax_OPT[b], 0, 0]
+    for b in range(Indmax_DL_py.shape[0]):
+        MaxR_OPT_py[b] = YValidation_un[Indmax_OPT_py[b], b] # YValidation_un.shape: (1024, 3100)
+        MaxR_DL_py[b]  = YValidation_un[Indmax_DL_py[b],  b]
 
         #if MaxR_DL[b] == MaxR_OPT[b]:
         #    validation_accuracy += 1
 
-    Rate_DL_py = MaxR_DL.mean()
-    #Rate_OPT = MaxR_OPT.mean()
-    #validation_accuracy = validation_accuracy / Indmax_DL.shape[0]
+    Rate_OPT_py = MaxR_OPT_py.mean()
+    Rate_DL_py = MaxR_DL_py.mean()
+    print(f'Rate_OPT: {Rate_OPT_py}')
+    print(f'Rate_DL_py: {Rate_DL_py}')
+    #validation_accuracy = validation_accuracy / Indmax_DL_py.shape[0]
 
     #print(f"size(MaxR_DL): {MaxR_DL.shape}")
 
-    return Rate_DL_py
+    if save_files == 1:
+        # Scrittura in formato HDF5 (compatibile MATLAB v7.3)
+        with h5py.File(filename_MaxR_OPT_py, 'w') as f:
+            f.create_dataset('MaxR_OPT_py', data=MaxR_OPT_py)
+            print(f"\MaxR_OPT_py saved in {filename_MaxR_OPT_py}")
+        
+        with h5py.File(filename_MaxR_DL_py, 'w') as f:
+            f.create_dataset('MaxR_DL_py', data=MaxR_DL_py)
+            print(f"\MaxR_DL_py saved in {filename_MaxR_DL_py}")
+
+        with h5py.File(filename_Rate_DL_py, 'w') as f:
+            f.create_dataset('Rate_DL_py', data=Rate_DL_py)
+            print(f"\Rate_DL_py saved in {filename_Rate_DL_py}")
+
+        with h5py.File(filename_Rate_OPT_py, 'w') as f:
+            f.create_dataset('Rate_OPT_py', data=Rate_OPT_py)
+            print(f"\Rate_OPT_py saved in {filename_Rate_OPT_py}")
+        
+    return Rate_OPT_py, Rate_DL_py
 
 def mse_keras(y_true, y_pred): # Not working
     squared_error = tf.square(y_true - y_pred)  # shape: (batch_size, output_dim)=6200,1024
@@ -196,28 +233,52 @@ for folder in folders:
     #    print(f"La cartella esiste già: {folder}")
 
 # %%
-My_ar = [32, 64]
-Mz_ar = [32, 64]
+#My_ar = [32, 64]
+#Mz_ar = [32, 64]
 #My_ar = [32]
 #Mz_ar = [32]
-My_ar = [64]
-Mz_ar = [64]
+#My_ar = [64]
+#Mz_ar = [64]
 Mx = 1
 
 M_bar=8
 Ur_rows = [1000, 1200]
 #              0    1      2      3      4      5      6
-Training_Size=[2, 10000, 14000, 18000, 22000, 26000, 30000]
+#Training_Size=[2, 10000, 14000, 18000, 22000, 26000, 30000]
 #Training_Size=[2, 10000, 14000]
-#Training_Size=[18000, 22000, 26000]
-Training_Size=[30000]
+#Training_Size=[18000, 22000, 26000, 30000]
+#Training_Size=[30000]
 
 
-load_model_flag = 1
-max_epochs_load = 60
+#load_model_flag = 1
+#max_epochs_load = 60
 
-train_model_flag = 1
+#train_model_flag = 1
 max_epochs = 20
+
+import argparse
+
+# python DL_training_4_v2_test_temp.py --My --Mz --max_epochs_load --Training_Size
+
+# Aggiungi il parser degli argomenti
+parser = argparse.ArgumentParser(description='Script per il training e il testing del modello DL.')
+parser.add_argument('--My', type=int, default=32, help='Numero di antenne RIS lungo y (32, 64).')
+parser.add_argument('--Mz', type=int, default=32, help='Numero di antenne RIS lungo z (32, 64).')
+parser.add_argument('--load_model_flag', type=int, default=1, help='Flag per caricare un modello pre-addestrato (1) o no (0).')
+parser.add_argument('--max_epochs_load', type=int, default=20, help='Numero di epoche del modello da carica (20, 40, 60, 80).')
+parser.add_argument('--train_model_flag', type=int, default=0, help='Flag per addestrare il modello (1) o no (0).')
+parser.add_argument('--Training_Size', type=int, default=10000, help='Training_Size (10000, 14000, 18000, 22000, 26000, 30000).')
+
+# Leggi gli argomenti dalla riga di comando
+args = parser.parse_args()
+
+# Assegna i valori degli argomenti alle variabili
+My_ar = [args.My]
+Mz_ar = [args.Mz]
+load_model_flag = args.load_model_flag
+max_epochs_load = args.max_epochs_load
+train_model_flag = args.train_model_flag
+Training_Size = [args.Training_Size]
 
 # %%
 
@@ -266,17 +327,17 @@ for i, ris in enumerate(My_ar):
         ## Load Rates
 
         # Costruzione del nome file
-        filename_DL_output_un_reshaped = DL_dataset_folder + 'DL_output_un_reshaped' + end_folder + '.mat'
+        #filename_DL_output_un_reshaped = DL_dataset_folder + 'DL_output_un_reshaped' + end_folder + '.mat'
+        filename_DL_output_un_complete_reshaped= DL_dataset_folder + 'DL_output_un_complete_reshaped' + end_folder + '.mat'
 
         # Load the data using h5py for MATLAB v7.3 files
-        with h5py.File(filename_DL_output_un_reshaped, 'r') as f:
+        with h5py.File(filename_DL_output_un_complete_reshaped, 'r') as f:
             # Accesso alla variabile (nome del dataset = nome della variabile in MATLAB)
-            YValidation_un = np.array(f['DL_output_un_reshaped'], dtype=force_datatype)
+            YValidation_un = np.array(f['DL_output_un_complete_reshaped'], dtype=force_datatype)
 
-        #print(YValidation_un.shape)
-
-        YValidation_un2 = np.transpose(YValidation_un, (3, 2, 1, 0))  # conversione a (b, z, y, x)
-        #print(YValidation_un2.shape)
+        print(f'YValidation_un.shape: {YValidation_un.shape}') #YValidation_un.shape: (36200, 1024, 1, 1)
+        YValidation_un = np.transpose(YValidation_un, (3, 2, 1, 0))  # conversione a (b, z, y, x)
+        print(f'YValidation_un.shape: {YValidation_un.shape}') #YValidation_un.shape: (1, 1, 1024, 36200)
 
 
 
@@ -385,7 +446,11 @@ for i, ris in enumerate(My_ar):
         X_val   = np.array(DL_input_reshaped[Validation_Ind, :, :, :], dtype=force_datatype).squeeze()
         Y_val   = np.array(DL_output_reshaped[Validation_Ind, :, :, :], dtype=force_datatype).squeeze()
         X_test  = np.array(DL_input_reshaped[Test_Ind, :, :, :], dtype=force_datatype).squeeze()
-        Y_test  = np.array(DL_output_reshaped[Test_Ind, :, :, :], dtype=force_datatype).squeeze()
+        Y_test  = np.array(DL_output_reshaped[Test_Ind, :, :, :], dtype=force_datatype).squeeze()       
+        
+        # YValidation_un.shape: (1, 1, 1024, 36200)
+        YValidation_un_val  = np.array(YValidation_un[:, :, :, Validation_Ind], dtype=force_datatype).squeeze()
+        YValidation_un_test = np.array(YValidation_un[:, :, :, Test_Ind], dtype=force_datatype).squeeze()
 
         print(f"\nY_train.dtype: {Y_train.dtype}")
 
@@ -395,6 +460,8 @@ for i, ris in enumerate(My_ar):
         print(Y_val.shape)
         print(X_test.shape)
         print(Y_test.shape)
+        print(YValidation_un_val.shape)  # (1024, 3100)
+        print(YValidation_un_test.shape) # (1024, 3100)
 
         # %%
         ## Recreate the same network in Python
@@ -447,43 +514,8 @@ for i, ris in enumerate(My_ar):
             xval = X_val
             xtest = X_test
 
-        # Define the neural network architecture
-        model_py = Sequential([
-            Input(shape=(X_train.shape[1],), name='input'),
-
-            Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully1_'),
-            ReLU(name='relu1'),
-            Dropout(0.5, name='dropout1'),
-
-            Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully2_'),
-            ReLU(name='relu2'),
-            Dropout(0.5, name='dropout2'),
-
-            Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully3_'),
-            ReLU(name='relu3'),
-            Dropout(0.5, name='dropout3'),
-
-            Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully4_'),
-        ])
-
-        # Compile the model with SGD optimizer and mean squared error loss
-        optimizer = SGD(learning_rate=1e-1, momentum=0.9)
-
-        #model_py.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mse'])
-        #model_py.compile(optimizer=optimizer, loss=mse_keras, metrics=['mse'])
-        #model_py.compile(optimizer=optimizer, loss=mse_matlab, metrics=['mse'])
-        model_py.compile(optimizer=optimizer, loss=mse_custom, metrics=['mse'])
-        model_py.summary()
-
-        #print(model_py.loss)
-
-
-
         # %%
-        ## DL Model Training
-
-        # ------------------ Training Options ------------------ #
-        mini_batch_size = 500
+        ## DL Model Training and Prediction
 
         if load_model_flag == 1:
             max_epochs_new = max_epochs_load + max_epochs
@@ -496,57 +528,93 @@ for i, ris in enumerate(My_ar):
             patience = 2
             min_delta = 0.1
 
-        # For the output filenames
-        end_folder_Training_Size_dd_max_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs_new)
-        filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py_test' + end_folder_Training_Size_dd_max_epochs + '.mat'
-        model_type = 'model_py_test' + end_folder_Training_Size_dd_max_epochs
-        #model_type_tb = 'model_py_test' + end_folder_Training_Size_dd # TODO ACTIVATE
-
-        tensorboard_logs = log_dir + model_type
-        #tensorboard_logs = log_dir + model_type_tb # TODO ACTIVATE
-        tensorboard_callback = TensorBoard(log_dir=tensorboard_logs, histogram_freq=1)
-
-        #if Training_Size_dd < mini_batch_size:
-        #    validationFrequency = Training_Size_dd
-        #else:
-        #    validationFrequency = int(np.floor(Training_Size_dd/mini_batch_size))
-        validationFrequency = 1
-
-        # ------------------ Learning Rate Scheduler ------------------ #
-        #def lr_schedule(epoch, lr):
-        #    if epoch > 0 and epoch % 5 == 0: # Prima era modulo 3
-        #        return lr * 0.5  # Drop learning rate by factor of 0.5 every x epochs
-        #    return lr
-
-        #lr_scheduler = LearningRateScheduler(lr_schedule)
-
-        lr_scheduler = ReduceLROnPlateau(
-            monitor='val_loss',
-            factor=factor,         # Riduce di metà
-            patience=patience,  # Numero di epoche senza miglioramento ≥ y
-            min_delta=min_delta,      # Miglioramento minimo da considerare significativo
-            verbose=1
-        )
-                
-        # ------------------ DL Model Training ------------------ #
-        #train_dataset = tf.data.Dataset.from_tensor_slices((x, Y_train)).batch(mini_batch_size).prefetch(tf.data.AUTOTUNE)
-        #val_dataset = tf.data.Dataset.from_tensor_slices((X_val, Y_val)).batch(mini_batch_size).prefetch(tf.data.AUTOTUNE)
-
+        # ------------------ DL Model Prediction ------------------ #
         if load_model_flag == 1:
+
             end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
             model_type_load = 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
 
             model_py = load_model(saved_models + model_type_load + '.keras', custom_objects={'mse_custom': mse_custom})
+            model_py.summary()
             print(f"\nModel {saved_models + model_type_load + '.keras'} loaded")
 
-            Rate_DL_py_load = model_predict(xtest, model_py, YValidation_un2)
-            print(f"Rate_DL_py: {Rate_DL_py_load}")
-
+            test = 0
+            Rate_OPT_py_load_val, Rate_DL_py_load_val   = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=1)
+            test = 1
+            Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=1)
+            
             learning_rate = model_py.optimizer.learning_rate.numpy()
             print(f"Learning rate loaded model: {learning_rate}")
 
-
+        # ------------------ DL Model Training ------------------ #
         if train_model_flag == 1:
+
+            # For the output filenames
+            end_folder_Training_Size_dd_max_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs_new)
+            model_type = 'model_py_test' + end_folder_Training_Size_dd_max_epochs
+            #model_type_tb = 'model_py_test' + end_folder_Training_Size_dd # TODO ACTIVATE
+
+            filename_Rate_OPT_py = network_folder_out_RateDLpy + 'Rate_OPT_py_test' + end_folder_Training_Size_dd_max_epochs + '.mat'
+            filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py_test' + end_folder_Training_Size_dd_max_epochs + '.mat'
+               
+            # Define the neural network architecture
+            model_py = Sequential([
+                Input(shape=(X_train.shape[1],), name='input'),
+
+                Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully1_'),
+                ReLU(name='relu1'),
+                Dropout(0.5, name='dropout1'),
+
+                Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully2_'),
+                ReLU(name='relu2'),
+                Dropout(0.5, name='dropout2'),
+
+                Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully3_'),
+                ReLU(name='relu3'),
+                Dropout(0.5, name='dropout3'),
+
+                Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully4_'),
+            ])
+
+            # Compile the model with SGD optimizer and mean squared error loss
+            optimizer = SGD(learning_rate=1e-1, momentum=0.9)
+
+            #model_py.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mse'])
+            #model_py.compile(optimizer=optimizer, loss=mse_keras, metrics=['mse'])
+            #model_py.compile(optimizer=optimizer, loss=mse_matlab, metrics=['mse'])
+            model_py.compile(optimizer=optimizer, loss=mse_custom, metrics=['mse'])
+            model_py.summary()
+
+            #print(model_py.loss)
+
+            # ------------------ Training Options ------------------ #
+            mini_batch_size = 500
+            
+            tensorboard_logs = log_dir + model_type
+            #tensorboard_logs = log_dir + model_type_tb # TODO ACTIVATE
+            tensorboard_callback = TensorBoard(log_dir=tensorboard_logs, histogram_freq=1)
+
+            #if Training_Size_dd < mini_batch_size:
+            #    validationFrequency = Training_Size_dd
+            #else:
+            #    validationFrequency = int(np.floor(Training_Size_dd/mini_batch_size))
+            validationFrequency = 1
+
+            #def lr_schedule(epoch, lr):
+            #    if epoch > 0 and epoch % 5 == 0: # Prima era modulo 3
+            #        return lr * 0.5  # Drop learning rate by factor of 0.5 every x epochs
+            #    return lr
+
+            #lr_scheduler = LearningRateScheduler(lr_schedule)
+
+            lr_scheduler = ReduceLROnPlateau(
+                monitor='val_loss',
+                factor=factor,         # Riduce di metà
+                patience=patience,  # Numero di epoche senza miglioramento ≥ y
+                min_delta=min_delta,      # Miglioramento minimo da considerare significativo
+                verbose=1
+            )
+            
             print("\nStart DL training...")
             start_time = time.time()
 
@@ -581,15 +649,13 @@ for i, ris in enumerate(My_ar):
             #np.save(os.path.join(output_folder, 'Y_predicted.npy'), Y_predicted)
             #print("History and Y_predicted saved successfully.")
 
-        # %%
-        ## DL Model Prediction
-        # # SOSTITUIRE X_val CON X_test!!!
-        Rate_DL_py = model_predict(xtest, model_py, YValidation_un2)
-
-        # Scrittura in formato HDF5 (compatibile MATLAB v7.3)
-        with h5py.File(filename_Rate_DL_py, 'w') as f:
-            f.create_dataset('Rate_DL_py', data=Rate_DL_py)
-            print(f"\Rate_DL_py saved in {filename_Rate_DL_py}")
+            # %%
+            ## DL Model Prediction
+            # # SOSTITUIRE X_val CON X_test!!!
+            test = 0
+            Rate_DL_py_val  = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test)
+            test = 1
+            Rate_DL_py_test = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test)
 
         filename_Rate_OPT = network_folder_in + 'Rate_OPT' + end_folder_Training_Size_dd + '.mat'
 
@@ -599,14 +665,21 @@ for i, ris in enumerate(My_ar):
         filename_Rate_DL = network_folder_in + 'Rate_DL' + end_folder_Training_Size_dd + '.mat'
 
         with h5py.File(filename_Rate_DL, 'r') as f:
-            Rate_DL = f['Rate_DL'][:][0][0]
+            Rate_DL_valOld = f['Rate_DL'][:][0][0]
 
         # Output finali
         print(f"\nRate_OPT: {Rate_OPT}")
-        print(f"Rate_DL: {Rate_DL}")
+        print(f"Rate_DL_valOld: {Rate_DL_valOld}")
         if load_model_flag == 1:
-            print(f"Rate_DL_py_load: {Rate_DL_py_load}")
-        print(f"Rate_DL_py_test: {Rate_DL_py}")
-        print(f"Ricorda che questi valori adesso non sono più confrontabili perch Rate_DL_py è calcolato sul test set")
+            print(f"\nRate_OPT_py_load_val: {Rate_OPT_py_load_val}")
+            print(f"Rate_DL_py_load_val: {Rate_DL_py_load_val}")
+
+            print(f"\nRate_OPT_py_load_test: {Rate_OPT_py_load_test}")
+            print(f"Rate_DL_py_load_test: {Rate_DL_py_load_test}")
+        if train_model_flag == 1:
+            print(f"\nRate_DL_py_test: {Rate_DL_py_test}")
+            print(f"Rate_DL_py_val: {Rate_DL_py_val}")
+        
+        print(f"\nRicorda che Rate_DL_valOld non può essere confrontato con Rate_DL_py_load_val e Rate_DL_py_load_test, perchè il primo è calcolato sul validation set old, mentre i secondi sul val e test set nuovi")
 
         tf.keras.backend.clear_session()

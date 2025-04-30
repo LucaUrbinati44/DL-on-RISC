@@ -54,12 +54,19 @@ load_Rates       = 1; % load output from DL_training_4.m
 training         = 0; % 1 for training the network, 0 from loaoding it from file
 save_mat_files   = 0;
 
-load_mat_py      = 2; % 2: load py generated files, 1: load mat-python-mat files, 0: load mat generated files
+load_mat_py      = 3; 
+% 3: load py-generated test files
+% 2: load py-generated files
+% 1: load mat-python-mat files
+% 0: load mat-generated files
 
 plot_fig12 = 1;
-plot_fig7 = 0;
+
+%plot_fig7 = 0;
 plot_figC = 0;
+
 plot_figD = 0;
+max_epochs_load = 20;
 
 %% System Model parameters
 disp('---> System Model Parameters');
@@ -99,18 +106,37 @@ Ur_rows = [1000 1200]; % original
 
 Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
 %Training_Size=[1e4*3]; % Semplificazione Luca
-%Training_Size=[10000];
+%Training_Size=[10000 30000];
 
 Validation_Size = 6200; % Validation dataset Size
+Test_Size = 3100; % Test dataset Size
 
-% Preallocation of output variables (y-axis of Fig 12 for both blue and red curves)
+% fig12
 Rate_OPTt=zeros(numel(My_ar),numel(Training_Size));
 Rate_DLt_mat=zeros(numel(My_ar),numel(Training_Size));  % numel = number of elements
-Rate_DLt_py_20=zeros(numel(My_ar),numel(Training_Size));
-Rate_DLt_py_40=zeros(numel(My_ar),numel(Training_Size));
 
-MaxR_DLt = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
+Rate_DLt_py_valOld_20=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_valOld_40=zeros(numel(My_ar),numel(Training_Size));
+
+Rate_DLt_py_val_20=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_val_40=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_val_60=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_val_80=zeros(numel(My_ar),numel(Training_Size));
+
+Rate_DLt_py_test_20=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_test_40=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_test_60=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_test_80=zeros(numel(My_ar),numel(Training_Size));
+
+% figD
 MaxR_OPTt = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
+MaxR_DLt = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
+
+MaxR_OPTt_py_test = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_DLt_py_test_20 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_DLt_py_test = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_DLt_py_test_60 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_DLt_py_test_80 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 
 for rr = 1:1:numel(My_ar)
 
@@ -127,33 +153,137 @@ for rr = 1:1:numel(My_ar)
 
     [RandP_all,Validation_Ind]=DL_data_generator_3(Mx,My,Mz,M_bar,D_Lambda,BW,K,K_DL,Pt,Ur_rows,Ut_element,Ur_rows_grid,Validation_Size);
 
+    %Test_Ind = RandP_all2[-Test_Size:] % python
+    Test_Ind = RandP_all(end-Test_Size+1:end);
+    %Validation_Ind = RandP_all2[-(Validation_Size+Test_Size):-Test_Size] % python
+    %Validation_Ind_6200 = RandP_all(end-(Test_Size+Test_Size)+1:end);
+
     %% DL Beamforming
 
     for dd=1:1:numel(Training_Size)
+
+        Training_Size_dd = Training_Size(dd);
+        end_folder = strcat('_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My), ' ', ''), strrep(num2str(Mz), ' ', ''), '_Mbar', num2str(M_bar));    
+
         [Rate_OPT,Rate_DL,MaxR_OPT,MaxR_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
         %[Rate_OPT,Rate_DL]=DL_predict_5(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
-        Rate_OPTt(rr,dd)=Rate_OPT;
-        Rate_DLt_mat(rr,dd)=Rate_DL;
-
-        MaxR_DLt(rr,dd,:) = MaxR_DL;
-        MaxR_OPTt(rr,dd,:) = MaxR_OPT;
-
-        % Load Rate_DL_py from Python
-        Training_Size_dd = Training_Size(dd);
-        end_folder = strcat('_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My), ' ', ''), strrep(num2str(Mz), ' ', ''), '_Mbar', num2str(M_bar));
         
-        end_folder_Training_Size_dd_max_epochs_20 = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(20));
-        filename_Rate_DL_py_20 = strcat(network_folder_out_RateDLpy, 'Rate_DL_py', end_folder_Training_Size_dd_max_epochs_20, '.mat');
-        %load(filename_Rate_DL_py);
-        %info = h5info(filename_Rate_DL_py);
-        Rate_DL_py_20 = h5read(filename_Rate_DL_py_20, '/Rate_DL_py');
-        Rate_DLt_py_20(rr,dd)= Rate_DL_py_20;
+        if plot_figD == 1
+            MaxR_OPTt(rr,dd,:) = MaxR_OPT; % 6200 val
+            MaxR_DLt(rr,dd,:) = MaxR_DL; % 6200 val
 
-        end_folder_Training_Size_dd_max_epochs_40 = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(40));
-        filename_Rate_DL_py_40 = strcat(network_folder_out_RateDLpy, 'Rate_DL_py', end_folder_Training_Size_dd_max_epochs_40, '.mat');
-        Rate_DL_py_40 = h5read(filename_Rate_DL_py_40, '/Rate_DL_py');
-        %Rate_DL_py_40 = 5;
-        Rate_DLt_py_40(rr,dd)= Rate_DL_py_40;
+            % TODO controllare che gli indici di MaxR_DL_py siano nello stesso ordine di quelli di MaxR_DL (matlab).
+            end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(max_epochs_load));
+            filename_MaxR_DL_py = strcat(network_folder_out_RateDLpy, 'MaxR_DL_py_test', end_folder_Training_Size_dd_max_epochs, '.mat');
+            disp(filename_MaxR_DL_py)
+            MaxR_DL_py = h5read(filename_MaxR_DL_py, '/MaxR_DL_py'); % 3100 test
+            disp(size(MaxR_DL_py))
+            MaxR_DLt_py_test(rr,dd,:) = MaxR_DL_py;
+        end
+
+        if plot_fig12 == 1
+
+            Rate_OPTt(rr,dd)=Rate_OPT;
+            Rate_DLt_mat(rr,dd)=Rate_DL;
+
+            % Load Rate_DL_py from Python
+
+            plot_types = {'Rate_DL_py_valOld' 'Rate_DL_py_val' 'Rate_DL_py_test'};
+            
+            for epochs = 20:20:80
+            
+                for i = 1:length(plot_types)
+                    
+                    end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
+                    filename_Rate_DL_py = strcat(network_folder_out_RateDLpy, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
+                    
+                    try
+                        Rate_DL_py = h5read(filename_Rate_DL_py, '/Rate_DL_py');
+                    catch exception
+                        Rate_DL_py = NaN;
+                    end
+                    
+                    if strcmp(plot_types{i}, 'Rate_DL_py_valOld') % valOld
+                        if epochs == 20
+                            Rate_DLt_py_valOld_20(rr,dd)= Rate_DL_py;
+                        elseif epochs == 40
+                            Rate_DLt_py_valOld_40(rr,dd)= Rate_DL_py;
+                        end
+
+                    
+                    elseif strcmp(plot_types{i}, 'Rate_DL_py_val') % Val set
+                        if epochs == 20
+                            Rate_DLt_py_val_20(rr,dd)= Rate_DL_py;
+                        elseif epochs == 40
+                            Rate_DLt_py_val_40(rr,dd)= Rate_DL_py;
+                        end
+                    
+                    elseif strcmp(plot_types{i}, 'Rate_DL_py_test') % Test set
+                        if epochs == 20
+                            Rate_DLt_py_test_20(rr,dd)= Rate_DL_py;
+                        elseif epochs == 40
+                            Rate_DLt_py_test_40(rr,dd)= Rate_DL_py;
+                        elseif epochs == 60
+                            Rate_DLt_py_test_60(rr,dd)= Rate_DL_py;
+                        elseif epochs == 80
+                            Rate_DLt_py_test_80(rr,dd)= Rate_DL_py;
+                        end
+
+                    end
+
+                end
+            end
+            
+            
+            % valOld
+            %epochs = 20;
+            %end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
+            %filename_Rate_DL_py = strcat(network_folder_out_RateDLpy, 'Rate_DL_py_valOld', end_folder_Training_Size_dd_max_epochs, '.mat');
+            %Rate_DL_py = h5read(filename_Rate_DL_py, '/Rate_DL_py');
+            %Rate_DLt_py_valOld_20(rr,dd)= Rate_DL_py;
+
+            %epochs = 40;
+            %end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
+            %filename_Rate_DL_py_40 = strcat(network_folder_out_RateDLpy, 'Rate_DL_py_valOld', end_folder_Training_Size_dd_max_epochs, '.mat');
+            %%Rate_DL_py = h5read(filename_Rate_DL_py_40, '/Rate_DL_py');
+            %Rate_DL_py = 0;
+            %Rate_DLt_py_valOld_40(rr,dd)= Rate_DL_py;
+
+            % Val set
+            %epochs = 20;
+            %end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
+            %filename_Rate_DL_py = strcat(network_folder_out_RateDLpy, 'Rate_DL_py_val', end_folder_Training_Size_dd_max_epochs, '.mat');
+            %Rate_DL_py = h5read(filename_Rate_DL_py, '/Rate_DL_py');
+            %Rate_DLt_py_val_20(rr,dd)= Rate_DL_py;
+
+            % Test set
+            %epochs = 20;
+            %end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
+            %filename_Rate_DL_py = strcat(network_folder_out_RateDLpy, 'Rate_DL_py_test', end_folder_Training_Size_dd_max_epochs, '.mat');
+            %Rate_DL_py = h5read(filename_Rate_DL_py, '/Rate_DL_py');
+            %Rate_DLt_py_test_20(rr,dd)= Rate_DL_py;
+
+            %epochs = 40;
+            %end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
+            %filename_Rate_DL_py = strcat(network_folder_out_RateDLpy, 'Rate_DL_py_test', end_folder_Training_Size_dd_max_epochs, '.mat');
+            %%Rate_DL_py = h5read(filename_Rate_DL_py, '/Rate_DL_py');
+            %Rate_DL_py = 0;
+            %Rate_DLt_py_test_40(rr,dd)= Rate_DL_py;
+        
+            %if My == 64
+            %    epochs = 60;
+            %    end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
+            %    filename_Rate_DL_py_60 = strcat(network_folder_out_RateDLpy, 'Rate_DL_py_test', end_folder_Training_Size_dd_max_epochs, '.mat');
+            %    Rate_DL_py = h5read(filename_Rate_DL_py_60, '/Rate_DL_py');
+            %    Rate_DLt_py_test_60(rr,dd)= Rate_DL_py;
+            %    
+            %    epochs = 80;
+            %    end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
+            %    filename_Rate_DL_py_80 = strcat(network_folder_out_RateDLpy, 'Rate_DL_py_test', end_folder_Training_Size_dd_max_epochs, '.mat');
+            %    Rate_DL_py = h5read(filename_Rate_DL_py_80, '/Rate_DL_py');
+            %    Rate_DLt_py_test_80(rr,dd)= Rate_DL_py;
+            %end
+        end
     end
 
     %keyboard;
@@ -162,14 +292,25 @@ end
 
 %% Fig 12
 if plot_fig12 == 1
-    Fig12_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate_DLt_mat,Rate_DLt_py_20,Rate_DLt_py_40);
+    epochs = 80;
+    %Fig12_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate_DLt_mat,Rate_DLt_py_20,Rate_DLt_py_40,Rate_DLt_py_test_20,Rate_DLt_py_test_40,Rate_DLt_py_test_60,Rate_DLt_py_test_80,epochs);
+    Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
+                epochs, ...
+                Rate_OPTt,Rate_DLt_mat, ...
+                Rate_DLt_py_valOld_20,Rate_DLt_py_valOld_40, ...
+                Rate_DLt_py_val_20,Rate_DLt_py_test_20, ...
+                Rate_DLt_py_val_40,Rate_DLt_py_test_40, ...
+                Rate_DLt_py_test_60, ...
+                Rate_DLt_py_test_80);
+
+               
 end
 
 %% Fig 7 (Luca)
 
-if plot_fig7 == 1
-    Fig7_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams);
-end
+%if plot_fig7 == 1
+%    Fig7_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams);
+%end
 
 %% Fig C (Luca)
 
@@ -184,8 +325,15 @@ if plot_figC == 1
 end
 
 if plot_figD == 1
-    plot_test_only = 1;
-    FigD_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_DLt,MaxR_OPTt,Validation_Ind,plot_test_only)
+    plot_mode = 1;
+    %FigD_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_OPTt,MaxR_DLt,           Validation_Ind,plot_mode)
+    %FigD_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_OPTt,MaxR_DLt_py_test_20,Test_Ind,      plot_mode)
+    plot_mode = 2;
+    MaxR_OPTt_py_test = MaxR_OPTt(:,:,end-Test_Size+1:end); % 3100
+    FigD_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_OPTt_py_test,MaxR_DLt_py_test,Test_Ind,max_epochs_load,plot_mode)
+    %keyboard;
+    %FigD_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_OPTt,MaxR_DLt_py_test_60,Test_Ind,       plot_mode)
+    %FigD_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_OPTt,MaxR_DLt_py_test_80,Test_Ind,       plot_mode)
 end
 
 %% End of script
