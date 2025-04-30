@@ -1,4 +1,9 @@
-function []=FigD_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_DLt,MaxR_OPTt,Validation_Ind,plot_test_only)
+function []=FigD_plot(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,epochs,plot_mode, ...
+                        MaxR_OPTt,MaxR_DLt_mat, ...
+                        MaxR_OPTt_py_test_20,MaxR_DLt_py_val_20,MaxR_DLt_py_test_20, ...
+                        MaxR_OPTt_py_test_40,MaxR_DLt_py_val_40,MaxR_DLt_py_test_40, ...
+                        MaxR_OPTt_py_test_60,MaxR_DLt_py_val_60,MaxR_DLt_py_test_60, ...
+                        MaxR_OPTt_py_test_80,MaxR_DLt_py_val_80,MaxR_DLt_py_test_80)
 %% Description:
 %
 % This is the function called by the main script for ploting Figure 10 
@@ -7,15 +12,35 @@ function []=FigD_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_DLt
 global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat_py;
 global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
+% TODO BETTER with HOLD ON like in Fig12
+
+if plot_mode == 2
+    MaxR_OPTt = MaxR_OPTt_py_test_20;
+    MaxR_DLt = MaxR_DLt_py_test_20;
+elseif plot_mode == 1
+    MaxR_OPTt = MaxR_OPTt;
+    MaxR_DLt = MaxR_DLt_mat;
+end
+
+if plot_mode == 1 && epochs ~= 20
+    disp('ERROR: for plot_mode == 1 epochs can only be 20')
+    exit;
+end
+    
 filename_figD=strcat(figure_folder, 'FigD', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
-filename_figDTest=strcat(figure_folder, 'FigDTest', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
+filename_figDmatVal=strcat(figure_folder_py, 'FigDmatVal', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(epochs), '.png');
+filename_figDpyTest=strcat(figure_folder_py, 'FigDpyTest', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(epochs), '.png');
     
 Training_Size_number=7; % 30000
 Training_Size_dd=Training_Size(Training_Size_number);
 
 th_step=0.5;
 
-Colour = 'brgmcky';
+if epochs < 60
+    Colour = 'brgmcky';
+else
+    Colour = 'rbgmcky';
+end
 Marker = {'--o', '-o'; '--square', '-square'};
 
 fD = figure('Name', 'Figure', 'units','pixels', 'Position', [100, 100, 1200, 400]); % typ 800x400
@@ -26,39 +51,28 @@ set(gca,'FontSize',11)
 
 for rr=1:1:numel(My_ar)
 
-    if plot_test_only == 1
-        title(['Coverage vs Rate Threshold, RIS ', num2str(M_bar), ' active elements, model ', num2str(Training_Size_dd), ' (Test points only)'],'fontsize',11)
-    else
-        title(['Coverage vs Rate Threshold, RIS ', num2str(M_bar), ' active elements, model ', num2str(Training_Size_dd), ' (Training+Test points)'],'fontsize',11)
+    % TODO new title
+    if plot_mode == 2
+        title(['Coverage vs Rate Threshold, RIS ', num2str(M_bar), ' active elements, pyTest model trained with ', num2str(Training_Size_dd), ' samples and ', num2str(epochs), ' epochs'],'fontsize',11)
+    elseif plot_mode == 1
+        title(['Coverage vs Rate Threshold, RIS ', num2str(M_bar), ' active elements, matVal model trained with ', num2str(Training_Size_dd), ' samples and ', num2str(epochs), ' epochs'],'fontsize',11)
+    elseif plot_mode == 0
+        title(['Coverage vs Rate Threshold, RIS ', num2str(M_bar), ' active elements, model ', num2str(Training_Size_dd), ' epochs ', num2str(epochs), ' (Training+Old Val points)'],'fontsize',11)
     end
 
-    disp(['---> Plotting FigD with M:', num2str(My_ar(rr)), ', Training_Size:' num2str(Training_Size_dd), '...']);
-
-    filename_User_Location=strcat(DeepMIMO_dataset_folder, 'User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
-
-    %filename_XTrain=strcat(DL_dataset_folder, 'XTrain', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-    %filename_YTrain=strcat(DL_dataset_folder, 'YTrain', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-    filename_XValidation=strcat(DL_dataset_folder, 'XValidation', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-    filename_YValidation=strcat(DL_dataset_folder, 'YValidation', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-
-    filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
-    filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
-    %filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
-    filename_DL_output_un_complete_reshaped=strcat(DL_dataset_folder, 'DL_output_un_complete_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
-    filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-    filename_YPredictedFig7=strcat(network_folder, 'YPredictedFig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
+    disp(['---> Plotting FigD with M:', num2str(My_ar(rr)), ', Training_Size:' num2str(Training_Size_dd), ', epochs:' num2str(epochs), '...']);
 
     %%
 
     x_plot = 1:(Ur_rows(2)-1000);
     y_plot = 1:181;
 
-    if plot_test_only == 1
+    if plot_mode == 2 || plot_mode == 1
 
-        disp('plot_test_only == 1')
+        disp(['plot_mode == ', num2str(plot_mode)])
 
         disp('load User_Location')
-
+        filename_User_Location=strcat(DeepMIMO_dataset_folder, 'User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
         load(filename_User_Location);
         %disp(size(User_Location)) % 3, 36200
 
@@ -76,33 +90,39 @@ for rr=1:1:numel(My_ar)
         %disp(max(User_Location(2,:)));
         %disp(max(User_Location_norm(2,:)));
         
-        % User_Location è ordinato come DL_input, il quale va in XValidation secondo Validation_Ind:
+        % User_Location è ordinato come DL_input, il quale va in XValidation secondo ValTest_Ind:
         %DL_input(:,u+uu-1+((pp-1)*params.num_user)) = reshape([real(H_bar) imag(H_bar)].',[],1); % salva H_bar in
         %User_Location(:,u+uu-1+((pp-1)*params.num_user)) = single(DeepMIMO_dataset{1}.user{u+uu-1}.loc);
-        %XValidation = single(DL_input_reshaped(:,1,1,Validation_Ind));
-        % Quindi devo ordinare User_Location come XValidation, cioè secondo Validation_Ind
-        User_Location_norm_Validation = single(User_Location_norm(:,Validation_Ind));
-        %disp(size(User_Location_norm_Validation)) % 3, 6200
+        %XValidation = single(DL_input_reshaped(:,1,1,ValTest_Ind));
+        % Quindi devo ordinare User_Location come XValidation, cioè secondo ValTest_Ind
+        if plot_mode == 2
+            User_Location_norm_ValTest = single(User_Location_norm(:,Test_Ind));
+            ValTest_Ind = Test_Ind;
+        elseif plot_mode == 1
+            User_Location_norm_ValTest = single(User_Location_norm(:,Validation_Ind));
+            ValTest_Ind = Validation_Ind;
+        end
+        %disp(size(User_Location_norm_ValTest)) % 3, 6200
 
         disp('fill sparsity matrix')
         %% Per ogni sample del test set, recupera la sua posizione e il suo rate massimo
         % Se funziona, questo calcolo si può portare dentro a DL_training_4 per semplificare questo script di plot
         values_DL = single(nan(181,200));
         values_OPT = single(nan(181,200));
-        for b=1:size(Validation_Ind,1) % 6200
-            x = User_Location_norm_Validation(1,b);
-            y = User_Location_norm_Validation(2,b);
+        for b=1:size(ValTest_Ind,1) % 6200 val o 3100 test
+            x = User_Location_norm_ValTest(1,b);
+            y = User_Location_norm_ValTest(2,b);
 
-            % MaxR è ordinato come YValidation_un quindi come DL_output_un, che a sua volta è ordinato secondo Validation_Ind
-            %[~,VI_sortind] = sort(Validation_Ind);
+            % MaxR è ordinato come YValidation_un quindi come DL_output_un, che a sua volta è ordinato secondo ValTest_Ind
+            %[~,VI_sortind] = sort(ValTest_Ind);
             %[~,VI_rev_sortind] = sort(VI_sortind);
             %DL_output_un = DL_output_un(VI_rev_sortind,:);
             %MaxR_DL(b) = squeeze(YValidation_un(1,1,Indmax_DL(b),b));
-            % Quindi MaxR è già ordinato secondo Validation_Ind
+            % Quindi MaxR è già ordinato secondo ValTest_Ind
             values_DL(x,y) = MaxR_DLt(rr,Training_Size_number,b); % equivalent to the previous commented line
         
-            %x = User_Location_norm_Validation(1,b);
-            %y = User_Location_norm_Validation(2,b);
+            %x = User_Location_norm_ValTest(1,b);
+            %y = User_Location_norm_ValTest(2,b);
 
             values_OPT(x,y) = MaxR_OPTt(rr,Training_Size_number,b);
         end
@@ -125,7 +145,20 @@ for rr=1:1:numel(My_ar)
         %keyboard;
     else
 
-        disp('plot_test_only == 0')
+        disp('plot_mode == 0')
+        disp("ATTENZIONE!!! QUESTO E' CODICE VECCHIO: TODO")
+
+        %filename_XTrain=strcat(DL_dataset_folder, 'XTrain', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+        %filename_YTrain=strcat(DL_dataset_folder, 'YTrain', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+        %filename_XValidation=strcat(DL_dataset_folder, 'XValidation', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+        %filename_YValidation=strcat(DL_dataset_folder, 'YValidation', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+
+        filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
+        filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
+        %filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
+        filename_DL_output_un_complete_reshaped=strcat(DL_dataset_folder, 'DL_output_un_complete_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
+        filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+        filename_YPredictedFig7=strcat(network_folder, 'YPredictedFig7', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '.mat');
 
         % Concatena YTrain + YValidation, cioè utilizza DL_output_reshaped
         load(filename_DL_output_reshaped);
@@ -186,9 +219,11 @@ for rr=1:1:numel(My_ar)
 
     %% Grafico
 
-    disp('plot fD')
+    disp('plot fD ...')
 
     % Applica la soglia ai dati
+    disp(max(values_OPT_plot(:)))
+    disp(max(values_DL_plot(:)))
     max_colorbar = max([max(values_OPT_plot(:)), max(values_DL_plot(:))]);
     %rounded_max = ceil(max_colorbar * 10) / 10;
     rounded_max = floor(max_colorbar+1);
@@ -199,28 +234,33 @@ for rr=1:1:numel(My_ar)
     punti_coperti_sul_totale_DL = single(zeros(1,rounded_max/th_step+1));
     thresholds = single(0:th_step:rounded_max);
 
-    disp(numel(punti_coperti_sul_totale_OPT))
-    disp(numel(thresholds))
+    %disp(numel(punti_coperti_sul_totale_OPT))
+    %disp(numel(thresholds))
 
-    if plot_test_only == 1
-        numero_punti = size(Validation_Ind,1);
-    else
-        numero_punti = numel(values_OPT_plot);
+    if plot_mode == 2 || plot_mode == 1
+        numero_punti = size(ValTest_Ind,1); % 6200 o 3100
+    elseif plot_mode == 0
+        numero_punti = numel(values_OPT_plot); % 36200
     end
 
     for i=1:numel(thresholds)
         % OPT
         punti_coperti = sum(values_OPT_plot(:) >= thresholds(i));
         punti_coperti_sul_totale_OPT(i) = punti_coperti/numero_punti*100;
-        %disp([num2str(thresholds(i)), ' ', num2str(punti_coperti), ' ', num2str(punti_coperti_sul_totale(i))])
+        disp([num2str(thresholds(i)), ' ', num2str(punti_coperti), ' ', num2str(punti_coperti_sul_totale_OPT(i))])
         % DL
         punti_coperti = sum(values_DL_plot(:) >= thresholds(i));
         punti_coperti_sul_totale_DL(i) = punti_coperti/numero_punti*100;
-        %disp([num2str(thresholds(i)), ' ', num2str(punti_coperti), ' ', num2str(punti_coperti_sul_totale(i))])
+        disp([num2str(thresholds(i)), ' ', num2str(punti_coperti), ' ', num2str(punti_coperti_sul_totale_DL(i))])
     end
 
-    plot(thresholds,punti_coperti_sul_totale_OPT,[Colour(rr) Marker{rr, 1}],'markersize',6,'linewidth',1.5, 'DisplayName',['Genie, M = ' num2str(My_ar(rr)) 'x' num2str(Mz_ar(rr))])
-    plot(thresholds,punti_coperti_sul_totale_DL,[Colour(rr) Marker{rr, 2}],'markersize',6,'linewidth',1.5, 'DisplayName', ['DL,      M = ' num2str(My_ar(rr)) 'x' num2str(Mz_ar(rr))])
+    plot(thresholds,punti_coperti_sul_totale_OPT,[Colour(rr) Marker{rr, 1}],'markersize',7,'linewidth',1., 'DisplayName',['Genie,        M = ' num2str(My_ar(rr)) 'x' num2str(Mz_ar(rr))])
+    
+    if plot_mode == 2
+        plot(thresholds,punti_coperti_sul_totale_DL,[Colour(rr) Marker{rr, 2}],'markersize',7,'linewidth',1., 'DisplayName', ['DL_{pyTest' num2str(epochs) '}, M = ' num2str(My_ar(rr)) 'x' num2str(Mz_ar(rr))])
+    elseif plot_mode == 1
+        plot(thresholds,punti_coperti_sul_totale_DL,[Colour(rr) Marker{rr, 2}],'markersize',7,'linewidth',1., 'DisplayName', ['DL_{matVal20}, M = ' num2str(My_ar(rr)) 'x' num2str(Mz_ar(rr))])
+    end
 
     %fD = figure('Name', 'Figure', 'units','pixels', 'Position', [100, 100, 2600, 350]); % typ 800x400
     %imagesc(values_DL_plot);
@@ -238,10 +278,12 @@ legend show
 ylim([0 102]);
 
 %% Save fig
-if plot_test_only == 1
+if plot_mode == 2
+    saveas(fD, filename_figDpyTest);
+elseif plot_mode == 1
+    saveas(fD, filename_figDmatVal);
+elseif plot_mode == 0
     saveas(fD, filename_figDTest);
-else
-    saveas(fD, filename_figD);
 end
 close(fD);
 
