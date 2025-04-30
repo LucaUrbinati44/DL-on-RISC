@@ -15,15 +15,7 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
     filename_fig12=strcat(figure_folder, 'Fig12', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
     filename_fig12_mat=strcat(figure_folder_py, 'Fig12_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
     filename_fig12_py=strcat(figure_folder, 'Fig12_py', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
-    if epochs == 20
-        filename_fig12_py_test=strcat(figure_folder_py, 'Fig12_py_test', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_20.png');
-    elseif epochs == 40
-        filename_fig12_py_test=strcat(figure_folder_py, 'Fig12_py_test', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_40.png');
-    elseif epochs == 60
-        filename_fig12_py_test=strcat(figure_folder_py, 'Fig12_py_test', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_60.png');
-    elseif epochs == 80
-        filename_fig12_py_test=strcat(figure_folder_py, 'Fig12_py_test', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_80.png');
-    end
+    filename_fig12_py_test=strcat(figure_folder_py, 'Fig12_py_test', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(epochs), '.png');    
     
     Colour = 'brgm';
     Colour_valOld = 'cg';
