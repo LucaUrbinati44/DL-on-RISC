@@ -61,15 +61,18 @@ load_mat_py      = 3;
 % 0: load mat-generated files
 
 plot_fig12 = 0;
+epochs_fig12 = 100;
 
 %plot_fig7 = 0;
 plot_figC = 0;
 
 plot_figD = 1;
-plot_mode = 1;
-max_epochs_load = 20;
-%max_epochs_load = 40;
-%max_epochs_load = 80; % funziona solo con [64, 64] per ora
+plot_mode = 2;
+%max_epochs_load = 20;
+max_epochs_load = 40;
+%max_epochs_load = 60; % ATTENZIONE funziona solo con [64, 64] per ora
+%max_epochs_load = 80; % ATTENZIONE funziona solo con [64, 64] per ora
+%max_epochs_load = 100; % ATTENZIONE funziona solo con [64, 64] per ora
 
 %% System Model parameters
 disp('---> System Model Parameters');
@@ -91,8 +94,8 @@ My_ar=[32 64]; % number of LIS reflecting elements across the y axis (32x32 blue
 Mz_ar=[32 64]; % number of LIS reflecting elements across the z axis
 %My_ar=[32]; % Semplificazione Luca
 %Mz_ar=[32]; % Semplificazione Luca
-%My_ar=[64]; % Semplificazione Luca
-%Mz_ar=[64]; % Semplificazione Luca
+My_ar=[64]; % Semplificazione Luca
+Mz_ar=[64]; % Semplificazione Luca
 disp('RIS sizes: ');
 disp(My_ar);
 disp(Mz_ar);
@@ -110,6 +113,7 @@ Ur_rows = [1000 1200]; % original
 Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
 %Training_Size=[1e4*3]; % Semplificazione Luca
 %Training_Size=[10000 30000];
+Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
 
 Validation_Size = 6200; % Validation dataset Size
 Test_Size = 3100; % Test dataset Size
@@ -130,30 +134,37 @@ Rate_DLt_py_test_20=zeros(numel(My_ar),numel(Training_Size));
 Rate_DLt_py_test_40=zeros(numel(My_ar),numel(Training_Size));
 Rate_DLt_py_test_60=zeros(numel(My_ar),numel(Training_Size));
 Rate_DLt_py_test_80=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_test_100=zeros(numel(My_ar),numel(Training_Size));
 
 % figD
 MaxR_OPTt = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
 MaxR_DLt_mat = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
 
-MaxR_OPTt_py_val_20 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
-MaxR_OPTt_py_val_40 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
-MaxR_OPTt_py_val_60 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
-MaxR_OPTt_py_val_80 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_OPTt_py_val = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+%MaxR_OPTt_py_val_20 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+%MaxR_OPTt_py_val_40 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+%MaxR_OPTt_py_val_60 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+%MaxR_OPTt_py_val_80 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+%MaxR_OPTt_py_val_100 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 
 MaxR_DLt_py_val_20 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_DLt_py_val_40 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_DLt_py_val_60 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_DLt_py_val_80 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_DLt_py_val_100 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 
+MaxR_OPTt_py_test = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_OPTt_py_test_20 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_OPTt_py_test_40 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_OPTt_py_test_60 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_OPTt_py_test_80 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_OPTt_py_test_100 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 
 MaxR_DLt_py_test_20 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_DLt_py_test_40 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_DLt_py_test_60 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_DLt_py_test_80 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_DLt_py_test_100 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 
 for rr = 1:1:numel(My_ar)
 
@@ -182,9 +193,16 @@ for rr = 1:1:numel(My_ar)
         Training_Size_dd = Training_Size(dd);
         end_folder = strcat('_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My), ' ', ''), strrep(num2str(Mz), ' ', ''), '_Mbar', num2str(M_bar));    
 
-        [Rate_OPT,Rate_DL,MaxR_OPT,MaxR_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
-        %[Rate_OPT,Rate_DL]=DL_predict_5(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
-        
+        if Training_Size_dd >= 10000 || Training_Size_dd == 2
+            [Rate_OPT,Rate_DL,MaxR_OPT,MaxR_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
+            %[Rate_OPT,Rate_DL]=DL_predict_5(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
+        else
+            Rate_OPT = NaN;
+            Rate_DL = NaN;
+            MaxR_OPT = NaN;
+            MaxR_DL = NaN;
+        end
+            
         if plot_figD == 1
 
             MaxR_OPTt(rr,dd,:) = MaxR_OPT; % 6200 val
@@ -202,13 +220,21 @@ for rr = 1:1:numel(My_ar)
             %plot_types = {'MaxR_DLt_py_valOld' 'MaxR_OPTt_py_val' 'MaxR_DLt_py_val' 'MaxR_OPTt_py_test' 'MaxR_DLt_py_test'};
             plot_types = {'MaxR_OPT_py_val' 'MaxR_DL_py_val' 'MaxR_OPT_py_test' 'MaxR_DL_py_test'};
 
-            for epochs = 20:20:80
+            for epochs = 20:20:max_epochs_load
             
                 for i = 1:length(plot_types)
 
                     % TODO controllare che gli indici di MaxR_DL_py siano nello stesso ordine di quelli di MaxR_DL (matlab).
-                    end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(max_epochs_load));
+                    end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
 
+                    if strcmp(plot_types{i}, 'MaxR_OPT_py_val') || strcmp(plot_types{i}, 'MaxR_OPT_py_test')
+                        filename_MaxR_OPT_py = strcat(network_folder_out_RateDLpy, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
+                        MaxR_OPT_py = h5read(filename_MaxR_OPT_py, '/MaxR_OPT_py'); % 3100 test
+                    elseif strcmp(plot_types{i}, 'MaxR_DL_py_val') || strcmp(plot_types{i}, 'MaxR_DL_py_test')
+                        filename_MaxR_DL_py = strcat(network_folder_out_RateDLpy, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
+                        MaxR_DL_py = h5read(filename_MaxR_DL_py, '/MaxR_DL_py'); % 3100 test
+                    end
+                    
                     try
                         if strcmp(plot_types{i}, 'MaxR_OPT_py_val') || strcmp(plot_types{i}, 'MaxR_OPT_py_test')
                             filename_MaxR_OPT_py = strcat(network_folder_out_RateDLpy, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
@@ -220,18 +246,22 @@ for rr = 1:1:numel(My_ar)
                     catch exception
                         MaxR_OPT_py = NaN;
                         MaxR_DL_py = NaN;
+                        disp('exception')
                     end
 
                     if strcmp(plot_types{i}, 'MaxR_OPT_py_val') % OPT val set
-                        if epochs == 20
-                            MaxR_OPTt_py_val_20(rr,dd,:) = MaxR_OPT_py;
-                        elseif epochs == 40
-                            MaxR_OPTt_py_val_40(rr,dd,:) = MaxR_OPT_py;
-                        elseif epochs == 60
-                            MaxR_OPTt_py_val_60(rr,dd,:) = MaxR_OPT_py;
-                        elseif epochs == 80
-                            MaxR_OPTt_py_val_80(rr,dd,:) = MaxR_OPT_py;
-                        end
+                        MaxR_OPTt_py_val(rr,dd,:) = MaxR_OPT_py;
+                        %if epochs == 20
+                        %    MaxR_OPTt_py_val_20(rr,dd,:) = MaxR_OPT_py;
+                        %elseif epochs == 40
+                        %    MaxR_OPTt_py_val_40(rr,dd,:) = MaxR_OPT_py;
+                        %elseif epochs == 60
+                        %    MaxR_OPTt_py_val_60(rr,dd,:) = MaxR_OPT_py;
+                        %elseif epochs == 80
+                        %    MaxR_OPTt_py_val_80(rr,dd,:) = MaxR_OPT_py;
+                        %elseif epochs == 100
+                        %    MaxR_OPTt_py_val_100(rr,dd,:) = MaxR_OPT_py;
+                        %end
                     elseif strcmp(plot_types{i}, 'MaxR_DL_py_val') % Val set
                         if epochs == 20
                             MaxR_DLt_py_val_20(rr,dd,:) = MaxR_DL_py;
@@ -241,8 +271,11 @@ for rr = 1:1:numel(My_ar)
                             MaxR_DLt_py_val_60(rr,dd,:) = MaxR_DL_py;
                         elseif epochs == 80
                             MaxR_DLt_py_val_80(rr,dd,:) = MaxR_DL_py;
+                        elseif epochs == 100
+                            MaxR_DLt_py_val_100(rr,dd,:) = MaxR_DL_py;
                         end
                     elseif strcmp(plot_types{i}, 'MaxR_OPT_py_test') % OPT Test set
+                        MaxR_OPTt_py_test(rr,dd,:) = MaxR_OPT_py;
                         if epochs == 20
                             MaxR_OPTt_py_test_20(rr,dd,:) = MaxR_OPT_py;
                         elseif epochs == 40
@@ -251,6 +284,8 @@ for rr = 1:1:numel(My_ar)
                             MaxR_OPTt_py_test_60(rr,dd,:) = MaxR_OPT_py;
                         elseif epochs == 80
                             MaxR_OPTt_py_test_80(rr,dd,:) = MaxR_OPT_py;
+                        elseif epochs == 100
+                            MaxR_OPTt_py_test_100(rr,dd,:) = MaxR_OPT_py;
                         end
                     elseif strcmp(plot_types{i}, 'MaxR_DL_py_test') % Test set
                         if epochs == 20
@@ -267,6 +302,8 @@ for rr = 1:1:numel(My_ar)
                             MaxR_DLt_py_test_60(rr,dd,:) = MaxR_DL_py;
                         elseif epochs == 80
                             MaxR_DLt_py_test_80(rr,dd,:) = MaxR_DL_py;
+                        elseif epochs == 100
+                            MaxR_DLt_py_test_100(rr,dd,:) = MaxR_DL_py;
                         end
                     end
                 end
@@ -282,7 +319,7 @@ for rr = 1:1:numel(My_ar)
 
             plot_types = {'Rate_DL_py_valOld' 'Rate_DL_py_val' 'Rate_DL_py_test'};
             
-            for epochs = 20:20:80
+            for epochs = 20:20:epochs_fig12
             
                 for i = 1:length(plot_types)
                     
@@ -319,6 +356,8 @@ for rr = 1:1:numel(My_ar)
                             Rate_DLt_py_test_60(rr,dd)= Rate_DL_py;
                         elseif epochs == 80
                             Rate_DLt_py_test_80(rr,dd)= Rate_DL_py;
+                        elseif epochs == 100
+                            Rate_DLt_py_test_100(rr,dd)= Rate_DL_py;
                         end
 
                     end
@@ -331,16 +370,15 @@ end
 
 %% Fig 12
 if plot_fig12 == 1
-    epochs = 80;
-    %Fig12_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,Rate_OPTt,Rate_DLt_mat,Rate_DLt_py_20,Rate_DLt_py_40,Rate_DLt_py_test_20,Rate_DLt_py_test_40,Rate_DLt_py_test_60,Rate_DLt_py_test_80,epochs);
     Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
-                epochs, ...
+                epochs_fig12, ...
                 Rate_OPTt,Rate_DLt_mat, ...
                 Rate_DLt_py_valOld_20,Rate_DLt_py_valOld_40, ...
                 Rate_DLt_py_val_20,Rate_DLt_py_test_20, ...
                 Rate_DLt_py_val_40,Rate_DLt_py_test_40, ...
                 Rate_DLt_py_test_60, ...
-                Rate_DLt_py_test_80);
+                Rate_DLt_py_test_80, ...
+                Rate_DLt_py_test_100);
 
                
 end
@@ -366,10 +404,27 @@ end
 if plot_figD == 1
     FigD_plot(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,max_epochs_load,plot_mode, ...
                 MaxR_OPTt,MaxR_DLt_mat, ...
-                MaxR_OPTt_py_test_20,MaxR_DLt_py_val_20,MaxR_DLt_py_test_20, ...
-                MaxR_OPTt_py_test_40,MaxR_DLt_py_val_40,MaxR_DLt_py_test_40, ...
-                MaxR_OPTt_py_test_60,MaxR_DLt_py_val_60,MaxR_DLt_py_test_60, ...
-                MaxR_OPTt_py_test_80,MaxR_DLt_py_val_80,MaxR_DLt_py_test_80)
+                MaxR_OPTt_py_test, ...
+                MaxR_DLt_py_val_20,MaxR_DLt_py_test_20, ...
+                MaxR_DLt_py_val_40,MaxR_DLt_py_test_40, ...
+                MaxR_DLt_py_val_60,MaxR_DLt_py_test_60, ...
+                MaxR_DLt_py_val_80,MaxR_DLt_py_test_80, ...
+                MaxR_DLt_py_val_100,MaxR_DLt_py_test_100)
+
+    FigD_plot_all_g(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,max_epochs_load,plot_mode, ...
+                MaxR_OPTt,MaxR_DLt_mat, ...
+                MaxR_OPTt_py_test, ...
+                MaxR_DLt_py_test_20, ...
+                MaxR_DLt_py_test_40, ...
+                MaxR_DLt_py_test_60, ...
+                MaxR_DLt_py_test_80, ...
+                MaxR_DLt_py_test_100)
+
+                %MaxR_OPTt_py_test_20, ...
+                %MaxR_OPTt_py_test_40, ...
+                %MaxR_OPTt_py_test_60, ...
+                %MaxR_OPTt_py_test_80, ...
+                %MaxR_OPTt_py_test_100)
 end
 
 %% End of script

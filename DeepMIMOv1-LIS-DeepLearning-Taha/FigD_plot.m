@@ -1,9 +1,11 @@
 function []=FigD_plot(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,epochs,plot_mode, ...
                         MaxR_OPTt,MaxR_DLt_mat, ...
-                        MaxR_OPTt_py_test_20,MaxR_DLt_py_val_20,MaxR_DLt_py_test_20, ...
-                        MaxR_OPTt_py_test_40,MaxR_DLt_py_val_40,MaxR_DLt_py_test_40, ...
-                        MaxR_OPTt_py_test_60,MaxR_DLt_py_val_60,MaxR_DLt_py_test_60, ...
-                        MaxR_OPTt_py_test_80,MaxR_DLt_py_val_80,MaxR_DLt_py_test_80)
+                        MaxR_OPTt_py_test, ...
+                        MaxR_DLt_py_val_20,MaxR_DLt_py_test_20, ...
+                        MaxR_DLt_py_val_40,MaxR_DLt_py_test_40, ...
+                        MaxR_DLt_py_val_60,MaxR_DLt_py_test_60, ...
+                        MaxR_DLt_py_val_80,MaxR_DLt_py_test_80, ...
+                        MaxR_DLt_py_val_100,MaxR_DLt_py_test_100)
 %% Description:
 %
 % This is the function called by the main script for ploting Figure 10 
@@ -12,11 +14,9 @@ function []=FigD_plot(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_
 global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat_py;
 global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
-% TODO BETTER with HOLD ON like in Fig12
-
 if plot_mode == 2
-    MaxR_OPTt = MaxR_OPTt_py_test_20;
-    MaxR_DLt = MaxR_DLt_py_test_20;
+    MaxR_OPTt = MaxR_OPTt_py_test;
+    MaxR_DLt = MaxR_DLt_py_test_80;
 elseif plot_mode == 1
     MaxR_OPTt = MaxR_OPTt;
     MaxR_DLt = MaxR_DLt_mat;
@@ -27,16 +27,19 @@ if plot_mode == 1 && epochs ~= 20
     exit;
 end
     
-filename_figD=strcat(figure_folder, 'FigD', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
-filename_figDmatVal=strcat(figure_folder_py, 'FigDmatVal', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(epochs), '.png');
-filename_figDpyTest=strcat(figure_folder_py, 'FigDpyTest', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(epochs), '.png');
-    
-Training_Size_number=7; % 30000
+
+%                1    2     3     4     5     6      7      8      9      10     11
+Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
+Training_Size_number=11; % 30000
 Training_Size_dd=Training_Size(Training_Size_number);
+filename_figD=strcat(figure_folder, 'FigD', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
+filename_figDmatVal=strcat(figure_folder_py, 'FigDmatVal', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '_', num2str(epochs), '.png');
+filename_figDpyTest=strcat(figure_folder_py, 'FigDpyTest', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '_', num2str(epochs), '.png');
 
 th_step=0.5;
 
-if epochs < 60
+%if epochs < 60
+if My_ar[1] == 32
     Colour = 'brgmcky';
 else
     Colour = 'rbgmcky';
