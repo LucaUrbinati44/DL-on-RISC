@@ -1,11 +1,11 @@
-function []=FigD_plot(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,epochs,plot_mode, ...
+function []=FigD_plot(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,epochs,plot_mode,Training_Size_number, ...
                         MaxR_OPTt,MaxR_DLt_mat, ...
                         MaxR_OPTt_py_test, ...
-                        MaxR_DLt_py_val_20,MaxR_DLt_py_test_20, ...
-                        MaxR_DLt_py_val_40,MaxR_DLt_py_test_40, ...
-                        MaxR_DLt_py_val_60,MaxR_DLt_py_test_60, ...
-                        MaxR_DLt_py_val_80,MaxR_DLt_py_test_80, ...
-                        MaxR_DLt_py_val_100,MaxR_DLt_py_test_100)
+                        MaxR_DLt_py_test_20, ...
+                        MaxR_DLt_py_test_40, ...
+                        MaxR_DLt_py_test_60, ...
+                        MaxR_DLt_py_test_80, ...
+                        MaxR_DLt_py_test_100)
 %% Description:
 %
 % This is the function called by the main script for ploting Figure 10 
@@ -15,10 +15,25 @@ global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_ma
 global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
 if plot_mode == 2
-    MaxR_OPTt = MaxR_OPTt_py_test;
-    MaxR_DLt = MaxR_DLt_py_test_80;
+    MaxR_OPTt_py = MaxR_OPTt_py_test;
+    MaxR_OPTt_mat = MaxR_OPTt;
+
+    if epochs == 20
+        MaxR_DLt = MaxR_DLt_py_test_20;
+    elseif epochs == 40
+        MaxR_DLt = MaxR_DLt_py_test_40;
+    elseif epochs == 60
+        MaxR_DLt = MaxR_DLt_py_test_60;
+    elseif epochs == 80
+        MaxR_DLt = MaxR_DLt_py_test_80;
+    elseif epochs == 100
+        MaxR_DLt = MaxR_DLt_py_test_100;
+    end
+
+
 elseif plot_mode == 1
-    MaxR_OPTt = MaxR_OPTt;
+    MaxR_OPTt_py = MaxR_OPTt_py_test;
+    MaxR_OPTt_mat = MaxR_OPTt;
     MaxR_DLt = MaxR_DLt_mat;
 end
 
@@ -30,7 +45,7 @@ end
 
 %                1    2     3     4     5     6      7      8      9      10     11
 Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
-Training_Size_number=11; % 30000
+%Training_Size_number=11; % 30000
 Training_Size_dd=Training_Size(Training_Size_number);
 filename_figD=strcat(figure_folder, 'FigD', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
 filename_figDmatVal=strcat(figure_folder_py, 'FigDmatVal', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '_', num2str(epochs), '.png');
@@ -38,8 +53,7 @@ filename_figDpyTest=strcat(figure_folder_py, 'FigDpyTest', '_seed', num2str(seed
 
 th_step=0.5;
 
-%if epochs < 60
-if My_ar[1] == 32
+if My_ar(1) == 32
     Colour = 'brgmcky';
 else
     Colour = 'rbgmcky';
@@ -54,7 +68,14 @@ set(gca,'FontSize',11)
 
 for rr=1:1:numel(My_ar)
 
-    % TODO new title
+    if numel(My_ar) == 1 && My_ar(1) == 32
+        read_idx = 1;
+    elseif numel(My_ar) == 1 && My_ar(1) == 64
+        read_idx = 2;
+    else
+        read_idx = rr;
+    end
+
     if plot_mode == 2
         title(['Coverage vs Rate Threshold, RIS ', num2str(M_bar), ' active elements, pyTest model trained with ', num2str(Training_Size_dd), ' samples and ', num2str(epochs), ' epochs'],'fontsize',11)
     elseif plot_mode == 1
@@ -122,12 +143,12 @@ for rr=1:1:numel(My_ar)
             %DL_output_un = DL_output_un(VI_rev_sortind,:);
             %MaxR_DL(b) = squeeze(YValidation_un(1,1,Indmax_DL(b),b));
             % Quindi MaxR è già ordinato secondo ValTest_Ind
-            values_DL(x,y) = MaxR_DLt(rr,Training_Size_number,b); % equivalent to the previous commented line
+            values_DL(x,y) = MaxR_DLt(read_idx,Training_Size_number,b); % equivalent to the previous commented line
         
             %x = User_Location_norm_ValTest(1,b);
             %y = User_Location_norm_ValTest(2,b);
 
-            values_OPT(x,y) = MaxR_OPTt(rr,Training_Size_number,b);
+            values_OPT(x,y) = MaxR_OPTt_py(read_idx,Training_Size_number,b);
         end
 
         % Matrice dei valori
@@ -149,7 +170,7 @@ for rr=1:1:numel(My_ar)
     else
 
         disp('plot_mode == 0')
-        disp("ATTENZIONE!!! QUESTO E' CODICE VECCHIO: TODO")
+        disp("ATTENZIONE!!! QUESTO E' CODICE VECCHIO E OBSOLETO: TODO")
 
         %filename_XTrain=strcat(DL_dataset_folder, 'XTrain', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
         %filename_YTrain=strcat(DL_dataset_folder, 'YTrain', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(rr)), num2str(Mz_ar(rr)), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
