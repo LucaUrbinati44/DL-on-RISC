@@ -7,13 +7,33 @@ Mz_ar = [32, 64]
 #Mz_ar = [32]
 My_ar = [64]
 Mz_ar = [64]
-Training_Size = [2, 10000, 14000, 18000, 22000, 26000, 30000]
+#Training_Size = [2, 10000, 14000, 18000, 22000, 26000, 30000]
 #Training_Size = [10000, 30000]
 #Training_Size = [10000]
-max_epochs_load = 20
-max_epochs_load = 40
-max_epochs_load = 60 # only for My_ar = [64]
-max_epochs_load = 80 # only for My_ar = [64]
+#Training_Size = [2000, 4000, 6000, 8000]
+Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000]
+
+# training
+#max_epochs_load = 0
+#load_model_flag = 0
+#train_model_flag = 1
+
+# loading and training
+#max_epochs_load = 20
+#max_epochs_load = 40 # only for My_ar = [64]
+#max_epochs_load = 60 # only for My_ar = [64]
+#max_epochs_load = 80 # only for My_ar = [64]
+#load_model_flag = 1
+#train_model_flag = 1
+
+# loading
+#max_epochs_load = 20
+#max_epochs_load = 40
+#max_epochs_load = 60 # only for My_ar = [64]
+#max_epochs_load = 80 # only for My_ar = [64]
+#max_epochs_load = 100 # only for My_ar = [64]
+#load_model_flag = 1
+#train_model_flag = 0
 
 for rr in range(len(My_ar)):
     My = My_ar[rr]
@@ -26,7 +46,9 @@ for rr in range(len(My_ar)):
             'python', 'DL_training_4_v2_test_temp.py',
             '--My', str(My),
             '--Mz', str(Mz),
+            '--load_model_flag', str(load_model_flag),
             '--max_epochs_load', str(max_epochs_load),
+            '--train_model_flag', str(train_model_flag),
             '--Training_Size', str(training_size)
         ]
 
