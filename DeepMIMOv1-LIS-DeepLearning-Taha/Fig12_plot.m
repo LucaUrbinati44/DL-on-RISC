@@ -5,7 +5,8 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
                         Rate_DLt_py_val_20,Rate_DLt_py_test_20, ...
                         Rate_DLt_py_val_40,Rate_DLt_py_test_40, ...
                         Rate_DLt_py_test_60, ...
-                        Rate_DLt_py_test_80)
+                        Rate_DLt_py_test_80, ...
+                        Rate_DLt_py_test_100)
     
     disp('--> Plotting Fig12...');  
 
@@ -37,8 +38,10 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
     %                 '-s', '-d', '->', '-p'}; % rr = 2
     Marker_test_20_40 = {'-';
                          '-'};
-    Marker_test   = {'-^', '-*', '-s', '-p';  % rr = 1
-                     '-^', '-*', '-s', '-p'}; % rr = 2
+    Marker_test   = {'-^', '-*', '-s', '-p', '-x';  % rr = 1
+                     '-^', '-*', '-s', '-p', '-x'}; % rr = 2
+    Marker_test   = {'^', '*', 's', 'p', 'x';  % rr = 1
+                     '^', '*', 's', 'p', 'x'}; % rr = 2
 
     %          b     blue          .     point              -     solid
     %          g     green         o     circle             :     dotted
@@ -114,6 +117,22 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
                 disp(Rate_DLt_py_test_60(rr,:))
                 disp('Rate_DLt_py_test_80(rr,:)')
                 disp(Rate_DLt_py_test_80(rr,:))
+            elseif epochs == 100
+                plot((Training_Size*1e-3),Rate_DLt_py_test_20(rr,:),[Colour(rr) Marker_test{rr, 1}],'markersize',7,'linewidth',1., 'DisplayName', ['DL_{pyTest20}, M = ' num2str(My_ar(rr))])
+                plot((Training_Size*1e-3),Rate_DLt_py_test_40(rr,:),[Colour(rr) Marker_test{rr, 2}],'markersize',7,'linewidth',1., 'DisplayName', ['DL_{pyTest40}, M = ' num2str(My_ar(rr))])
+                plot((Training_Size*1e-3),Rate_DLt_py_test_60(rr,:),[Colour(rr) Marker_test{rr, 3}],'markersize',7,'linewidth',1., 'DisplayName', ['DL_{pyTest60}, M = ' num2str(My_ar(rr))])
+                plot((Training_Size*1e-3),Rate_DLt_py_test_80(rr,:),[Colour(rr) Marker_test{rr, 4}],'markersize',7,'linewidth',1., 'DisplayName', ['DL_{pyTest80}, M = ' num2str(My_ar(rr))])
+                plot((Training_Size*1e-3),Rate_DLt_py_test_100(rr,:),[Colour(rr) Marker_test{rr, 5}],'markersize',7,'linewidth',1., 'DisplayName', ['DL_{pyTest100}, M = ' num2str(My_ar(rr))])
+                disp('Rate_DLt_py_test_20(rr,:)')
+                disp(Rate_DLt_py_test_20(rr,:))     
+                disp('Rate_DLt_py_test_40(rr,:)')
+                disp(Rate_DLt_py_test_40(rr,:)) 
+                disp('Rate_DLt_py_test_60(rr,:)')
+                disp(Rate_DLt_py_test_60(rr,:))
+                disp('Rate_DLt_py_test_80(rr,:)')
+                disp(Rate_DLt_py_test_80(rr,:))
+                disp('Rate_DLt_py_test_100(rr,:)')
+                disp(Rate_DLt_py_test_100(rr,:))
             end            
         end
         %legend('Location','SouthEast')
