@@ -521,12 +521,12 @@ for i, ris in enumerate(My_ar):
             max_epochs_new = max_epochs_load + max_epochs
             factor = 0.5
             patience = 3
-            min_delta = 0.05
+            min_delta = 0.025
         else:
             max_epochs_new = max_epochs
             factor = 0.5
-            patience = 2
-            min_delta = 0.1
+            patience = 3
+            min_delta = 0.05
 
         # ------------------ DL Model Prediction ------------------ #
         if load_model_flag == 1:
@@ -547,16 +547,8 @@ for i, ris in enumerate(My_ar):
             print(f"Learning rate loaded model: {learning_rate}")
 
         # ------------------ DL Model Training ------------------ #
-        if train_model_flag == 1:
+        if train_model_flag == 1 and load_model_flag == 0:
 
-            # For the output filenames
-            end_folder_Training_Size_dd_max_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs_new)
-            model_type = 'model_py_test' + end_folder_Training_Size_dd_max_epochs
-            #model_type_tb = 'model_py_test' + end_folder_Training_Size_dd # TODO ACTIVATE
-
-            filename_Rate_OPT_py = network_folder_out_RateDLpy + 'Rate_OPT_py_test' + end_folder_Training_Size_dd_max_epochs + '.mat'
-            filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py_test' + end_folder_Training_Size_dd_max_epochs + '.mat'
-               
             # Define the neural network architecture
             model_py = Sequential([
                 Input(shape=(X_train.shape[1],), name='input'),
@@ -585,6 +577,16 @@ for i, ris in enumerate(My_ar):
             model_py.compile(optimizer=optimizer, loss=mse_custom, metrics=['mse'])
             model_py.summary()
 
+        if train_model_flag == 1:
+
+            # For the output filenames
+            end_folder_Training_Size_dd_max_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs_new)
+            model_type = 'model_py_test' + end_folder_Training_Size_dd_max_epochs
+            #model_type_tb = 'model_py_test' + end_folder_Training_Size_dd # TODO ACTIVATE
+
+            filename_Rate_OPT_py = network_folder_out_RateDLpy + 'Rate_OPT_py_test' + end_folder_Training_Size_dd_max_epochs + '.mat'
+            filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py_test' + end_folder_Training_Size_dd_max_epochs + '.mat'
+
             #print(model_py.loss)
 
             # ------------------ Training Options ------------------ #
@@ -610,8 +612,8 @@ for i, ris in enumerate(My_ar):
             lr_scheduler = ReduceLROnPlateau(
                 monitor='val_loss',
                 factor=factor,         # Riduce di metà
-                patience=patience,  # Numero di epoche senza miglioramento ≥ y
-                min_delta=min_delta,      # Miglioramento minimo da considerare significativo
+                patience=patience,     # Numero di epoche senza miglioramento ≥ y
+                min_delta=min_delta,   # Miglioramento minimo da considerare significativo
                 verbose=1
             )
             
@@ -624,8 +626,9 @@ for i, ris in enumerate(My_ar):
                 #train_dataset, 
                 #validation_data=val_dataset
                 batch_size=mini_batch_size,
-                #initial_epoch=max_epochs_load, # TODO ACTIVATE
-                epochs=max_epochs,
+                initial_epoch=max_epochs_load,
+                #epochs=max_epochs,
+                epochs=max_epochs_new,
                 shuffle=True,  # Shuffle data at each epoch
                 callbacks=[lr_scheduler, tensorboard_callback],
                 validation_freq=validationFrequency,
@@ -653,23 +656,27 @@ for i, ris in enumerate(My_ar):
             ## DL Model Prediction
             # # SOSTITUIRE X_val CON X_test!!!
             test = 0
-            Rate_DL_py_val  = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test)
+            Rate_OPT_py_val, Rate_DL_py_val  = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
             test = 1
-            Rate_DL_py_test = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test)
+            Rate_OPT_py_test, Rate_DL_py_test = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
 
-        filename_Rate_OPT = network_folder_in + 'Rate_OPT' + end_folder_Training_Size_dd + '.mat'
+        if Training_Size_dd >= 10000 or Training_Size_dd == 2:
+            
+            filename_Rate_OPT = network_folder_in + 'Rate_OPT' + end_folder_Training_Size_dd + '.mat'
 
-        with h5py.File(filename_Rate_OPT, 'r') as f:
-            Rate_OPT = f['Rate_OPT'][:][0][0]
+            with h5py.File(filename_Rate_OPT, 'r') as f:
+                Rate_OPT = f['Rate_OPT'][:][0][0]
 
-        filename_Rate_DL = network_folder_in + 'Rate_DL' + end_folder_Training_Size_dd + '.mat'
+            filename_Rate_DL = network_folder_in + 'Rate_DL' + end_folder_Training_Size_dd + '.mat'
 
-        with h5py.File(filename_Rate_DL, 'r') as f:
-            Rate_DL_valOld = f['Rate_DL'][:][0][0]
+            with h5py.File(filename_Rate_DL, 'r') as f:
+                Rate_DL_valOld = f['Rate_DL'][:][0][0]
 
-        # Output finali
-        print(f"\nRate_OPT: {Rate_OPT}")
-        print(f"Rate_DL_valOld: {Rate_DL_valOld}")
+            # Output finali
+            print(f"\nRate_OPT: {Rate_OPT}")
+            print(f"Rate_DL_valOld: {Rate_DL_valOld}")
+
+        # Output finali       
         if load_model_flag == 1:
             print(f"\nRate_OPT_py_load_val: {Rate_OPT_py_load_val}")
             print(f"Rate_DL_py_load_val: {Rate_DL_py_load_val}")
