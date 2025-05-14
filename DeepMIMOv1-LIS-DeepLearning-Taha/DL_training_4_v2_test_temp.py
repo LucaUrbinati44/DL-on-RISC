@@ -15,6 +15,7 @@ import numpy as np
 
 #sys.stderr = open(os.devnull, 'w')
 
+import tf2onnx
 import tensorflow as tf
 
 # Imposta il seed globale
@@ -94,14 +95,27 @@ except:
 
 # %% Define functions
 
-def model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test, save_files=1):
+def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test, save_files=1):
 
-    if test == 1:
+    if test == 2:
+        t = ''
+        x = xdataset
+        y = Y_dataset
+
+        print('x.shape:', x.shape)
+        print('y.shape:', y.shape)
+
+        filename_Indmax_OPT_py = network_folder_out_RateDLpy + 'Indmax_OPT_py' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+        filename_Indmax_DL_py = network_folder_out_RateDLpy + 'Indmax_DL_py' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    elif test == 1:
         t = 'test'
         x = xtest
         y = Y_test
         YValidation_un = YValidation_un_test
-    else:
+
+        filename_Indmax_OPT_py = network_folder_out_RateDLpy + 'Indmax_OPT_py_test' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+        filename_Indmax_DL_py = network_folder_out_RateDLpy + 'Indmax_DL_py_test' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    elif test == 0:
         t = 'val'
         x = xval
         y = Y_val
@@ -131,25 +145,39 @@ def model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un
     print(f'np.max(Indmax_DL_py): {np.max(Indmax_DL_py)}')
     print(Indmax_DL_py[0:5])
 
-    #validation_accuracy = 0
-    MaxR_OPT_py = np.zeros((Indmax_OPT_py.shape[0],), dtype=np.float32)
-    MaxR_DL_py = np.zeros((Indmax_DL_py.shape[0],), dtype=np.float32)
+    if test == 0 or test == 1:
+        #validation_accuracy = 0
+        MaxR_OPT_py = np.zeros((Indmax_OPT_py.shape[0],), dtype=np.float32)
+        MaxR_DL_py = np.zeros((Indmax_DL_py.shape[0],), dtype=np.float32)
 
-    # Ciclo di confronto
-    for b in range(Indmax_DL_py.shape[0]):
-        MaxR_OPT_py[b] = YValidation_un[Indmax_OPT_py[b], b] # YValidation_un.shape: (1024, 3100)
-        MaxR_DL_py[b]  = YValidation_un[Indmax_DL_py[b],  b]
+        # Ciclo di confronto
+        for b in range(Indmax_DL_py.shape[0]):
+            MaxR_OPT_py[b] = YValidation_un[Indmax_OPT_py[b], b] # YValidation_un.shape: (1024, 3100)
+            MaxR_DL_py[b]  = YValidation_un[Indmax_DL_py[b],  b]
 
-        #if MaxR_DL[b] == MaxR_OPT[b]:
-        #    validation_accuracy += 1
+            #if MaxR_DL[b] == MaxR_OPT[b]:
+            #    validation_accuracy += 1
 
-    Rate_OPT_py = MaxR_OPT_py.mean()
-    Rate_DL_py = MaxR_DL_py.mean()
-    print(f'Rate_OPT: {Rate_OPT_py}')
-    print(f'Rate_DL_py: {Rate_DL_py}')
-    #validation_accuracy = validation_accuracy / Indmax_DL_py.shape[0]
+        Rate_OPT_py = MaxR_OPT_py.mean()
+        Rate_DL_py = MaxR_DL_py.mean()
+        print(f'Rate_OPT: {Rate_OPT_py}')
+        print(f'Rate_DL_py: {Rate_DL_py}')
+        #validation_accuracy = validation_accuracy / Indmax_DL_py.shape[0]
 
-    #print(f"size(MaxR_DL): {MaxR_DL.shape}")
+        #print(f"size(MaxR_DL): {MaxR_DL.shape}")
+    else:
+        Rate_OPT_py = 0
+        Rate_DL_py = 0
+
+
+    if test == 1 or test == 2:
+        with h5py.File(filename_Indmax_OPT_py, 'w') as f:
+            f.create_dataset('Indmax_OPT_py', data=Indmax_OPT_py)
+            print(f"\Indmax_OPT_py saved in {filename_Indmax_OPT_py}")
+
+        with h5py.File(filename_Indmax_DL_py, 'w') as f:
+            f.create_dataset('Indmax_DL_py', data=Indmax_DL_py)
+            print(f"\Indmax_DL_py saved in {filename_Indmax_DL_py}")
 
     if save_files == 1:
         # Scrittura in formato HDF5 (compatibile MATLAB v7.3)
@@ -211,7 +239,8 @@ output_folder = base_folder + 'Output_Python/'
 network_folder_out = output_folder + 'Neural_Network/'
 network_folder_out_YPredicted = output_folder + 'Neural_Network/YPredicted/'
 network_folder_out_RateDLpy = output_folder + 'Neural_Network/RateDLpy/'
-saved_models = network_folder_out + 'saved_models/'
+saved_models_keras = network_folder_out + 'saved_models_keras/'
+#saved_models_onnx = network_folder_out + 'saved_models_onnx/'
 figure_folder = output_folder + 'Figures/'
 
 import os
@@ -221,7 +250,8 @@ folders = [
     network_folder_out,
     network_folder_out_YPredicted,
     network_folder_out_RateDLpy,
-    saved_models,
+    saved_models_keras,
+    #saved_models_onnx,
     figure_folder
 ]
 
@@ -447,6 +477,8 @@ for i, ris in enumerate(My_ar):
         Y_val   = np.array(DL_output_reshaped[Validation_Ind, :, :, :], dtype=force_datatype).squeeze()
         X_test  = np.array(DL_input_reshaped[Test_Ind, :, :, :], dtype=force_datatype).squeeze()
         Y_test  = np.array(DL_output_reshaped[Test_Ind, :, :, :], dtype=force_datatype).squeeze()       
+        X_dataset = np.array(DL_input_reshaped[:, :, :, :], dtype=force_datatype).squeeze()
+        Y_dataset = np.array(DL_output_reshaped[:, :, :, :], dtype=force_datatype).squeeze()
         
         # YValidation_un.shape: (1, 1, 1024, 36200)
         YValidation_un_val  = np.array(YValidation_un[:, :, :, Validation_Ind], dtype=force_datatype).squeeze()
@@ -454,14 +486,16 @@ for i, ris in enumerate(My_ar):
 
         print(f"\nY_train.dtype: {Y_train.dtype}")
 
-        print(X_train.shape)
-        print(Y_train.shape)
-        print(X_val.shape)
+        print(X_train.shape) # (Training_Size_dd, 1024)
+        print(Y_train.shape) 
+        print(X_val.shape) # (3100, 1024)
         print(Y_val.shape)
-        print(X_test.shape)
+        print(X_test.shape) # (3100, 1024)
         print(Y_test.shape)
         print(YValidation_un_val.shape)  # (1024, 3100)
         print(YValidation_un_test.shape) # (1024, 3100)
+        print(X_dataset.shape) # (36200, 1024)
+        print(Y_dataset.shape) 
 
         # %%
         ## Recreate the same network in Python
@@ -493,6 +527,7 @@ for i, ris in enumerate(My_ar):
         X_train_normalized = np.array((X_train - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
         X_val_normalized = np.array((X_val - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
         X_test_normalized = np.array((X_test - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
+        X_dataset_normalized = np.array((X_dataset - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
 
         #print(mean_array)
         #print(variance_array)
@@ -509,6 +544,7 @@ for i, ris in enumerate(My_ar):
             xtrain = X_train_normalized
             xval = X_val_normalized
             xtest = X_test_normalized
+            xdataset = X_dataset_normalized
         else:
             xtrain = X_train
             xval = X_val
@@ -534,14 +570,39 @@ for i, ris in enumerate(My_ar):
             end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
             model_type_load = 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
 
-            model_py = load_model(saved_models + model_type_load + '.keras', custom_objects={'mse_custom': mse_custom})
+            model_path_keras = saved_models_keras + model_type_load + '.keras'
+            model_py = load_model(model_path_keras, custom_objects={'mse_custom': mse_custom})
             model_py.summary()
-            print(f"\nModel {saved_models + model_type_load + '.keras'} loaded")
+            print(f"\nModel {model_path_keras} loaded")
 
+            # Esporta in formato tf (più compatibile con ONNX)
+            #export_dir = saved_models_onnx + model_type_load
+            #model_py.export(export_dir)
+        
+            # Esporta in formato h5
+            #model_py.save(saved_models_onnx + model_type_load + '.h5')
+
+            #os._exit(0)
+
+            #model_path_onnx = saved_models_onnx + model_type_load + '.onnx'
+            ## Converte in ONNX
+            #spec = (tf.TensorSpec(model_py.inputs[0].shape, tf.float32, name="input"),)
+            #model_py.output_names=['output'] # Dummy assignment to make tf2onnx work https://github.com/onnx/tensorflow-onnx/issues/2319#issuecomment-2009332333
+            #onnx_model, _ = tf2onnx.convert.from_keras(model_py, input_signature=spec, opset=13, output_path=model_path_onnx)
+            #print(f"\nModel {model_path_onnx} saved")
+            #os._exit(0)
+
+            save_files_flag = 0
             test = 0
-            Rate_OPT_py_load_val, Rate_DL_py_load_val   = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=1)
+            #Rate_OPT_py_load_val, Rate_DL_py_load_val   = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+            Rate_OPT_py_load_val = 0
+            Rate_DL_py_load_val = 0
             test = 1
-            Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=1)
+            #Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+            Rate_OPT_py_load_test = 0
+            Rate_DL_py_load_test = 0
+            test = 2
+            Rate_OPT_py_load, Rate_DL_py_load = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
             
             learning_rate = model_py.optimizer.learning_rate.numpy()
             print(f"Learning rate loaded model: {learning_rate}")
@@ -644,9 +705,10 @@ for i, ris in enumerate(My_ar):
             # - The model's weights
             # - The model's optimizer's state (if any)
             # model.save() is an alias for keras.saving.save_model()
-            model_py.save(saved_models + model_type + '.keras')  # The file needs to end with the .keras extension
+            model_py.save(saved_models_keras + model_type + '.keras')  # The file needs to end with the .keras extension
+            print(f"\nModel saved in {saved_models_keras}")
 
-            print(f"\nModel saved in {saved_models}")
+            # TODO copiare saved models onnx anche qui
 
             #np.save(os.path.join(output_folder, 'history.npy'), history.history)
             #np.save(os.path.join(output_folder, 'Y_predicted.npy'), Y_predicted)
@@ -656,9 +718,11 @@ for i, ris in enumerate(My_ar):
             ## DL Model Prediction
             # # SOSTITUIRE X_val CON X_test!!!
             test = 0
-            Rate_OPT_py_val, Rate_DL_py_val  = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
+            Rate_OPT_py_val, Rate_DL_py_val  = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
             test = 1
-            Rate_OPT_py_test, Rate_DL_py_test = model_predict(xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
+            Rate_OPT_py_test, Rate_DL_py_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
+            test = 2
+            Rate_OPT_py_test, Rate_DL_py_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
 
         if Training_Size_dd >= 10000 or Training_Size_dd == 2:
             
@@ -683,6 +747,9 @@ for i, ris in enumerate(My_ar):
 
             print(f"\nRate_OPT_py_load_test: {Rate_OPT_py_load_test}")
             print(f"Rate_DL_py_load_test: {Rate_DL_py_load_test}")
+            
+            print(f"\nRate_OPT_py_load: {Rate_OPT_py_load}")
+            print(f"Rate_DL_py_load: {Rate_DL_py_load}")
         if train_model_flag == 1:
             print(f"\nRate_DL_py_test: {Rate_DL_py_test}")
             print(f"Rate_DL_py_val: {Rate_DL_py_val}")
