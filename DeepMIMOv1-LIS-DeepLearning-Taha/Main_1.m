@@ -6,7 +6,7 @@ base_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Ta
 output_folder = [base_folder, 'Output Matlab/'];
 output_folder_py = [base_folder, 'Output_Python/'];
 
-global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
+global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py network_folder_out_RateDLpy;
 
 seed=0;
 rng(seed, "twister") % Added for code replicability
@@ -60,23 +60,25 @@ load_mat_py      = 3;
 % 1: load mat-python-mat files
 % 0: load mat-generated files
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
 plot_fig12 = 0;
 epochs_fig12 = 100;
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %plot_fig7 = 0;
-plot_figC = 0;
-
-plot_figD = 1;
+plot_figC = 1;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+plot_figD = 0;
 plot_mode = 2; % non usare 0
-Training_Size_number = 11;
-%                 1    2     3     4     5     6      7      8      9      10     11
-%Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
+Training_Size_number = 6;
+%Training_Size_number = 11;
+%                1    2     3     4     5     6      7      8      9      10     11
+Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
 max_epochs_load = 20;
 %max_epochs_load = 40;
 %max_epochs_load = 60;
 %max_epochs_load = 80; % ATTENZIONE funziona solo con [64, 64] per ora
 %max_epochs_load = 100; % ATTENZIONE funziona solo con [64, 64] per ora
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% System Model parameters
 disp('---> System Model Parameters');
 
@@ -95,8 +97,8 @@ L=1; % number of channel paths
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
 My_ar=[32 64]; % number of LIS reflecting elements across the y axis (32x32 blue curve, 64x64 red curve)
 Mz_ar=[32 64]; % number of LIS reflecting elements across the z axis
-%My_ar=[32]; % Semplificazione Luca
-%Mz_ar=[32]; % Semplificazione Luca
+My_ar=[32]; % Semplificazione Luca
+Mz_ar=[32]; % Semplificazione Luca
 %My_ar=[64]; % Semplificazione Luca
 %Mz_ar=[64]; % Semplificazione Luca
 disp('RIS sizes: ');
@@ -116,7 +118,7 @@ Ur_rows = [1000 1200]; % original
 %Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
 %Training_Size=[1e4*3]; % Semplificazione Luca
 %Training_Size=[10000 30000];
-Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
+%Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
 
 Validation_Size = 6200; % Validation dataset Size
 Test_Size = 3100; % Test dataset Size
@@ -201,7 +203,7 @@ for rr = 1:1:numel(My_ar)
             MaxR_DL = NaN;
         end
             
-        if plot_figD == 1
+        if plot_figD == 1 || plot_figC == 1
 
             MaxR_OPTt(rr,dd,:) = MaxR_OPT; % 6200 val
             MaxR_DLt_mat(rr,dd,:) = MaxR_DL; % 6200 val
@@ -374,12 +376,38 @@ end
 
 if plot_figC == 1
     % con plot_index=1 si può usare solo plot_test_only=1 (per ora perchè bisogna plottare gli indici il cui rate è superiore alla soglia (non so se è di interesse))
-    plot_index     = 0;
-    plot_rate      = 1;
-    plot_test_only = 1;
-    plot_threshold = 1;
-    threshold      = 5; % [bps/Hz]
-    FigC_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,MaxR_DLt_mat,MaxR_OPTt,Validation_Ind,plot_index,plot_rate,plot_test_only,plot_threshold,threshold);
+    plot_index     = 1;
+    plot_rate      = 0;
+    plot_test_only = 0;
+    plot_threshold = 0;
+    threshold      = 5; % [bps/Hz], only if plot_threshold == 1
+    
+    % mat
+    %plot_mode = 1;
+    %max_epochs_load = 20; % DO NOT CHANGE, matVal ha solo questo valore di epoche
+    %FigC_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,RandP_all,Validation_Ind,Test_Ind,epochs,plot_mode,Training_Size_number,...
+    %            plot_index,plot_rate,plot_test_only,plot_threshold,threshold,...
+    %            MaxR_OPTt, MaxR_DLt_mat, ...
+    %            MaxR_OPTt_py_test, ...
+    %            MaxR_DLt_py_test_20, ...
+    %            MaxR_DLt_py_test_40, ...
+    %            MaxR_DLt_py_test_60, ...
+    %            MaxR_DLt_py_test_80, ...
+    %            MaxR_DLt_py_test_100);
+    
+    % py
+    plot_mode = 2;
+    max_epochs_load = 20;
+    %max_epochs_load = 100;
+    FigC_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,RandP_all,Validation_Ind,Test_Ind,epochs,plot_mode,Training_Size_number,...
+                plot_index,plot_rate,plot_test_only,plot_threshold,threshold,...
+                MaxR_OPTt, MaxR_DLt_mat, ...
+                MaxR_OPTt_py_test, ...
+                MaxR_DLt_py_test_20, ...
+                MaxR_DLt_py_test_40, ...
+                MaxR_DLt_py_test_60, ...
+                MaxR_DLt_py_test_80, ...
+                MaxR_DLt_py_test_100);
 end
 
 if plot_figD == 1
@@ -399,28 +427,28 @@ if plot_figD == 1
 
     if max_epochs_load < 80
         % ATTENZIONE: non è adatto a plottare ris 32 e 64 sullo stesso grafico, plottare uno alla volta.
-        %My_ar=[32];
-        %Mz_ar=[32];
-        %FigD_plot_all_g(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,max_epochs_load,plot_mode,Training_Size_number, ...
-        %            MaxR_OPTt,MaxR_DLt_mat, ...
-        %            MaxR_OPTt_py_test, ...
-        %            MaxR_DLt_py_test_20, ...
-        %            MaxR_DLt_py_test_40, ...
-        %            MaxR_DLt_py_test_60, ...
-        %            MaxR_DLt_py_test_80, ...
-        %            MaxR_DLt_py_test_100)
+        My_ar=[32];
+        Mz_ar=[32];
+        FigD_plot_all_g(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,max_epochs_load,plot_mode,Training_Size_number, ...
+                    MaxR_OPTt,MaxR_DLt_mat, ...
+                    MaxR_OPTt_py_test, ...
+                    MaxR_DLt_py_test_20, ...
+                    MaxR_DLt_py_test_40, ...
+                    MaxR_DLt_py_test_60, ...
+                    MaxR_DLt_py_test_80, ...
+                    MaxR_DLt_py_test_100)
     end
 
-    %My_ar=[64];
-    %Mz_ar=[64];
-    %FigD_plot_all_g(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,max_epochs_load,plot_mode,Training_Size_number, ...
-    %            MaxR_OPTt,MaxR_DLt_mat, ...
-    %            MaxR_OPTt_py_test, ...
-    %            MaxR_DLt_py_test_20, ...
-    %            MaxR_DLt_py_test_40, ...
-    %            MaxR_DLt_py_test_60, ...
-    %            MaxR_DLt_py_test_80, ...
-    %            MaxR_DLt_py_test_100)
+    My_ar=[64];
+    Mz_ar=[64];
+    FigD_plot_all_g(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,max_epochs_load,plot_mode,Training_Size_number, ...
+                MaxR_OPTt,MaxR_DLt_mat, ...
+                MaxR_OPTt_py_test, ...
+                MaxR_DLt_py_test_20, ...
+                MaxR_DLt_py_test_40, ...
+                MaxR_DLt_py_test_60, ...
+                MaxR_DLt_py_test_80, ...
+                MaxR_DLt_py_test_100)
 
                 %MaxR_OPTt_py_test_20, ...
                 %MaxR_OPTt_py_test_40, ...
