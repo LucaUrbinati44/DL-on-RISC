@@ -43,6 +43,22 @@ from datetime import datetime
 import subprocess
 import psutil 
 
+import requests
+import json
+import base64
+
+import edgeimpulse as ei
+ei.API_KEY = "ei_4a58ede09ec501541b8239002c9ee96833f9fac84c339500a2a04eb3b7c9bcfc"
+API_KEY = "ei_4a58ede09ec501541b8239002c9ee96833f9fac84c339500a2a04eb3b7c9bcfc"
+PROJECT_ID = 712872
+
+HEADERS = {
+    "x-api-key": API_KEY
+}
+
+labels = [str(i) for i in range(1024)]
+num_classes = len(labels)
+
 # Imposta float32 come tipo predefinito in Keras
 tf.keras.backend.set_floatx('float32')
 
@@ -128,7 +144,7 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
         
     print(f"\nStart DL prediction {t} set...")
 
-    Indmax_OPT_py = np.argmax(y, axis=1)
+    Indmax_OPT_py = np.argmax(y, axis=1) # ATTENZIONE: ricordarsi di fare +1 in Matlab per ripristinare indici da zero-based a one-based
     print(f'Indmax_OPT_py.shape: {Indmax_OPT_py.shape}')
     print(f'np.min(Indmax_OPT_py): {np.min(Indmax_OPT_py)}')
     print(f'np.max(Indmax_OPT_py): {np.max(Indmax_OPT_py)}')
@@ -240,7 +256,11 @@ network_folder_out = output_folder + 'Neural_Network/'
 network_folder_out_YPredicted = output_folder + 'Neural_Network/YPredicted/'
 network_folder_out_RateDLpy = output_folder + 'Neural_Network/RateDLpy/'
 saved_models_keras = network_folder_out + 'saved_models_keras/'
-#saved_models_onnx = network_folder_out + 'saved_models_onnx/'
+saved_models_onnx = network_folder_out + 'saved_models_onnx/'
+saved_models_tfsaved = network_folder_out + 'saved_models_tfsaved/'
+saved_models_tfsaved2 = network_folder_out + 'saved_models_tfsaved2/'
+saved_models_tflite = network_folder_out + 'saved_models_tflite/'
+saved_models_edgeimpulse = network_folder_out + 'saved_models_edgeimpulse/'
 figure_folder = output_folder + 'Figures/'
 
 import os
@@ -251,7 +271,11 @@ folders = [
     network_folder_out_YPredicted,
     network_folder_out_RateDLpy,
     saved_models_keras,
-    #saved_models_onnx,
+    saved_models_onnx,
+    saved_models_tfsaved,
+    saved_models_tfsaved2,
+    saved_models_tflite,
+    saved_models_edgeimpulse,
     figure_folder
 ]
 
@@ -297,6 +321,9 @@ parser.add_argument('--Mz', type=int, default=32, help='Numero di antenne RIS lu
 parser.add_argument('--load_model_flag', type=int, default=1, help='Flag per caricare un modello pre-addestrato (1) o no (0).')
 parser.add_argument('--max_epochs_load', type=int, default=20, help='Numero di epoche del modello da carica (20, 40, 60, 80).')
 parser.add_argument('--train_model_flag', type=int, default=0, help='Flag per addestrare il modello (1) o no (0).')
+parser.add_argument('--predict_loaded_model_flag', type=int, default=0, help='Flag per fare predizione (1) o no (0).')
+parser.add_argument('--export_model_flag', type=int, default=0, help='Flag per esportare il modello (1) o no (0).')
+parser.add_argument('--profiling_model_flag', type=int, default=0, help='Flag per fare il profiling del modello (1) o no (0).')
 parser.add_argument('--Training_Size', type=int, default=10000, help='Training_Size (10000, 14000, 18000, 22000, 26000, 30000).')
 
 # Leggi gli argomenti dalla riga di comando
@@ -308,6 +335,9 @@ Mz_ar = [args.Mz]
 load_model_flag = args.load_model_flag
 max_epochs_load = args.max_epochs_load
 train_model_flag = args.train_model_flag
+predict_loaded_model_flag = args.predict_loaded_model_flag
+export_model_flag = args.export_model_flag
+profiling_model_flag = args.profiling_model_flag
 Training_Size = [args.Training_Size]
 
 # %%
@@ -459,7 +489,8 @@ for i, ris in enumerate(My_ar):
         print(perc_train)
         print(perc_val)
 
-        RandP_all2 = np.squeeze(np.array(RandP_all.astype(int))) - 1
+        RandP_all2 = np.squeeze(np.array(RandP_all.astype(int))) - 1 
+        # -1 serve per fare andare tutto perchè altrimenti il valore 0 di DL_input_reshaped (per esempio) non verrebbe mai indicizzato/selezionato 
 
         Training_Ind = RandP_all2[0:Training_Size_dd]
         Test_Ind = RandP_all2[-Test_Size:]
@@ -564,7 +595,8 @@ for i, ris in enumerate(My_ar):
             patience = 3
             min_delta = 0.05
 
-        # ------------------ DL Model Prediction ------------------ #
+        # %%
+        ################################ Load Model ################################
         if load_model_flag == 1:
 
             end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
@@ -575,39 +607,324 @@ for i, ris in enumerate(My_ar):
             model_py.summary()
             print(f"\nModel {model_path_keras} loaded")
 
-            # Esporta in formato tf (più compatibile con ONNX)
-            #export_dir = saved_models_onnx + model_type_load
-            #model_py.export(export_dir)
+            model_path_tflite = saved_models_tflite + model_type_load + '_quant.tflite'
+            model_path_float32_onnx = saved_models_onnx + model_type_load + '.onnx'
+
+            MODEL_PATH = model_path_tflite
         
-            # Esporta in formato h5
-            #model_py.save(saved_models_onnx + model_type_load + '.h5')
+            if export_model_flag == 1:
+                #### V1 ####
+                ## Esporta in formato tf
+                #export_dir = saved_models_tfsaved + model_type_load
+                #model_py.export(export_dir, format="tf_saved_model")
 
-            #os._exit(0)
+                #### V2 ####
+                ## Convert the model for Edge Impulse
+                #model_py2 = Sequential([
+                #    Input(shape=(X_train.shape[1],), batch_size=1, name='input'),
+    #
+                #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully1_'),
+                #    ReLU(name='relu1'),
+                #    Dropout(0.5, name='dropout1'),
+    #
+                #    Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully2_'),
+                #    ReLU(name='relu2'),
+                #    Dropout(0.5, name='dropout2'),
+    #
+                #    Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully3_'),
+                #    ReLU(name='relu3'),
+                #    Dropout(0.5, name='dropout3'),
+    #
+                #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully4_'),
+                #])
 
-            #model_path_onnx = saved_models_onnx + model_type_load + '.onnx'
-            ## Converte in ONNX
-            #spec = (tf.TensorSpec(model_py.inputs[0].shape, tf.float32, name="input"),)
-            #model_py.output_names=['output'] # Dummy assignment to make tf2onnx work https://github.com/onnx/tensorflow-onnx/issues/2319#issuecomment-2009332333
-            #onnx_model, _ = tf2onnx.convert.from_keras(model_py, input_signature=spec, opset=13, output_path=model_path_onnx)
-            #print(f"\nModel {model_path_onnx} saved")
-            #os._exit(0)
+                #model_py2.load_weights(model_path_keras)
 
-            save_files_flag = 0
-            test = 0
-            #Rate_OPT_py_load_val, Rate_DL_py_load_val   = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+                ## Esporta in formato tf
+                #export_dir = saved_models_tfsaved2 + model_type_load
+                #model_py2.export(export_dir, format="tf_saved_model")
+
+                #### V3 ####
+                converter = tf.lite.TFLiteConverter.from_keras_model(model_py)
+                tflite_model = converter.convert()
+
+                #### V4 ####
+                def representative_dataset():
+                    for i in range(xval.shape[0]): # (3100, 1024)
+                        data = xval[i,:]
+                        yield [data.astype(np.float32)]
+                
+                # Enforce full integer quantization for all ops including the input and output
+                converter.optimizations = [tf.lite.Optimize.DEFAULT]
+                converter.representative_dataset = representative_dataset
+                converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+                converter.inference_input_type = tf.int8  # or tf.uint8
+                converter.inference_output_type = tf.int8  # or tf.uint8
+                tflite_quant_model = converter.convert()
+
+                ## Enforce full integer quantization for all ops excluding input and output and those operators that don't have an integer implementation
+                #converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
+                #converter.optimizations = [tf.lite.Optimize.DEFAULT]
+                #converter.representative_dataset = representative_dataset_gen
+                #tflite_quant_model = converter.convert()
+
+                #model_path_tflite = saved_models_tflite + model_type_load + '.tflite'
+                #with open(model_path_tflite, 'wb') as f:
+                #    f.write(tflite_model)
+                
+                #export_dir = saved_models_tfsaved + model_type_load
+                #export_val_dataset = export_dir + '_val_dataset.npy'
+                #np.save(export_val_dataset, xval)
+            
+                with open(model_path_tflite, 'wb') as f:
+                    f.write(tflite_quant_model)
+
+                #### V5 ####
+                model_py.export(model_path_float32_onnx, format="onnx")
+
+            # %%
+            ################################ Profile Model ################################
+            if profiling_model_flag == 1:
+                # https://docs.edgeimpulse.com/reference/edge-impulse-api/learn/upload_a_pretrained_model
+                def upload_model():
+                    print('upload_model...')
+
+                    with open(MODEL_PATH, 'rb') as f:
+                        files = {'model': (MODEL_PATH, f, 'application/octet-stream')}
+                        #url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/pretrained-model/upload"
+                        url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/pretrained-model/upload"
+                        response = requests.post(url, headers=HEADERS, files=files)
+                        if response.status_code == 200:
+                            print("Modello caricato con successo.")
+                        else:
+                            print(f"Errore nel caricamento del modello: {response.status_code} - {response.text}")
+                    return
+
+
+                # https://docs.edgeimpulse.com/reference/edge-impulse-api/jobs/get_tflite_profile_result_-get
+                def get_profiling_result(job_id):
+                    print('get_profiling_result...')
+
+                    #url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/jobs/{job_id}"
+                    url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/jobs/profile-tflite/{job_id}/result"
+                    while True:
+                        response = requests.get(url, headers=HEADERS)
+
+                        if response.status_code == 202: # Attendi se il job non è ancora pronto (202)
+                            print("202...", end="", flush=True)
+                            time.sleep(15)
+                            continue
+                        elif response.status_code == 200:
+                            response.raise_for_status()
+                            result = response.json()
+                        
+                            # Profiling ancora non pronto anche se status 200
+                            if not result.get('success', True):
+                                print("200...", end="", flush=True)
+                                time.sleep(15)
+                                continue
+                            else:
+                                print("Profiling completato.")
+                                return result
+                        
+                        else:
+                            print("...other status_code")
+                            time.sleep(15)
+                        
+                #print(ei.model.list_profile_devices())
+                # Solitamente si usano cortex-m4f-80mhz, cortex-m7-216mhz
+                #print(ei.model.list_deployment_targets())
+                # Solitamente si usa "zip" che è il c++ genirico che si può compilare con tutto
+
+                deploy = 0
+                profile_python = 0 # non usarlo, è più lento, però riporta un summary di più target
+                profile_http = 1
+                upload_model_on_edgeimpulse = 1
+
+                ram = 0
+                rom = 0
+                arena = 0
+                ram_eon = 0
+                rom_eon = 0
+                arena_eon = 0
+                isSupportedOnMcu = 0
+                hasPerformance = 0
+
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                export_metrics_all = saved_models_edgeimpulse + model_type_load + f'_metrics_{timestamp}.txt'
+                ## Se il file esiste, eliminalo
+                #if os.path.exists(export_metrics_all):
+                #    os.remove(export_metrics_all)
+                #    print(f"File {export_metrics_all} removed.")
+                
+                with open(export_metrics_all, 'a') as f:
+                    f.write("model_type,device_type,ram,rom,arena,ram_eon,rom_eon,arena_eon,lat,isSupportedOnMcu,hasPerformance\n")
+
+                for model_type, model_to_profile in zip(['int8','float32'], [model_path_tflite, model_path_float32_onnx]):
+                    # https://docs.edgeimpulse.com/docs/edge-ai-hardware/edge-ai-hardware
+                    #                           M0+                    M4                   M7            M55+acc          A72            cpu+gpu
+                    for device_type in ['raspberry-pi-rp2040', 'cortex-m4f-80mhz', 'cortex-m7-216mhz', 'st-stm32n6', 'raspberry-pi-4', 'jetson-nano']: # come mettere M0 e A?
+
+                        #### Edge Impulse Profile ####
+                        print(f"\n*** Edge Impulse Profiling of {model_type} on {device_type} ***")
+                        t = time.time()
+                        
+                        DEVICE = device_type
+
+                        #### with Python SDK ####
+                        if profile_python == 1:
+                            # Estimate the RAM, ROM, and inference time for our model on the target hardawre
+                            try:
+                                profile = ei.model.profile(model=model_to_profile, 
+                                                            device=device_type)
+                                print(profile.summary())
+                            except Exception as e:
+                                print(f"Could not profile: {e}")
+
+                            # Salva il risultato su file JSON per uso futuro
+                            model_path_json = saved_models_edgeimpulse + f"profiling_result_{model_type}_{device_type}_sdk.json"
+                            with open(model_path_json, "w") as f:
+                                json.dump(profile, f, indent=2)
+
+                            try:
+                                mem = profile.result.get("memory", {})
+                                lat = profile.result.get("timePerInferenceMs", -1)
+
+                                ram = mem.get("tflite", {}).get("ram", -1)
+                                rom = mem.get("tflite", {}).get("rom", -1)
+                                arena = mem.get("tflite", {}).get("arenaSize", -1)
+
+                                ram_eon = mem.get("eon", {}).get("ram", -1)
+                                rom_eon = mem.get("eon", {}).get("rom", -1)
+                                arena_eon = mem.get("eon", {}).get("arenaSize", -1)   
+
+                            except Exception as e:
+                                print(f"Error getting profile results: {e}")
+
+                            export_metrics = saved_models_edgeimpulse + model_type_load + '_' + model_type + '_' + device_type + '_metrics_sdk.txt'
+                        
+                        #### with HTTP API ####
+                        elif profile_http == 1:
+
+                            # https://docs.edgeimpulse.com/reference/edge-impulse-api/jobs/profile_tflite_model
+                            def profile_model():
+                                print('profile_model...')
+
+                                #url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/pretrained-model/profile"
+                                url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/jobs/profile-tflite"
+                                
+                                # Leggi e codifica il modello in base64
+                                with open(model_path_tflite, 'rb') as f:
+                                    model_base64 = base64.b64encode(f.read()).decode('utf-8')
+
+                                payload = {
+                                    'tfliteFileBase64': model_base64,
+                                    "device": DEVICE
+                                }
+                                response = requests.post(url, headers=HEADERS, json=payload)
+
+                                if response.status_code == 200:
+                                    profile_result = response.json()
+                                    #print(json.dumps(profile_result, indent=2))
+                                else:
+                                    print(f"Errore nel profiling del modello: {response.status_code} - {response.text}")
+
+                                return response.json()['id']
+                                    
+                            if upload_model_on_edgeimpulse == 1:
+                                upload_model()
+                                upload_model_on_edgeimpulse = 0
+
+                            job_id = profile_model()
+                            result = get_profiling_result(job_id)
+                            print(json.dumps(result, indent=2))
+
+                            # Salva il risultato su file JSON per uso futuro
+                            model_path_json = saved_models_edgeimpulse + f"profiling_result_{model_type}_{device_type}_http.json"
+                            with open(model_path_json, "w") as f:
+                                json.dump(result, f, indent=2)
+
+                            try:
+                                ram = result['memory']['tflite']['ram']
+                                rom = result['memory']['tflite']['rom']
+                                arena = result['memory']['tflite']['arenaSize']
+                                
+                                ram_eon = result['memory']['eon']['ram']
+                                rom_eon = result['memory']['eon']['rom']
+                                arena_eon = result['memory']['eon']['arenaSize']
+                                
+                                lat = result['timePerInferenceMs']
+
+                                isSupportedOnMcu = result['isSupportedOnMcu']
+                                hasPerformance = result['hasPerformance']
+
+                            except Exception as e:
+                                print(f"Error getting profile results: {e}")
+
+                            export_metrics = saved_models_edgeimpulse + model_type_load + '_' + model_type + '_' + device_type + '_metrics_http.txt'
+
+                        #### Collect profiling results ####
+                        with open(export_metrics, 'w') as f:
+                            f.write(f"TFLite: RAM={ram}, ROM={rom}, Arena={arena}\n"
+                                    f"EON:    RAM={ram_eon}, ROM={rom_eon}, Arena={arena_eon}\n"
+                                    f"Latency: {lat} ms\n"
+                                    f"isSupportedOnMcu: {isSupportedOnMcu}\n"
+                                    f"hasPerformance: {hasPerformance}")
+
+                        with open(export_metrics_all, 'a') as f:
+                            f.write(f"{model_type},{device_type},{ram},{rom},{arena},{ram_eon},{rom_eon},{arena_eon},{lat},{isSupportedOnMcu},{hasPerformance}\n")
+
+                        elapsed = (time.time() - t)/60
+                        print(f"Elapsed time: {elapsed} min\n")
+
+                        if deploy == 1:
+                            #### Edge Impulse Deploy ####
+                            
+                            # Set model input type
+                            model_input_type = ei.model.input_type.OtherInput()
+
+                            # Set model information, such as your list of labels
+                            model_output_type = ei.model.output_type.Classification(labels=labels)
+                            
+                            # Create C++ library with trained model
+                            deploy_bytes = None
+                            try:
+                                deploy_bytes = ei.model.deploy(model=model_to_profile,
+                                                                model_output_type=model_output_type,
+                                                                model_input_type=model_input_type,
+                                                                deploy_target='zip',
+                                                                output_directory=saved_models_edgeimpulse)
+                            except Exception as e:
+                                print(f"Could not profile: {e}")
+
+                            # Write the downloaded raw bytes to a file
+                            if deploy_bytes:
+                                deploy_filename = saved_models_edgeimpulse + model_type_load + '_' + model_type + '_' + device_type + '_deploy_bytes.zip'
+                                with open(deploy_filename, 'wb') as f:
+                                    f.write(deploy_bytes.getvalue())
+            
+            # %%
+            ################################ Predict with Loaded Model ################################
             Rate_OPT_py_load_val = 0
             Rate_DL_py_load_val = 0
-            test = 1
-            #Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
-            Rate_OPT_py_load_test = 0
-            Rate_DL_py_load_test = 0
-            test = 2
-            Rate_OPT_py_load, Rate_DL_py_load = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+            if predict_loaded_model_flag == 1:
+                save_files_flag = 0
+                test = 0
+                #Rate_OPT_py_load_val, Rate_DL_py_load_val   = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+                Rate_OPT_py_load_val = 0
+                Rate_DL_py_load_val = 0
+                test = 1
+                Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+                #Rate_OPT_py_load_test = 0
+                #Rate_DL_py_load_test = 0
+                test = 2
+                Rate_OPT_py_load, Rate_DL_py_load = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
             
             learning_rate = model_py.optimizer.learning_rate.numpy()
             print(f"Learning rate loaded model: {learning_rate}")
 
-        # ------------------ DL Model Training ------------------ #
+        # %%
+        ################################ Train Model ################################
         if train_model_flag == 1 and load_model_flag == 0:
 
             # Define the neural network architecture
@@ -650,7 +967,6 @@ for i, ris in enumerate(My_ar):
 
             #print(model_py.loss)
 
-            # ------------------ Training Options ------------------ #
             mini_batch_size = 500
             
             tensorboard_logs = log_dir + model_type
