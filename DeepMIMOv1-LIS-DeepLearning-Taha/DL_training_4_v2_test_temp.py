@@ -47,6 +47,10 @@ import requests
 import json
 import base64
 
+import re
+import io
+from contextlib import redirect_stdout
+
 import edgeimpulse as ei
 ei.API_KEY = "ei_4a58ede09ec501541b8239002c9ee96833f9fac84c339500a2a04eb3b7c9bcfc"
 API_KEY = "ei_4a58ede09ec501541b8239002c9ee96833f9fac84c339500a2a04eb3b7c9bcfc"
@@ -747,6 +751,7 @@ for i, ris in enumerate(My_ar):
                 ram_eon = 0
                 rom_eon = 0
                 arena_eon = 0
+                lat = 0
                 isSupportedOnMcu = 0
                 hasPerformance = 0
 
@@ -758,15 +763,19 @@ for i, ris in enumerate(My_ar):
                 #    print(f"File {export_metrics_all} removed.")
                 
                 with open(export_metrics_all, 'a') as f:
-                    f.write("model_type,device_type,ram,rom,arena,ram_eon,rom_eon,arena_eon,lat,isSupportedOnMcu,hasPerformance\n")
+                    #f.write("model_type,device_type,ram,rom,arena,ram_eon,rom_eon,arena_eon,lat,isSupportedOnMcu,hasPerformance\n")
+                    f.write("device_type,model_type,ram_eon,rom_eon,lat\n")
 
-                for model_type, model_to_profile in zip(['int8','float32'], [model_path_tflite, model_path_float32_onnx]):
+                #for model_type, model_to_profile in zip(['int8','float32'], [model_path_tflite, model_path_float32_onnx]):
+                for model_type, model_to_profile in zip(['int8'], [model_path_tflite]):
                     # https://docs.edgeimpulse.com/docs/edge-ai-hardware/edge-ai-hardware
                     #                           M0+                    M4                   M7            M55+acc          A72            cpu+gpu
                     for device_type in ['raspberry-pi-rp2040', 'cortex-m4f-80mhz', 'cortex-m7-216mhz', 'st-stm32n6', 'raspberry-pi-4', 'jetson-nano']: # come mettere M0 e A?
+                    #for device_type in ['cortex-m4f-80mhz', 'cortex-m7-216mhz', 'st-stm32n6', 'raspberry-pi-4', 'jetson-nano']: # come mettere M0 e A?
+                    #for device_type in ['cortex-m7-216mhz', 'st-stm32n6', 'raspberry-pi-4', 'jetson-nano']: # come mettere M0 e A?
 
                         #### Edge Impulse Profile ####
-                        print(f"\n*** Edge Impulse Profiling of {model_type} on {device_type} ***")
+                        print(f"\n*** Edge Impulse Profiling of {model_to_profile} using {model_type} on {device_type} ***")
                         t = time.time()
                         
                         DEVICE = device_type
@@ -784,7 +793,24 @@ for i, ris in enumerate(My_ar):
                             # Salva il risultato su file JSON per uso futuro
                             model_path_json = saved_models_edgeimpulse + f"profiling_result_{model_type}_{device_type}_sdk.json"
                             with open(model_path_json, "w") as f:
-                                json.dump(profile, f, indent=2)
+                                #json.dump(profile.summary(), f, indent=2)
+                                buf = io.StringIO()
+                                with redirect_stdout(buf):
+                                    profile.summary()
+                                f.write(buf.getvalue())
+                            
+                            # Riapri il file
+                            with open(model_path_json, "r") as f:
+                                content = f.read()
+
+                            # Trova tutti i blocchi JSON tra parentesi graffe
+                            json_blocks = re.findall(r'(\{[\s\S]*?\})', content)
+
+                            # Salva i blocchi JSON separatamente
+                            for idx, block in enumerate(json_blocks):
+                                data = json.loads(block)
+                                with open(model_path_json, "a") as out:
+                                    json.dump(data, out, indent=2)
 
                             try:
                                 mem = profile.result.get("memory", {})
@@ -831,9 +857,10 @@ for i, ris in enumerate(My_ar):
 
                                 return response.json()['id']
                                     
-                            if upload_model_on_edgeimpulse == 1:
-                                upload_model()
-                                upload_model_on_edgeimpulse = 0
+                            #if upload_model_on_edgeimpulse == 1:
+                            #    upload_model()
+                            #    upload_model_on_edgeimpulse = 0
+                            upload_model()
 
                             job_id = profile_model()
                             result = get_profiling_result(job_id)
@@ -872,7 +899,8 @@ for i, ris in enumerate(My_ar):
                                     f"hasPerformance: {hasPerformance}")
 
                         with open(export_metrics_all, 'a') as f:
-                            f.write(f"{model_type},{device_type},{ram},{rom},{arena},{ram_eon},{rom_eon},{arena_eon},{lat},{isSupportedOnMcu},{hasPerformance}\n")
+                            #f.write(f"{model_type},{device_type},{ram},{rom},{arena},{ram_eon},{rom_eon},{arena_eon},{lat},{isSupportedOnMcu},{hasPerformance}\n")
+                            f.write(f"{device_type},{model_type},{ram_eon},{rom_eon},{lat}\n")
 
                         elapsed = (time.time() - t)/60
                         print(f"Elapsed time: {elapsed} min\n")
