@@ -6,7 +6,7 @@ base_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Ta
 output_folder = [base_folder, 'Output Matlab/'];
 output_folder_py = [base_folder, 'Output_Python/'];
 
-global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py network_folder_out_RateDLpy;
+global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py network_folder_out_RateDLpy network_folder_out_RateDLpy_TFLite;
 
 seed=0;
 rng(seed, "twister") % Added for code replicability
@@ -22,14 +22,15 @@ figure_folder = [output_folder, 'Figures/'];
 network_folder_py = [output_folder_py, 'Neural_Network/'];
 figure_folder_py = [output_folder_py, 'Figures/'];
 network_folder_out_RateDLpy = [network_folder_py, 'RateDLpy/'];
+network_folder_out_RateDLpy_TFLite = [network_folder_py, 'RateDLpy_TFLite/'];
 
-folders = {DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py network_folder_out_RateDLpy};
+folders = {DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py network_folder_out_RateDLpy network_folder_out_RateDLpy_TFLite};
 for i = 1:length(folders)
     if ~exist(folders{i}, 'dir') % Controlla se la cartella esiste
         mkdir(folders{i}); % Crea la cartella se non esiste
         disp(['Cartella creata: ', folders{i}]);
-    else
-        disp(['La cartella esiste già: ', folders{i}]);
+    %else
+        %disp(['La cartella esiste già: ', folders{i}]);
     end
 end
         
@@ -54,7 +55,8 @@ load_Rates       = 1; % load output from DL_training_4.m
 training         = 0; % 1 for training the network, 0 from loaoding it from file
 save_mat_files   = 0;
 
-load_mat_py      = 3; 
+load_mat_py      = 4; 
+% 4: load py-generated test tflite files
 % 3: load py-generated test files
 % 2: load py-generated files
 % 1: load mat-python-mat files
@@ -62,22 +64,40 @@ load_mat_py      = 3;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 plot_fig12 = 0;
-epochs_fig12 = 100;
+epochs_fig12 = 60;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %plot_fig7 = 0;
-plot_figC = 1;
+plot_figC = 0;
+plot_index     = 0; % con plot_index=1 si può usare solo plot_test_only=1 (per ora perchè bisogna plottare gli indici il cui rate è superiore alla soglia (non so se è di interesse))
+plot_rate      = 1;
+plot_test_only = 0;
+plot_threshold = 0;
+threshold      = 3; % [bps/Hz], only if plot_threshold == 1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
-plot_figD = 0;
-plot_mode = 2; % non usare 0
+plot_figD = 1;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Settings condivise tra i vari plot
+plot_mode = 2; % 1: matlab, 2: python
 Training_Size_number = 6;
 %Training_Size_number = 11;
 %                1    2     3     4     5     6      7      8      9      10     11
 Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
-max_epochs_load = 20;
+%max_epochs_load = 20;
 %max_epochs_load = 40;
-%max_epochs_load = 60;
+max_epochs_load = 60;
 %max_epochs_load = 80; % ATTENZIONE funziona solo con [64, 64] per ora
 %max_epochs_load = 100; % ATTENZIONE funziona solo con [64, 64] per ora
+
+% Note: The axes of the antennas match the axes of the ray-tracing scenario
+My_ar=[32 64]; % number of LIS reflecting elements across the y axis (32x32 blue curve, 64x64 red curve)
+Mz_ar=[32 64]; % number of LIS reflecting elements across the z axis
+My_ar=[32]; % Semplificazione Luca
+Mz_ar=[32]; % Semplificazione Luca
+%My_ar=[64]; % Semplificazione Luca
+%Mz_ar=[64]; % Semplificazione Luca
+disp('RIS sizes: ');
+disp(My_ar);
+disp(Mz_ar);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% System Model parameters
 disp('---> System Model Parameters');
@@ -93,17 +113,6 @@ params.active_BS=3; % active basestation(/s) in the chosen scenario
 kbeams=1;   %select the top kbeams, get their feedback and find the max actual achievable rate 
 Pt=5; % transmit power (dB)
 L=1; % number of channel paths
-
-% Note: The axes of the antennas match the axes of the ray-tracing scenario
-My_ar=[32 64]; % number of LIS reflecting elements across the y axis (32x32 blue curve, 64x64 red curve)
-Mz_ar=[32 64]; % number of LIS reflecting elements across the z axis
-My_ar=[32]; % Semplificazione Luca
-Mz_ar=[32]; % Semplificazione Luca
-%My_ar=[64]; % Semplificazione Luca
-%Mz_ar=[64]; % Semplificazione Luca
-disp('RIS sizes: ');
-disp(My_ar);
-disp(Mz_ar);
 
 M_bar=8; % number of active elements
 
@@ -141,6 +150,12 @@ Rate_DLt_py_test_60=zeros(numel(My_ar),numel(Training_Size));
 Rate_DLt_py_test_80=zeros(numel(My_ar),numel(Training_Size));
 Rate_DLt_py_test_100=zeros(numel(My_ar),numel(Training_Size));
 
+Rate_DLt_py_test_tflite_20=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_test_tflite_40=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_test_tflite_60=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_test_tflite_80=zeros(numel(My_ar),numel(Training_Size));
+Rate_DLt_py_test_tflite_100=zeros(numel(My_ar),numel(Training_Size));
+
 % figD
 MaxR_OPTt = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
 MaxR_DLt_mat = single(zeros(numel(My_ar),numel(Training_Size),Validation_Size));
@@ -165,6 +180,12 @@ MaxR_DLt_py_test_40 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size))
 MaxR_DLt_py_test_60 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_DLt_py_test_80 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 MaxR_DLt_py_test_100 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+
+MaxR_DLt_py_test_tflite_20 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_DLt_py_test_tflite_40 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_DLt_py_test_tflite_60 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_DLt_py_test_tflite_80 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
+MaxR_DLt_py_test_tflite_100 = single(zeros(numel(My_ar),numel(Training_Size),Test_Size));
 
 for rr = 1:1:numel(My_ar)
 
@@ -219,7 +240,7 @@ for rr = 1:1:numel(My_ar)
 
             %plot_types = {'MaxR_DLt_py_valOld' 'MaxR_OPTt_py_val' 'MaxR_DLt_py_val' 'MaxR_OPTt_py_test' 'MaxR_DLt_py_test'};
             %plot_types = {'MaxR_OPT_py_val' 'MaxR_DL_py_val' 'MaxR_OPT_py_test' 'MaxR_DL_py_test'};
-            plot_types = {'MaxR_DL_py_val' 'MaxR_OPT_py_test' 'MaxR_DL_py_test'};
+            plot_types = {'MaxR_DL_py_val' 'MaxR_OPT_py_test' 'MaxR_DL_py_test' 'MaxR_DL_py_test_tflite'};
 
             for epochs = 20:20:max_epochs_load
             
@@ -235,11 +256,15 @@ for rr = 1:1:numel(My_ar)
                         elseif strcmp(plot_types{i}, 'MaxR_DL_py_val') || strcmp(plot_types{i}, 'MaxR_DL_py_test')
                             filename_MaxR_DL_py = strcat(network_folder_out_RateDLpy, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
                             MaxR_DL_py = h5read(filename_MaxR_DL_py, '/MaxR_DL_py'); % 3100 test
+                        elseif strcmp(plot_types{i}, 'MaxR_DL_py_test_tflite')
+                            filename_MaxR_DL_py = strcat(network_folder_out_RateDLpy_TFLite, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
+                            MaxR_DL_py = h5read(filename_MaxR_DL_py, '/MaxR_DL_py'); % 3100 test
                         end
                     catch exception
                         MaxR_OPT_py = NaN;
                         MaxR_DL_py = NaN;
                         disp('exception')
+                        disp(filename_MaxR_DL_py)
                     end
 
                     if strcmp(plot_types{i}, 'MaxR_OPT_py_val') % OPT val set
@@ -288,6 +313,18 @@ for rr = 1:1:numel(My_ar)
                         elseif epochs == 100
                             MaxR_DLt_py_test_100(rr,dd,:) = MaxR_DL_py;
                         end
+                    elseif strcmp(plot_types{i}, 'MaxR_DL_py_test_tflite') % Test set tflite
+                        if epochs == 20
+                            MaxR_DLt_py_test_tflite_20(rr,dd,:) = MaxR_DL_py;
+                        elseif epochs == 40
+                            MaxR_DLt_py_test_tflite_40(rr,dd,:) = MaxR_DL_py;
+                        elseif epochs == 60
+                            MaxR_DLt_py_test_tflite_60(rr,dd,:) = MaxR_DL_py;
+                        elseif epochs == 80
+                            MaxR_DLt_py_test_tflite_80(rr,dd,:) = MaxR_DL_py;
+                        elseif epochs == 100
+                            MaxR_DLt_py_test_tflite_100(rr,dd,:) = MaxR_DL_py;
+                        end
                     end
                 end
             end
@@ -300,19 +337,26 @@ for rr = 1:1:numel(My_ar)
 
             % Load Rate_DL_py from Python
 
-            plot_types = {'Rate_DL_py_valOld' 'Rate_DL_py_val' 'Rate_DL_py_test'};
+            plot_types = {'Rate_DL_py_valOld' 'Rate_DL_py_val' 'Rate_DL_py_test' 'Rate_DL_py_test_tflite'};
             
             for epochs = 20:20:epochs_fig12
             
                 for i = 1:length(plot_types)
                     
                     end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
-                    filename_Rate_DL_py = strcat(network_folder_out_RateDLpy, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
+
+                    if strcmp(plot_types{i}, 'Rate_DL_py_test_tflite') % Test set TFLite
+                        filename_Rate_DL_py = strcat(network_folder_out_RateDLpy_TFLite, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
+                    else
+                        filename_Rate_DL_py = strcat(network_folder_out_RateDLpy, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
+                    end
                     
                     try
                         Rate_DL_py = h5read(filename_Rate_DL_py, '/Rate_DL_py');
                     catch exception
                         Rate_DL_py = NaN;
+                        disp('exception')
+                        disp(filename_Rate_DL_py)
                     end
                     
                     if strcmp(plot_types{i}, 'Rate_DL_py_valOld') % valOld
@@ -342,6 +386,19 @@ for rr = 1:1:numel(My_ar)
                         elseif epochs == 100
                             Rate_DLt_py_test_100(rr,dd)= Rate_DL_py;
                         end
+                        
+                    elseif strcmp(plot_types{i}, 'Rate_DL_py_test_tflite') % Test set TFLite
+                        if epochs == 20
+                            Rate_DLt_py_test_tflite_20(rr,dd)= Rate_DL_py;
+                        elseif epochs == 40
+                            Rate_DLt_py_test_tflite_40(rr,dd)= Rate_DL_py;
+                        elseif epochs == 60
+                            Rate_DLt_py_test_tflite_60(rr,dd)= Rate_DL_py;
+                        elseif epochs == 80
+                            Rate_DLt_py_test_tflite_80(rr,dd)= Rate_DL_py;
+                        elseif epochs == 100
+                            Rate_DLt_py_test_tflite_100(rr,dd)= Rate_DL_py;
+                        end
 
                     end
 
@@ -357,11 +414,11 @@ if plot_fig12 == 1
                 epochs_fig12, ...
                 Rate_OPTt,Rate_DLt_mat, ...
                 Rate_DLt_py_valOld_20,Rate_DLt_py_valOld_40, ...
-                Rate_DLt_py_val_20,Rate_DLt_py_test_20, ...
-                Rate_DLt_py_val_40,Rate_DLt_py_test_40, ...
-                Rate_DLt_py_test_60, ...
-                Rate_DLt_py_test_80, ...
-                Rate_DLt_py_test_100);
+                Rate_DLt_py_val_20,Rate_DLt_py_test_20,Rate_DLt_py_test_tflite_20, ...
+                Rate_DLt_py_val_40,Rate_DLt_py_test_40,Rate_DLt_py_test_tflite_40, ...
+                Rate_DLt_py_test_60,Rate_DLt_py_test_tflite_60, ...
+                Rate_DLt_py_test_80,Rate_DLt_py_test_tflite_80, ...
+                Rate_DLt_py_test_100, Rate_DLt_py_test_tflite_100)
 
                
 end
@@ -375,16 +432,10 @@ end
 %% Fig C (Luca)
 
 if plot_figC == 1
-    % con plot_index=1 si può usare solo plot_test_only=1 (per ora perchè bisogna plottare gli indici il cui rate è superiore alla soglia (non so se è di interesse))
-    plot_index     = 1;
-    plot_rate      = 0;
-    plot_test_only = 0;
-    plot_threshold = 0;
-    threshold      = 5; % [bps/Hz], only if plot_threshold == 1
     
     % mat
     %plot_mode = 1;
-    %max_epochs_load = 20; % DO NOT CHANGE, matVal ha solo questo valore di epoche
+    %%max_epochs_load = 20; % DO NOT CHANGE, matVal ha solo questo valore di epoche
     %FigC_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,RandP_all,Validation_Ind,Test_Ind,epochs,plot_mode,Training_Size_number,...
     %            plot_index,plot_rate,plot_test_only,plot_threshold,threshold,...
     %            MaxR_OPTt, MaxR_DLt_mat, ...
@@ -396,8 +447,8 @@ if plot_figC == 1
     %            MaxR_DLt_py_test_100);
     
     % py
-    plot_mode = 2;
-    max_epochs_load = 20;
+    %plot_mode = 2;
+    %max_epochs_load = 20;
     %max_epochs_load = 100;
     FigC_plot(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,RandP_all,Validation_Ind,Test_Ind,epochs,plot_mode,Training_Size_number,...
                 plot_index,plot_rate,plot_test_only,plot_threshold,threshold,...
@@ -408,14 +459,24 @@ if plot_figC == 1
                 MaxR_DLt_py_test_60, ...
                 MaxR_DLt_py_test_80, ...
                 MaxR_DLt_py_test_100);
+
+    FigC_plot_tflite(Mx,My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,RandP_all,Validation_Ind,Test_Ind,epochs,plot_mode,Training_Size_number,...
+                plot_index,plot_rate,plot_test_only,plot_threshold,threshold,...
+                MaxR_OPTt, MaxR_DLt_mat, ...
+                MaxR_OPTt_py_test, ...
+                MaxR_DLt_py_test_20, MaxR_DLt_py_test_tflite_20, ...
+                MaxR_DLt_py_test_40, MaxR_DLt_py_test_tflite_40, ...
+                MaxR_DLt_py_test_60, MaxR_DLt_py_test_tflite_60, ...
+                MaxR_DLt_py_test_80, MaxR_DLt_py_test_tflite_80, ...
+                MaxR_DLt_py_test_100, MaxR_DLt_py_test_tflite_100);
 end
 
 if plot_figD == 1
 
-    if max_epochs_load > 60
-        My_ar=[64];
-        Mz_ar=[64];
-    end
+    %if max_epochs_load > 60
+    %    My_ar=[64];
+    %    Mz_ar=[64];
+    %end
     FigD_plot(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,max_epochs_load,plot_mode,Training_Size_number, ...
                 MaxR_OPTt,MaxR_DLt_mat, ...
                 MaxR_OPTt_py_test, ...
@@ -425,20 +486,20 @@ if plot_figD == 1
                 MaxR_DLt_py_test_80, ...
                 MaxR_DLt_py_test_100)
 
-    if max_epochs_load < 80
-        % ATTENZIONE: non è adatto a plottare ris 32 e 64 sullo stesso grafico, plottare uno alla volta.
-        My_ar=[32];
-        Mz_ar=[32];
-        FigD_plot_all_g(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,max_epochs_load,plot_mode,Training_Size_number, ...
-                    MaxR_OPTt,MaxR_DLt_mat, ...
-                    MaxR_OPTt_py_test, ...
-                    MaxR_DLt_py_test_20, ...
-                    MaxR_DLt_py_test_40, ...
-                    MaxR_DLt_py_test_60, ...
-                    MaxR_DLt_py_test_80, ...
-                    MaxR_DLt_py_test_100)
-    end
-
+    %if max_epochs_load < 80
+    % ATTENZIONE: non è adatto a plottare ris 32 e 64 sullo stesso grafico, plottare uno alla volta.
+    My_ar=[32];
+    Mz_ar=[32];
+    FigD_plot_all_g(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,max_epochs_load,plot_mode,Training_Size_number, ...
+                MaxR_OPTt,MaxR_DLt_mat, ...
+                MaxR_OPTt_py_test, ...
+                MaxR_DLt_py_test_20, ...
+                MaxR_DLt_py_test_40, ...
+                MaxR_DLt_py_test_60, ...
+                MaxR_DLt_py_test_80, ...
+                MaxR_DLt_py_test_100)
+    %end
+    
     My_ar=[64];
     Mz_ar=[64];
     FigD_plot_all_g(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,max_epochs_load,plot_mode,Training_Size_number, ...

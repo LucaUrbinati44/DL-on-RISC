@@ -22,6 +22,7 @@ if plot_mode == 1
         MaxR_DLt = MaxR_DLt_mat;
     else
         disp('Error: only 20 is allowed for matVal')
+        return
     end
 
 elseif plot_mode == 2
@@ -77,6 +78,12 @@ for rr=1:1:numel(My_ar)
         filename_figRateTh=strcat(figure_folder_py, 'FigRateTh_mat', end_folder_Training_Size_dd_max_epochs, '_th', num2str(threshold), '.png');
         filename_figRateTest=strcat(figure_folder_py, 'FigRate_mat_test', end_folder_Training_Size_dd_max_epochs, '.png');
         filename_figRateThTest=strcat(figure_folder_py, 'FigRateTh_mat_test', end_folder_Training_Size_dd_max_epochs, '_th', num2str(threshold), '.png');
+
+        filename_Indmax_OPT_mat_txt=strcat(figure_folder_py, 'Indmax_OPT_mat', '.txt');
+        filename_Indmax_DL_mat_txt=strcat(figure_folder_py, 'Indmax_DL_mat', '.txt');
+        filename_MaxR_OPT_mat_txt=strcat(figure_folder_py, 'MaxR_OPT_mat', '.txt');
+        filename_MaxR_DL_mat_txt=strcat(figure_folder_py, 'MaxR_DL_mat', '.txt');
+
     elseif plot_mode == 2
         filename_FigIdx=strcat(figure_folder_py, 'FigIdx_py', end_folder_Training_Size_dd_max_epochs, '.png');
         filename_FigIdxTest=strcat(figure_folder_py, 'FigIdxTest_py_test', end_folder_Training_Size_dd_max_epochs, '.png');
@@ -90,8 +97,18 @@ for rr=1:1:numel(My_ar)
         filename_Indmax_DL_py_test = strcat(network_folder_out_RateDLpy, 'Indmax_DL_py_test', end_folder_Training_Size_dd_max_epochs, '.mat');
         filename_Indmax_OPT_py = strcat(network_folder_out_RateDLpy, 'Indmax_OPT_py', end_folder_Training_Size_dd_max_epochs, '.mat');
         filename_Indmax_DL_py = strcat(network_folder_out_RateDLpy, 'Indmax_DL_py', end_folder_Training_Size_dd_max_epochs, '.mat');
+
+        filename_Indmax_OPT_py_txt=strcat(figure_folder_py, 'Indmax_OPT_py', '.txt');
+        filename_Indmax_DL_py_txt=strcat(figure_folder_py, 'Indmax_DL_py', '.txt');
+        filename_MaxR_OPT_py_txt=strcat(figure_folder_py, 'MaxR_OPT_py', '.txt');
+        filename_MaxR_OPT_py_txt_debug=strcat(figure_folder_py, 'MaxR_OPT_py_debug', '.txt');
+        filename_MaxR_DL_py_txt=strcat(figure_folder_py, 'MaxR_DL_py', '.txt');
+        
     end
     
+    filename_YValidation_un_complete_small=strcat(figure_folder_py, 'YValidation_un_complete_small', '.txt');
+    filename_YValidation_un_complete_full=strcat(figure_folder_py, 'YValidation_un_complete_full', '.txt');
+
     %%
 
     x_plot = 1:(Ur_rows(2)-1000);
@@ -99,30 +116,54 @@ for rr=1:1:numel(My_ar)
     
     if plot_test_only == 1
         if plot_mode == 1
-            X = load(filename_XValidation);
-            Y = load(filename_YValidation);
+            %X = load(filename_XValidation);
+            %Y = load(filename_YValidation);
+            %disp(filename_YValidation)
+            %disp(['size(X):', num2str(size(X))])
+            %disp(['size(Y):', num2str(size(Y))])
+            % non va non so perchè, carica solo 1, 1.
+            load(filename_DL_input_reshaped);
+            load(filename_DL_output_reshaped);
+            X = single(DL_input_reshaped(:,1,1,Validation_Ind));
+            Y = single(DL_output_reshaped(1,1,:,Validation_Ind));
+            %disp(['size(X):', num2str(size(X))])
+            %disp(['size(Y):', num2str(size(Y))])
+
         elseif plot_mode == 2
-            Indmax_OPT = h5read(filename_Indmax_OPT_py_test, '/Indmax_OPT_py');
-            Indmax_DL = h5read(filename_Indmax_DL_py_test, '/Indmax_DL_py');
-            disp(size(Indmax_OPT)) % 3100, 1
-            disp(size(Indmax_DL))
+            Indmax_OPT = h5read(filename_Indmax_OPT_py_test, '/Indmax_OPT_py') + 1; % ATTENZIONE: ricordarsi di fare +1 in Matlab per ripristinare indici da zero-based a one-based
+            Indmax_DL = h5read(filename_Indmax_DL_py_test, '/Indmax_DL_py') + 1; % ATTENZIONE: ricordarsi di fare +1 in Matlab per ripristinare indici da zero-based a one-based
+            disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]) % 3100, 1
+            disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]) % 3100, 1
+            disp(min(Indmax_OPT))
+            disp(max(Indmax_OPT))
+            disp(min(Indmax_DL))
+            disp(max(Indmax_DL))
         end
     else
         if plot_mode == 1
             % Concatena XTrain + XValidation, cioè utilizza DL_input_reshaped
             load(filename_DL_input_reshaped);
             X = DL_input_reshaped;
-            disp(['size(X):', num2str(size(X))])
+            %disp(['size(X):', num2str(size(X))])
             
             % Concatena YTrain + YValidation, cioè utilizza DL_output_reshaped
             load(filename_DL_output_reshaped);
             Y = DL_output_reshaped;
-            disp(['size(Y):', num2str(size(Y))])
+            %disp(['size(Y):', num2str(size(Y))])
         elseif plot_mode == 2
-            Indmax_OPT = h5read(filename_Indmax_OPT_py, '/Indmax_OPT_py');
-            Indmax_DL = h5read(filename_Indmax_DL_py, '/Indmax_DL_py');
-            disp(size(Indmax_OPT)) % 3100, 1
-            disp(size(Indmax_DL))
+            Indmax_OPT = h5read(filename_Indmax_OPT_py, '/Indmax_OPT_py') + 1; % ATTENZIONE: ricordarsi di fare +1 in Matlab per ripristinare indici da zero-based a one-based
+            Indmax_DL = h5read(filename_Indmax_DL_py, '/Indmax_DL_py') + 1; % ATTENZIONE: ricordarsi di fare +1 in Matlab per ripristinare indici da zero-based a one-based
+            disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]) % 36200, 1
+            disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]) % 36200, 1
+
+            disp(min(Indmax_OPT))
+            disp(max(Indmax_OPT))
+            disp(min(Indmax_DL))
+            disp(max(Indmax_DL))
+            disp(Indmax_OPT(1:20))
+
+            writematrix(Indmax_OPT, filename_Indmax_OPT_py_txt);
+            writematrix(Indmax_DL, filename_Indmax_DL_py_txt);
         end
     end
 
@@ -139,12 +180,6 @@ for rr=1:1:numel(My_ar)
         %[~,Indmax_OPT] = max(Y,[],3);
         %disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 1, 1, 1, 6200
         Indmax_OPT = squeeze(Indmax_OPT);
-        disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 6200, 1
-        %disp(['min(Indmax_OPT):', num2str(min(Indmax_OPT))'])
-        %disp(['max(Indmax_OPT):', num2str(max(Indmax_OPT))'])
-        disp(min(Indmax_OPT))
-        disp(max(Indmax_OPT))
-        Indmax_OPT = Indmax_OPT.'; % 1, 6200 if plot_test_only == 1; else 1, 36200
 
         tic
         YPredictedC = predict(trainedNet,X); % Inferenza sul set di validazione usato come test: errore!
@@ -154,14 +189,20 @@ for rr=1:1:numel(My_ar)
         disp(['size(YPredictedC): ', num2str(size(YPredictedC))])
 
         [~,Indmax_DL] = maxk(YPredictedC,kbeams,2);
-        %disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]); % 6200, 1
-        %disp(['min(Indmax_DL):', num2str(min(Indmax_DL))'])
-        %disp(['max(Indmax_DL):', num2str(max(Indmax_DL))'])
+        
+        disp(['size(Indmax_OPT):', num2str(size(Indmax_OPT))]); % 6200, 1
+        disp(['size(Indmax_DL):', num2str(size(Indmax_DL))]); % 6200, 1
+        disp(min(Indmax_OPT))
+        disp(max(Indmax_OPT))
         disp(min(Indmax_DL))
         disp(max(Indmax_DL))
+        disp(Indmax_OPT(1:20))
+
+        writematrix(Indmax_OPT, filename_Indmax_OPT_mat_txt);
+        writematrix(Indmax_DL, filename_Indmax_DL_mat_txt);
         
     elseif plot_mode == 2
-        
+        % mi basta recuperare Indmax_OPT e Indmax_DL dal blocco precedente, non mi serve il modello
     end    
     
 
@@ -274,13 +315,18 @@ for rr=1:1:numel(My_ar)
             % TODO
             load(filename_DL_output_un_complete_reshaped);
             YValidation_un_complete = single(DL_output_un_complete_reshaped);
+            disp(size(YValidation_un_complete));
 
-            %disp(size(YValidation_un_complete));
+            %MaxR_DL = single(zeros(size(Indmax_DL,1),1));
+            %%MaxR_OPT = single(zeros(numel(Indmax_OPT),1));
+            %MaxR_OPT = single(zeros(size(Indmax_OPT,1),1));
 
             MaxR_DL = single(zeros(size(Indmax_DL,1),1));
-            MaxR_OPT = single(zeros(numel(Indmax_OPT),1));
+            MaxR_OPT = single(zeros(size(Indmax_OPT,1),1));
 
             %keyboard;
+
+            disp(['size(Indmax_DL,1):', num2str(size(Indmax_DL,1))])
 
             for b=1:size(Indmax_DL,1) % 36200
                 % YValidation_un = DL_output_un_reshaped = DL_output_un
@@ -294,6 +340,20 @@ for rr=1:1:numel(My_ar)
             %disp(size(values_OPT_plot))
 
             %keyboard;
+
+            if plot_mode == 1
+                writematrix(MaxR_OPT, filename_MaxR_OPT_mat_txt);
+                writematrix(MaxR_DL, filename_MaxR_DL_mat_txt);
+            elseif plot_mode == 2
+                writematrix(MaxR_OPT, filename_MaxR_OPT_py_txt);
+                writematrix(MaxR_DL, filename_MaxR_DL_py_txt);
+            end
+
+            debug = 0;
+            if debug == 1
+                writematrix(squeeze(YValidation_un_complete(:,:,:,1:100))', filename_YValidation_un_complete_small);
+                writematrix(squeeze(YValidation_un_complete)', filename_YValidation_un_complete_full);
+            end
 
         end
 
@@ -401,7 +461,7 @@ for rr=1:1:numel(My_ar)
         ylabel('Vertical direction (reversed x-axis)');
     end
 
-    colormap(parula); % Imposta la colormap arcobaleno
+    %colormap(parula); % Imposta la colormap arcobaleno
     %if plot_test_only == 1 || plot_threshold == 1
     %    cmap = colormap; % Ottieni la colormap corrente
     %    colormap([1 1 1; cmap]); % Aggiungi il bianco come primo colore
@@ -415,7 +475,7 @@ for rr=1:1:numel(My_ar)
     %elseif plot_index == 1
     %    ylabel(cb, 'Codebook index','fontsize',11); % Aggiunge una label alla colorbar
     %end
-    %caxis([min_colorbar, max_colorbar]); % Imposta i limiti della scala dei colori    
+    caxis([min_colorbar, max_colorbar]); % Imposta i limiti della scala dei colori    
 
 
 
