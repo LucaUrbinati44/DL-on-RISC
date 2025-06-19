@@ -1,4 +1,4 @@
-function []=FigD_plot_all(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,epochs,plot_mode,Training_Size_number, ...
+function []=FigD_plot_all(My_ar,Mz_ar,M_bar,Ur_rows,kbeams,Training_Size,Validation_Ind,Test_Ind,epochs,plot_mode,Training_Size_number,M_ar_master, ...
                         MaxR_OPTt,MaxR_DLt_mat, ...
                         MaxR_OPTt_py_test, ...
                         MaxR_DLt_py_test_20, ...
@@ -37,7 +37,7 @@ Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 3
 %Training_Size_number=6; % 10000
 Training_Size_dd=Training_Size(Training_Size_number);
 
-filename_figDpyTestAll=strcat(figure_folder_py, 'FigDpyTestAll', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '_', num2str(epochs), '.png');
+filename_figDpyTestAll=strcat(figure_folder_py, 'FigDpyTestAll', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(M_ar_master), ' ', ''), strrep(num2str(M_ar_master), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '_', num2str(epochs), '.png');
 
 th_step=0.5;
 
@@ -73,21 +73,21 @@ set(gca,'FontSize',11)
 
 %for rr=1:1:numel(My_ar)
 
-if numel(My_ar) == 1 && My_ar(1) == 32
+if M_ar_master == 32
     colour_idx = 1;
     read_idx = 1;
-elseif numel(My_ar) == 1 && My_ar(1) == 64
+elseif M_ar_master == 64
     colour_idx = 2;
     read_idx = 2;
 end
 
 if plot_mode == 2
-    title(['Coverage vs Rate Threshold, RIS ', num2str(My_ar(1)), 'x', num2str(Mz_ar(1)), ' with ', num2str(M_bar), ' active elements, pyTest model trained with ', num2str(Training_Size_dd), ' samples'],'fontsize',11)
+    title(['Coverage vs Rate Threshold, RIS ', num2str(M_ar_master), 'x', num2str(M_ar_master), ' with ', num2str(M_bar), ' active elements, pyTest model trained with ', num2str(Training_Size_dd), ' samples'],'fontsize',11)
 elseif plot_mode == 1
-    title(['Coverage vs Rate Threshold, RIS ', num2str(My_ar(1)), 'x', num2str(Mz_ar(1)), ' with ', num2str(M_bar), ' active elements, matVal model trained with ', num2str(Training_Size_dd), ' samples'],'fontsize',11)
+    title(['Coverage vs Rate Threshold, RIS ', num2str(M_ar_master), 'x', num2str(M_ar_master), ' with ', num2str(M_bar), ' active elements, matVal model trained with ', num2str(Training_Size_dd), ' samples'],'fontsize',11)
 end
 
-disp(['---> Plotting FigD with M:', num2str(My_ar(1)), ', Training_Size:' num2str(Training_Size_dd), '...']);
+disp(['---> Plotting FigD with M:', num2str(M_ar_master), ', Training_Size:' num2str(Training_Size_dd), '...']);
 
 %x_plot = 1:(Ur_rows(2)-1000);
 y_plot = 1:181;
@@ -97,7 +97,7 @@ if plot_mode == 2 || plot_mode == 1
     disp(['plot_mode == ', num2str(plot_mode)])
 
     disp('load User_Location')
-    filename_User_Location=strcat(DeepMIMO_dataset_folder, 'User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My_ar(1)), num2str(Mz_ar(1)), '_Mbar', num2str(M_bar), '.mat');
+    filename_User_Location=strcat(DeepMIMO_dataset_folder, 'User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(M_ar_master), num2str(M_ar_master), '_Mbar', num2str(M_bar), '.mat');
     load(filename_User_Location);
 
     User_Location_norm = single(zeros(3,size(User_Location,2)));
@@ -167,7 +167,7 @@ if plot_mode == 2 || plot_mode == 1
     % Plot OPT_mat curve
     thresholds = single(0:th_step:floor(max(values_OPT_mat_plot(:)+1)));
     punti_coperti_sul_totale_OPT = arrayfun(@(th) sum(values_OPT_mat_plot(:) >= th) / numero_punti * 100, thresholds);
-    plot(thresholds, punti_coperti_sul_totale_OPT, [Colour_mat{colour_idx,1} Marker_mat{1}], 'markersize', 4, 'linewidth', 1., 'DisplayName', ['Genie_{mat}, M = ' num2str(My_ar(1)) 'x' num2str(Mz_ar(1))]);
+    plot(thresholds, punti_coperti_sul_totale_OPT, [Colour_mat{colour_idx,1} Marker_mat{1}], 'markersize', 4, 'linewidth', 1., 'DisplayName', ['Genie_{mat}, M = ' num2str(M_ar_master) 'x' num2str(M_ar_master)]);
 
     % Plot DL_mat curves
     values_DL = single(nan(181,200));
@@ -179,7 +179,7 @@ if plot_mode == 2 || plot_mode == 1
     values_DL_plot = reshape(values_DL, numel(y_plot), []);
     punti_coperti_sul_totale_DL = arrayfun(@(th) sum(values_DL_plot(:) >= th) / numero_punti * 100, thresholds);
 
-    plot(thresholds, punti_coperti_sul_totale_DL, [Colour_mat{colour_idx,2} Marker_mat{2}], 'markersize', 4, 'linewidth', 1., 'DisplayName', ['DL_{matVal' num2str(20) '}, M = ' num2str(My_ar(1)) 'x' num2str(Mz_ar(1))]);
+    plot(thresholds, punti_coperti_sul_totale_DL, [Colour_mat{colour_idx,2} Marker_mat{2}], 'markersize', 4, 'linewidth', 1., 'DisplayName', ['DL_{matVal' num2str(20) '}, M = ' num2str(M_ar_master) 'x' num2str(M_ar_master)]);
 
     for j=1:numel(thresholds)
         disp([num2str(thresholds(j)), ' ', num2str(punti_coperti_sul_totale_DL(j))])
@@ -190,7 +190,7 @@ if plot_mode == 2 || plot_mode == 1
     % Plot OPT_py curve
     thresholds = single(0:th_step:floor(max(values_OPT_py_plot(:)+1)));
     punti_coperti_sul_totale_OPT = arrayfun(@(th) sum(values_OPT_py_plot(:) >= th) / numero_punti * 100, thresholds);
-    plot(thresholds, punti_coperti_sul_totale_OPT, [Colour_py{colour_idx,1} Marker_py{1}], 'markersize', 4, 'linewidth', 1., 'DisplayName', ['Genie_{py}, M = ' num2str(My_ar(1)) 'x' num2str(Mz_ar(1))]);
+    plot(thresholds, punti_coperti_sul_totale_OPT, [Colour_py{colour_idx,1} Marker_py{1}], 'markersize', 4, 'linewidth', 1., 'DisplayName', ['Genie_{py}, M = ' num2str(M_ar_master) 'x' num2str(M_ar_master)]);
 
     for j=1:numel(thresholds)
         disp([num2str(thresholds(j)), ' ', num2str(punti_coperti_sul_totale_OPT(j))])
@@ -213,7 +213,7 @@ if plot_mode == 2 || plot_mode == 1
         %else
         %    plot(thresholds, punti_coperti_sul_totale_DL, [Colour_py{colour_idx,i} Marker_py{2}], 'markersize', 4, 'linewidth', 1., 'DisplayName', ['DL_{pyTest' num2str(epochs/5*(i-1)) '}, M = ' num2str(My_ar(rr)) 'x' num2str(Mz_ar(rr))]);
         %end
-        plot(thresholds, punti_coperti_sul_totale_DL, [Colour_py{colour_idx,i+1} Marker_py{2}], 'markersize', 4, 'linewidth', 1., 'DisplayName', ['DL_{pyTest' num2str(20*i) '}, M = ' num2str(My_ar(1)) 'x' num2str(Mz_ar(1))]);
+        plot(thresholds, punti_coperti_sul_totale_DL, [Colour_py{colour_idx,i+1} Marker_py{2}], 'markersize', 4, 'linewidth', 1., 'DisplayName', ['DL_{pyTest' num2str(20*i) '}, M = ' num2str(M_ar_master) 'x' num2str(M_ar_master)]);
 
         for j=1:numel(thresholds)
             disp([num2str(thresholds(j)), ' ', num2str(punti_coperti_sul_totale_DL(j))])
@@ -224,11 +224,11 @@ if plot_mode == 2 || plot_mode == 1
 end
 %end
 
-if numel(My_ar) == 1
-    lgd = legend('Location','northeast');
-elseif numel(My_ar) == 2
-    lgd = legend('Location','East','NumColumns', 2);
-end
+%if numel(My_ar) == 1
+lgd = legend('Location','northeast');
+%elseif numel(My_ar) == 2
+%    lgd = legend('Location','East','NumColumns', 2);
+%end
 lgd.ItemTokenSize = [20, 9]; % Per ridurre la dimensione dei simboli in legenda. Default [30, 18].
 fontsize(lgd,8,'points')
 legend show
