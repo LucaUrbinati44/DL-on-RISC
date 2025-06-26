@@ -9,6 +9,7 @@ import json
 from contextlib import redirect_stdout
 import random
 from statistics import mean, stdev
+import re
 
 ei.API_KEY = "ei_4a58ede09ec501541b8239002c9ee96833f9fac84c339500a2a04eb3b7c9bcfc"
 PROJECT_ID = 712872
@@ -50,7 +51,9 @@ saved_models_tfsaved2 = network_folder_out + 'saved_models_tfsaved2/'
 saved_models_tflite = network_folder_out + 'saved_models_tflite/'
 saved_models_edgeimpulse = network_folder_out + 'saved_models_edgeimpulse/'
 figure_folder = output_folder + 'Figures/'
-profiling_folder = output_folder + 'Profiling_Search/'
+profiling_ei_folder = output_folder + 'Profiling_Search/'
+profiling_renode_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/examples/ml_on_risc/c_models'
+header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
 
 folders = [
     output_folder,
@@ -65,7 +68,8 @@ folders = [
     saved_models_tflite,
     saved_models_edgeimpulse,
     figure_folder,
-    profiling_folder
+    profiling_ei_folder,
+    profiling_renode_folder
 ]
 
 for folder in folders:
@@ -144,28 +148,50 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./"):
     """
     xxd_output_temp = os.path.join(save_dir, f"xxd_output_temp.h")
 
-    # Step 1: usa xxd -i per creare il sorgente base
+    # Usa xxd -i per creare il sorgente base
     #with open(xxd_output_temp, "w") as cc:
         #subprocess.run(["xxd", "-i", model_path_tflite], stdout=cc, check=True)
     os.system("xxd -i " + model_path_tflite + " > " + xxd_output_temp)
 
-    # Step 2: leggi e modifica il contenuto
+    # Leggi e modifica il contenuto
     with open(xxd_output_temp, "r") as f:
         content = f.read()
+    print(content[0:300])
+    print(content[-300:-1])
 
-    # Step 3: sostituisci i nomi delle variabili
-    var_name = "g_model_data" # default
-    content = content.replace("model_tflite", var_name)
+    # Sostituisci i nomi delle variabili
+    model_path_tflite_lowercase = model_path_tflite.replace('/', '_').replace('.', '_').replace('-', '_')
+    model_name_lowercase = model_name.replace('/', '_').replace('.', '_').replace('-', '_')
+    #var_name = "g_model_data" # default
+    var_name = model_name_lowercase # default
+    #print(model_path_tflite_lowercase)
+    first_line_old = f"unsigned char {model_path_tflite_lowercase}[] = {{"
+    # Aggiungi include dell'header
+    first_line_new = f"#include \"{header_folder}/{model_name}.h\"\nalignas(8) const unsigned char {var_name}[] = {{"
+    var_name = 'model_tflite' # default
+    last_line_old = f"unsigned int {model_path_tflite_lowercase}_len"
+    last_line_new = f"unsigned int {var_name}_len"
+    content = content.replace(first_line_old, first_line_new)
+    content = content.replace(last_line_old, last_line_new)
+    print(content[0:300])
+    print(content[-300:-1])
 
-    # Step 4: aggiungi alignas(8)
-    content = content.replace(f"unsigned char {var_name}[]",
-                              f"alignas(8) const unsigned char {var_name}[]")
-    content = content.replace(f"unsigned int {var_name}_len",
-                              f"const int {var_name}_len")
-
+    print("Scrittura su:", source_path)
+    try:
+        os.remove(source_path)
+        print("File eliminato con successo")
+    except PermissionError:
+        print("Errore permessi: file bloccato o senza permessi")
+    except FileNotFoundError:
+        print("File già inesistente")
+    except Exception as e:
+        print(f"Errore sconosciuto: {e}")
     with open(source_path, "w") as f:
         #f.write(f'#include "{header_path.name}"\n\n')
+        print("Scrivo contenuto modificato")
         f.write(content)
+        f.flush()
+        os.fsync(f.fileno())
 
     return model_name
 
@@ -424,9 +450,9 @@ def save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, mo
 # ----- Run di una singola configurazione -----
 def run_experiment(input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv):
     print('*** run_experiment')
-    model = build_mlp(input_dim, output_dim, num_layers, hidden_units_list)
-    model.compile(optimizer='adam', loss='mse')
-    model.summary()
+    #model = build_mlp(input_dim, output_dim, num_layers, hidden_units_list)
+    #model.compile(optimizer='adam', loss='mse')
+    #model.summary()
     model_type_load, model_path_tflite = get_model_path_tflite()
     model_name = export_to_c(model_type_load, model_path_tflite, save_dir=profiling_renode_folder)
     #model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, macs = get_model_info(model)
