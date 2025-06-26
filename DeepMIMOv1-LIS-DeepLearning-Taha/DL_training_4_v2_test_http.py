@@ -29,22 +29,25 @@ tf.random.set_seed(seed)
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow.keras.saving import load_model
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Input, Dense, Dropout, ReLU, Flatten
+from tensorflow.keras.layers import Input, Normalization, Dense, Dropout, ReLU, Flatten
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.regularizers import l2
-from tensorflow.keras.callbacks import TensorBoard
-# Load the LiteRT model and allocate tensors.
-from ai_edge_litert.interpreter import Interpreter
-
+from tensorflow.keras.callbacks import LearningRateScheduler, TensorBoard, ProgbarLogger
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 import h5py
+import sys
+import importlib
 import time
 from datetime import datetime
 import subprocess
 import psutil 
 
+import requests
 import json
-import csv
+import base64
 
+import re
 import io
 from contextlib import redirect_stdout
 
@@ -77,46 +80,73 @@ print(tf.config.list_physical_devices('GPU'))
 
 tf.config.optimizer.set_jit(False)  # XLA off
 
+# %%
+log_dir = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/tensorboard_logs_test/"
+tensorboard_command = [
+    "tensorboard",
+    f"--logdir={log_dir}",
+    "--port=6006",
+    "--host=localhost"
+]
+
+# Funzione per trovare e terminare TensorBoard se è già in esecuzione
+def terminate_tensorboard():
+    for process in psutil.process_iter(['pid', 'name', 'cmdline']):
+        try:
+            if 'tensorboard' in process.info['name'] or \
+               (process.info['cmdline'] and 'tensorboard' in process.info['cmdline'][0]):
+                print(f"\nTerminazione di TensorBoard con PID: {process.info['pid']}")
+                os.kill(process.info['pid'], signal.SIGTERM)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+
+# Controlla se TensorBoard è già in esecuzione
+try:
+    # Avvia TensorBoard in background
+    tensorboard_process = subprocess.Popen(tensorboard_command)
+    print(f"\nTensorBoard avviato in background.")
+except:
+    print(f"\nfErrore nell'avvio di TensorBoard: {e}")
+    # Chiudi TensorBoard se è già in esecuzione
+    terminate_tensorboard()
+    # Avvia TensorBoard in background
+    tensorboard_process = subprocess.Popen(tensorboard_command)
+    print(f"\nTensorBoard avviato in background.")
+
 # %% Define functions
 
 def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test, save_files=1):
 
-    if test == 4: # entire dataset prediction (for figC)
-        t = '_tflite'
-        x = xdataset
-        y = Y_dataset
-    elif test == 3:
-        t = '_test_tflite'
-        x = xtest
-        y = Y_test
-        YValidation_un = YValidation_un_test
-    elif test == 2: # entire dataset prediction (for figC)
+    if test == 2:
         t = ''
         x = xdataset
         y = Y_dataset
-    elif test == 1: # test set FP prediction
-        t = '_test'
+
+        print('x.shape:', x.shape)
+        print('y.shape:', y.shape)
+
+        filename_Indmax_OPT_py = network_folder_out_RateDLpy + 'Indmax_OPT_py' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+        filename_Indmax_DL_py = network_folder_out_RateDLpy + 'Indmax_DL_py' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    elif test == 1:
+        t = 'test'
         x = xtest
         y = Y_test
         YValidation_un = YValidation_un_test
-    elif test == 0: # validation set prediction
-        t = '_val'
+
+        filename_Indmax_OPT_py = network_folder_out_RateDLpy + 'Indmax_OPT_py_test' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+        filename_Indmax_DL_py = network_folder_out_RateDLpy + 'Indmax_DL_py_test' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    elif test == 0:
+        t = 'val'
         x = xval
         y = Y_val
         YValidation_un = YValidation_un_val
-    
-    print('x.shape:', x.shape)
-    print('y.shape:', y.shape)
-
-    filename_Indmax_OPT_py = network_folder_out_RateDLpy + 'Indmax_OPT_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
-    filename_Indmax_DL_py = network_folder_out_RateDLpy + 'Indmax_DL_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
-
-    filename_MaxR_OPT_py = network_folder_out_RateDLpy + 'MaxR_OPT_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
-    filename_MaxR_DL_py = network_folder_out_RateDLpy + 'MaxR_DL_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
-    filename_Rate_OPT_py = network_folder_out_RateDLpy + 'Rate_OPT_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
-    filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
         
-    print(f"\nStart DL prediction {t}...")
+    filename_MaxR_OPT_py = network_folder_out_RateDLpy + 'MaxR_OPT_py_'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    filename_MaxR_DL_py = network_folder_out_RateDLpy + 'MaxR_DL_py_'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    filename_Rate_OPT_py = network_folder_out_RateDLpy + 'Rate_OPT_py_'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py_'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+        
+    print(f"\nStart DL prediction {t} set...")
 
     Indmax_OPT_py = np.argmax(y, axis=1) # ATTENZIONE: ricordarsi di fare +1 in Matlab per ripristinare indici da zero-based a one-based
     print(f'Indmax_OPT_py.shape: {Indmax_OPT_py.shape}')
@@ -124,81 +154,9 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
     print(f'np.max(Indmax_OPT_py): {np.max(Indmax_OPT_py)}')
     print(Indmax_OPT_py[0:5])
 
-    if test == 0 or test == 1 or test == 2:
-        YPredicted = model_py.predict(x, verbose=1, batch_size=128)
-    else:
-        #Loading and running a LiteRT model involves the following steps:
-        #1) Loading the model into memory.
-        #2) Building an Interpreter based on an existing model.
-        # Load the LiteRT model and allocate tensors.
-        interpreter = Interpreter(model_content=model_py)
-        interpreter.allocate_tensors()
-
-        #3) Setting input tensor values.
-        # Get input and output tensors.
-        input_details = interpreter.get_input_details()
-        output_details = interpreter.get_output_details()
-        input_dtype = input_details[0]['dtype'] #int8
-        output_dtype = input_details[0]['dtype']
-        #print('input_dtype:', input_dtype) # [   1 1024]
-        #print('output_dtype:', output_dtype)
-        input_shape = input_details[0]['shape']
-        output_shape = output_details[0]['shape']
-        #print('input_shape:', input_shape)
-        #print('output_shape:', output_shape)
-
-        input_scale, input_zero_point = input_details[0]['quantization']
-        #print('input_scale:', input_scale)
-        #print('input_zero_point:', input_zero_point)
-        input_float = x
-        #print('input_float.shape:', input_float.shape) # (3100, 1024)
-        #print('np.max(input_float):', np.max(input_float))
-        #print('np.min(input_float):', np.min(input_float))
-
-        num_samples = input_float.shape[0]
-        output_float = []
-
-        for i in range(num_samples):
-        #for i in range(3):
-            #print('i:', i)
-
-            sample = input_float[i]  # shape: (1024,)
-            #print('sample.shape:', sample.shape)
-            sample = np.expand_dims(sample, axis=0)  # shape: (1, 1024)
-            input_int8 = np.round(sample / input_scale + input_zero_point).astype(np.int8)
-            #print('input_int8.shape:', input_int8.shape)
-            #print('np.max(input_int8):', np.max(input_int8))
-            #print('np.min(input_int8):', np.min(input_int8))
-
-            #4) Invoking inferences.
-            # Test the model on input data.
-            #input_float = np.array(np.random.random_sample(input_shape), dtype=np.float32) # random input data
-
-            interpreter.set_tensor(input_details[0]['index'], input_int8)
-            interpreter.invoke()
-
-            #5) Outputting tensor values
-            # The function `get_tensor()` returns a copy of the tensor data.
-            # Use `tensor()` in order to get a pointer to the tensor.
-            output_int8 = interpreter.get_tensor(output_details[0]['index'])
-            #print('output_int8.shape:', output_int8.shape)
-            #print('np.max(output_int8):', np.max(output_int8))
-            #print('np.min(output_int8):', np.min(output_int8))
-            output_scale, output_zero_point = output_details[0]['quantization']
-            #print('output_scale:', output_scale)
-            #print('output_zero_point:', output_zero_point)
-            output_deq = (output_int8.astype(np.float32) - output_zero_point) * output_scale
-            #print('output_deq.shape:', output_deq.shape)
-            #print('np.max(output_deq):', np.max(output_deq))
-            #print('np.min(output_deq):', np.min(output_deq))
-            output_float.append(output_deq[0])  # output_deq.shape: (1, 1024) -> prendi [0]
-
-        YPredicted = np.stack(output_float, axis=0)  # shape: (3100, 1024)
-
+    YPredicted = model_py.predict(x, verbose=1, batch_size=128)
     print(f'x.shape: {x.shape}')  # (3100, 1024)
     print(f'YPredicted.shape: {YPredicted.shape}')
-    #print('np.max(YPredicted):', np.max(YPredicted))
-    #print('np.min(YPredicted):', np.min(YPredicted))
 
     Indmax_DL_py = np.argmax(YPredicted, axis=1)
     print(f'Indmax_DL_py.shape: {Indmax_DL_py.shape}')
@@ -207,7 +165,7 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
     print(f'np.max(Indmax_DL_py): {np.max(Indmax_DL_py)}')
     print(Indmax_DL_py[0:5])
 
-    if test == 0 or test == 1 or test == 3:
+    if test == 0 or test == 1:
         #validation_accuracy = 0
         MaxR_OPT_py = np.zeros((Indmax_OPT_py.shape[0],), dtype=np.float32)
         MaxR_DL_py = np.zeros((Indmax_DL_py.shape[0],), dtype=np.float32)
@@ -232,37 +190,32 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
         Rate_DL_py = 0
 
 
-    #if test == 1 or test == 2 or test == 3:
-       
-    # Scrittura in formato HDF5 (compatibile MATLAB v7.3)
+    if test == 1 or test == 2:
+        with h5py.File(filename_Indmax_OPT_py, 'w') as f:
+            f.create_dataset('Indmax_OPT_py', data=Indmax_OPT_py)
+            print(f"\Indmax_OPT_py saved in {filename_Indmax_OPT_py}")
+
+        with h5py.File(filename_Indmax_DL_py, 'w') as f:
+            f.create_dataset('Indmax_DL_py', data=Indmax_DL_py)
+            print(f"\Indmax_DL_py saved in {filename_Indmax_DL_py}")
+
     if save_files == 1:
+        # Scrittura in formato HDF5 (compatibile MATLAB v7.3)
+        with h5py.File(filename_MaxR_OPT_py, 'w') as f:
+            f.create_dataset('MaxR_OPT_py', data=MaxR_OPT_py)
+            print(f"\MaxR_OPT_py saved in {filename_MaxR_OPT_py}")
+        
+        with h5py.File(filename_MaxR_DL_py, 'w') as f:
+            f.create_dataset('MaxR_DL_py', data=MaxR_DL_py)
+            print(f"\MaxR_DL_py saved in {filename_MaxR_DL_py}")
 
-        if 0 == 1: # TODO: temporaneamente non voglio salvarli perchè già salvati in precedenza
-            with h5py.File(filename_Indmax_OPT_py, 'w') as f:
-                f.create_dataset('Indmax_OPT_py', data=Indmax_OPT_py)
-                print(f"\nIndmax_OPT_py saved in {filename_Indmax_OPT_py}")
+        with h5py.File(filename_Rate_DL_py, 'w') as f:
+            f.create_dataset('Rate_DL_py', data=Rate_DL_py)
+            print(f"\Rate_DL_py saved in {filename_Rate_DL_py}")
 
-            with h5py.File(filename_MaxR_OPT_py, 'w') as f:
-                f.create_dataset('MaxR_OPT_py', data=MaxR_OPT_py)
-                print(f"\nMaxR_OPT_py saved in {filename_MaxR_OPT_py}")
-
-            with h5py.File(filename_Rate_OPT_py, 'w') as f:
-                f.create_dataset('Rate_OPT_py', data=Rate_OPT_py)
-                print(f"\nRate_OPT_py saved in {filename_Rate_OPT_py}")
-
-        if test == 3 or test == 4:
-            with h5py.File(filename_Indmax_DL_py, 'w') as f:
-                f.create_dataset('Indmax_DL_py', data=Indmax_DL_py)
-                print(f"\nIndmax_DL_py saved in {filename_Indmax_DL_py}")
-            
-        if test == 3:
-            with h5py.File(filename_MaxR_DL_py, 'w') as f:
-                f.create_dataset('MaxR_DL_py', data=MaxR_DL_py)
-                print(f"\nMaxR_DL_py saved in {filename_MaxR_DL_py}")
-
-            with h5py.File(filename_Rate_DL_py, 'w') as f:
-                f.create_dataset('Rate_DL_py', data=Rate_DL_py)
-                print(f"\nRate_DL_py saved in {filename_Rate_DL_py}")
+        with h5py.File(filename_Rate_OPT_py, 'w') as f:
+            f.create_dataset('Rate_OPT_py', data=Rate_OPT_py)
+            print(f"\Rate_OPT_py saved in {filename_Rate_OPT_py}")
         
     return Rate_OPT_py, Rate_DL_py
 
@@ -306,7 +259,6 @@ output_folder = base_folder + 'Output_Python/'
 network_folder_out = output_folder + 'Neural_Network/'
 network_folder_out_YPredicted = output_folder + 'Neural_Network/YPredicted/'
 network_folder_out_RateDLpy = output_folder + 'Neural_Network/RateDLpy/'
-network_folder_out_RateDLpy_TFLite = output_folder + 'Neural_Network/RateDLpy_TFLite/'
 saved_models_keras = network_folder_out + 'saved_models_keras/'
 saved_models_onnx = network_folder_out + 'saved_models_onnx/'
 saved_models_tfsaved = network_folder_out + 'saved_models_tfsaved/'
@@ -322,7 +274,6 @@ folders = [
     network_folder_out,
     network_folder_out_YPredicted,
     network_folder_out_RateDLpy,
-    network_folder_out_RateDLpy_TFLite,
     saved_models_keras,
     saved_models_onnx,
     saved_models_tfsaved,
@@ -394,6 +345,7 @@ profiling_model_flag = args.profiling_model_flag
 Training_Size = [args.Training_Size]
 
 # %%
+
 # count, value
 for i, ris in enumerate(My_ar):
     #ris = 32
@@ -734,384 +686,267 @@ for i, ris in enumerate(My_ar):
                 #### V5 ####
                 model_py.export(model_path_float32_onnx, format="onnx")
 
-            else:
-                with open(model_path_tflite, 'rb') as f:
-                    tflite_quant_model = f.read()
-                print('TFLite model loaded')
-
             # %%
             ################################ Profile Model ################################
-
             if profiling_model_flag == 1:
-                
-                def extract_json_blocks(filepath):
-                    blocks = []
-                    with open(filepath, 'r') as f:
-                        buffer = []
-                        brace_count = 0
-                        for line in f:
-                            line_strip = line.strip()
-                            # Salta righe vuote o di testo
-                            if not line_strip or line_strip.startswith('=') or line_strip.endswith(':'):
-                                continue
-                            # Se la riga contiene una parentesi graffa, aggiorna il contatore
-                            brace_count += line.count('{')
-                            brace_count -= line.count('}')
-                            if brace_count > 0 or (brace_count == 0 and '{' in line):
-                                buffer.append(line)
-                            elif buffer:
-                                buffer.append(line)
-                            # Quando brace_count torna a zero e buffer non è vuoto, abbiamo un blocco JSON completo
-                            if brace_count == 0 and buffer:
-                                json_str = ''.join(buffer)
-                                try:
-                                    blocks.append(json.loads(json_str))
-                                except Exception as e:
-                                    print("Errore parsing JSON:", e)
-                                    # Stampa il blocco che ha causato l'errore per debug
-                                    print(json_str)
-                                buffer = []
-                    
-                    first_json = blocks[0]
-                    second_json = blocks[1]
+                # https://docs.edgeimpulse.com/reference/edge-impulse-api/learn/upload_a_pretrained_model
+                def upload_model():
+                    print('upload_model...')
 
-                    return first_json, second_json
-                                        
+                    with open(MODEL_PATH, 'rb') as f:
+                        files = {'model': (MODEL_PATH, f, 'application/octet-stream')}
+                        #url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/pretrained-model/upload"
+                        url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/pretrained-model/upload"
+                        response = requests.post(url, headers=HEADERS, files=files)
+                        if response.status_code == 200:
+                            print("Modello caricato con successo.")
+                        else:
+                            print(f"Errore nel caricamento del modello: {response.status_code} - {response.text}")
+                    return
+
+
+                # https://docs.edgeimpulse.com/reference/edge-impulse-api/jobs/get_tflite_profile_result_-get
+                def get_profiling_result(job_id):
+                    print('get_profiling_result...')
+
+                    #url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/jobs/{job_id}"
+                    url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/jobs/profile-tflite/{job_id}/result"
+                    while True:
+                        response = requests.get(url, headers=HEADERS)
+
+                        if response.status_code == 202: # Attendi se il job non è ancora pronto (202)
+                            print("202...", end="", flush=True)
+                            time.sleep(15)
+                            continue
+                        elif response.status_code == 200:
+                            response.raise_for_status()
+                            result = response.json()
+                        
+                            # Profiling ancora non pronto anche se status 200
+                            if not result.get('success', True):
+                                print("200...", end="", flush=True)
+                                time.sleep(15)
+                                continue
+                            else:
+                                print("Profiling completato.")
+                                return result
+                        
+                        else:
+                            print("...other status_code")
+                            time.sleep(15)
+                        
                 #print(ei.model.list_profile_devices())
                 # Solitamente si usano cortex-m4f-80mhz, cortex-m7-216mhz
                 #print(ei.model.list_deployment_targets())
                 # Solitamente si usa "zip" che è il c++ genirico che si può compilare con tutto
 
-                debug = 1
                 deploy = 0
+                profile_python = 0 # non usarlo, è più lento, però riporta un summary di più target
+                profile_http = 1
+                upload_model_on_edgeimpulse = 1
 
-                saved_models_edgeimpulse_model_type_load = saved_models_edgeimpulse + model_type_load + '/'
-                folder = saved_models_edgeimpulse_model_type_load
-                if not os.path.exists(folder):  # Controlla se la cartella esiste
-                    os.makedirs(folder, exist_ok=True)  # Crea la cartella se non esiste
-                    print(f"\nCartella creata: {folder}")
+                ram = 0
+                rom = 0
+                arena = 0
+                ram_eon = 0
+                rom_eon = 0
+                arena_eon = 0
+                lat = 0
+                isSupportedOnMcu = 0
+                hasPerformance = 0
 
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                logfilename = saved_models_edgeimpulse_model_type_load + 'log_profiling_' + timestamp + '.txt'
-                #print(f'Start profiling.\nConsole output redirected to {logfilename}')
-                #logfile = open(logfilename, "w")
-                #sys.stdout = logfile
-                #sys.stderr = logfile  # opzionale: salva anche gli errori
-
-                #timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                #export_metrics_all = saved_models_edgeimpulse + model_type_load + f'_metrics_{timestamp}.txt'
-                
+                export_metrics_all = saved_models_edgeimpulse + model_type_load + f'_metrics_{timestamp}.txt'
                 ## Se il file esiste, eliminalo
                 #if os.path.exists(export_metrics_all):
                 #    os.remove(export_metrics_all)
                 #    print(f"File {export_metrics_all} removed.")
                 
-                #export_metrics_all = saved_models_edgeimpulse + model_type_load + f'_metrics_.txt'
-                #with open(export_metrics_all, 'a') as f:
-                #    #f.write("quant_type,device_type,ram,rom,arena,ram_eon,rom_eon,arena_eon,lat,isSupportedOnMcu,hasPerformance\n")
-                #    f.write("device_type,quant_type,ram_eon,rom_eon,lat\n")
-                
-                #for quant_type, model_to_profile in zip(['int8','float32'], [model_path_tflite, model_path_float32_onnx]):
-                for quant_type, model_to_profile in zip(['int8'], [model_path_tflite]):
+                with open(export_metrics_all, 'a') as f:
+                    #f.write("model_type,device_type,ram,rom,arena,ram_eon,rom_eon,arena_eon,lat,isSupportedOnMcu,hasPerformance\n")
+                    f.write("device_type,model_type,ram_eon,rom_eon,lat\n")
 
-                    metrics_outputpath_merge = saved_models_edgeimpulse_model_type_load + f"metrics_merge_{quant_type}.csv"
-                    metrics_outputpath_mean_list = []
-
+                #for model_type, model_to_profile in zip(['int8','float32'], [model_path_tflite, model_path_float32_onnx]):
+                for model_type, model_to_profile in zip(['int8'], [model_path_tflite]):
                     # https://docs.edgeimpulse.com/docs/edge-ai-hardware/edge-ai-hardware
-                    # Non funzionano: 'st-stm32n6', 
-                    #                           M0+                    M4                   M7                    M55+acc                A72            cpu+gpu
-                    #for device_type in ['raspberry-pi-rp2040', 'cortex-m4f-80mhz', 'cortex-m7-216mhz', 'arduino-nicla-vision-m4', 'raspberry-pi-4', 'jetson-nano']: 
-                    # 'st-stm32n6', 'jetson-nano', 'jetson-orin-nano', 'alif-he', 'alif-hp' non vanno
-                    for device_type in ['raspberry-pi-rp2040', 'cortex-m4f-80mhz', 'cortex-m7-216mhz', 'arduino-nicla-vision-m4', 'raspberry-pi-4']: 
+                    #                           M0+                    M4                   M7            M55+acc          A72            cpu+gpu
+                    for device_type in ['raspberry-pi-rp2040', 'cortex-m4f-80mhz', 'cortex-m7-216mhz', 'st-stm32n6', 'raspberry-pi-4', 'jetson-nano']: # come mettere M0 e A?
+                    #for device_type in ['cortex-m4f-80mhz', 'cortex-m7-216mhz', 'st-stm32n6', 'raspberry-pi-4', 'jetson-nano']: # come mettere M0 e A?
+                    #for device_type in ['cortex-m7-216mhz', 'st-stm32n6', 'raspberry-pi-4', 'jetson-nano']: # come mettere M0 e A?
 
-                        metrics_outputpath_target = saved_models_edgeimpulse_model_type_load + f"metrics_{device_type}_{quant_type}_target.csv"
-                        metrics_outputpath_mean = saved_models_edgeimpulse_model_type_load + f"metrics_{device_type}_{quant_type}.csv"
-                        metrics_outputpath_mean_list.append(metrics_outputpath_mean)
-                        metrics_outputpath_lowEndMcu = saved_models_edgeimpulse_model_type_load + f"metrics_{device_type}_{quant_type}_lowEndMcu.csv"
-                        metrics_outputpath_highEndMcu = saved_models_edgeimpulse_model_type_load + f"metrics_{device_type}_{quant_type}_highEndMcu.csv"
-                        metrics_outputpath_highEndMcuPlusAccelerator = saved_models_edgeimpulse_model_type_load + f"metrics_{device_type}_{quant_type}_highEndMcuPlusAccelerator.csv"
-                        metrics_outputpath_mpu = saved_models_edgeimpulse_model_type_load + f"metrics_{device_type}_{quant_type}_mpu.csv"
-                        metrics_outputpath_gpuOrMpuAccelerator = saved_models_edgeimpulse_model_type_load + f"metrics_{device_type}_{quant_type}_gpuOrMpuAccelerator.csv"
-                        metrics_outputpath_list = [metrics_outputpath_target, metrics_outputpath_lowEndMcu, metrics_outputpath_highEndMcu,
-                                                    metrics_outputpath_highEndMcuPlusAccelerator, metrics_outputpath_mpu, metrics_outputpath_gpuOrMpuAccelerator]
-                        metrics_device_list = [device_type, 'lowEndMcu', 'highEndMcu', 'highEndMcuPlusAccelerator', 'mpu', 'gpuOrMpuAccelerator']
+                        #### Edge Impulse Profile ####
+                        print(f"\n*** Edge Impulse Profiling of {model_to_profile} using {model_type} on {device_type} ***")
+                        t = time.time()
+                        
+                        DEVICE = device_type
 
-                        header_string = "rep,device_type,quant_type,ram_eon[KB],rom_eon[MB],lat[ms]\n"
-                        for filpath in metrics_outputpath_list:
-                            with open(filpath, 'w') as f:
-                                #f.write("quant_type,device_type,ram,rom,arena,ram_eon,rom_eon,arena_eon,lat,isSupportedOnMcu,hasPerformance\n")
-                                f.write(header_string)
-
-                        repetitions_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-                        for rep in repetitions_list:
-                        #for rep in [1, 2, 3, 4, 5, 6, 7, 8, 9]:
-                        #for rep in [0]:
-
-                            #### Edge Impulse Profile with Python SDK ####
-                            print(f"\n*** Edge Impulse Profiling of {model_to_profile}: {device_type}, {quant_type}, rep: {rep} ***")
-                            t = time.time()
-
-                            profiling_outputpath = saved_models_edgeimpulse_model_type_load + f"profiling_{device_type}_{quant_type}_{rep}.json"
-
-                            if debug == 0:
-                                # Estimate the RAM, ROM, and inference time for our model on the target hardawre
-                                #The response includes estimates of memory usage and latency for the model across a range of
-                                #targets, including low-end MCU, high-end MCU, high-end MCU with accelerator, microprocessor unit
-                                #(MPU), and a GPU or neural network accelerator. It will also include details of any conditions
-                                #that preclude operation on a given type of device.
-                                #If you request a specific `device`, the results will also include estimates for that specific
-                                #device. A list of devices can be obtained from `edgeimpulse.model.list_profile_devices()`.
-                                #You can call `.summary()` on the response to obtain a more readable version of the most relevant
-                                #information.
-                                try:
-                                    profile = ei.model.profile(model=model_to_profile, 
-                                                                device=device_type)
-                                    print(profile.summary())
-                                except Exception as e:
-                                    print(f"Could not profile: {e}")
-
-                                # Salva il risultato su file JSON
-                                with open(profiling_outputpath, "w") as f:
-                                    buf = io.StringIO()
-                                    with redirect_stdout(buf):
-                                        profile.summary()
-                                    f.write(buf.getvalue())
-
-                            [first_json, second_json] = extract_json_blocks(profiling_outputpath)
-
-                            #for i, block in enumerate(json_blocks):
-                            #    print(f"\nBlocco JSON {i+1}:")
-                            #    for key, value in block.items():
-                            #        print(f"{key}: {value}")
-
-                            ram_list = []
-                            rom_list = []
-                            lat_list = []
-
-                            #try:
+                        #### with Python SDK ####
+                        if profile_python == 1:
+                            # Estimate the RAM, ROM, and inference time for our model on the target hardawre
                             try:
-                                ram_list.append(round(first_json['memory']['eon']['ram']/1024+0.005, 2))
+                                profile = ei.model.profile(model=model_to_profile, 
+                                                            device=device_type)
+                                print(profile.summary())
                             except Exception as e:
-                                ram_list.append(-1)
-                            try:
-                                rom_list.append(round(first_json['memory']['eon']['rom']/1024/1024+0.005, 2))
-                            except Exception as e:
-                                rom_list.append(-1)
-                            #if first_json['hasPerformance'] == 'true':
-                            try:
-                                lat_list.append(first_json['timePerInferenceMs'])
-                            except Exception as e:
-                                lat_list.append(-1)
+                                print(f"Could not profile: {e}")
 
-                            try:
-                                ram_list.append(round(second_json['lowEndMcu']['memory']['eon']['ram']/1024+0.005, 2))
-                            except Exception as e:
-                                ram_list.append(-1)
-                            try:
-                                rom_list.append(round(second_json['lowEndMcu']['memory']['eon']['rom']/1024/1024+0.005, 2))
-                            except Exception as e:
-                                rom_list.append(-1)
-                            try:
-                                lat_list.append(second_json['lowEndMcu']['timePerInferenceMs'])
-                            except Exception as e:
-                                lat_list.append(-1)
+                            # Salva il risultato su file JSON per uso futuro
+                            model_path_json = saved_models_edgeimpulse + f"profiling_result_{model_type}_{device_type}_sdk.json"
+                            with open(model_path_json, "w") as f:
+                                #json.dump(profile.summary(), f, indent=2)
+                                buf = io.StringIO()
+                                with redirect_stdout(buf):
+                                    profile.summary()
+                                f.write(buf.getvalue())
                             
-                            try:
-                                ram_list.append(round(second_json['highEndMcu']['memory']['eon']['ram']/1024+0.005, 2))
-                            except Exception as e:
-                                ram_list.append(-1)
-                            try:
-                                rom_list.append(round(second_json['highEndMcu']['memory']['eon']['rom']/1024/1024+0.005, 2))
-                            except Exception as e:
-                                rom_list.append(-1)
-                            try:
-                                lat_list.append(second_json['highEndMcu']['timePerInferenceMs'])
-                            except Exception as e:
-                                lat_list.append(-1)
+                            # Riapri il file
+                            with open(model_path_json, "r") as f:
+                                content = f.read()
+
+                            # Trova tutti i blocchi JSON tra parentesi graffe
+                            json_blocks = re.findall(r'(\{[\s\S]*?\})', content)
+
+                            # Salva i blocchi JSON separatamente
+                            for idx, block in enumerate(json_blocks):
+                                data = json.loads(block)
+                                with open(model_path_json, "a") as out:
+                                    json.dump(data, out, indent=2)
 
                             try:
-                                ram_list.append(round(second_json['highEndMcuPlusAccelerator']['memory']['eon']['ram']/1024+0.005, 2))
-                            except Exception as e:
-                                ram_list.append(-1)
-                            try:
-                                rom_list.append(round(second_json['highEndMcuPlusAccelerator']['memory']['eon']['rom']/1024/1024+0.005, 2))
-                            except Exception as e:
-                                rom_list.append(-1)
-                            try:
-                                lat_list.append(second_json['highEndMcuPlusAccelerator']['timePerInferenceMs'])
-                            except Exception as e:
-                                lat_list.append(-1)
+                                mem = profile.result.get("memory", {})
+                                lat = profile.result.get("timePerInferenceMs", -1)
 
-                            ram_list.append(-1)
-                            try:
-                                rom_list.append(round(second_json['mpu']['rom']/1024/1024+0.005, 2))
-                            except Exception as e:
-                                rom_list.append(-1)
-                            try:
-                                lat_list.append(second_json['mpu']['timePerInferenceMs'])
-                            except Exception as e:
-                                lat_list.append(-1)
+                                ram = mem.get("tflite", {}).get("ram", -1)
+                                rom = mem.get("tflite", {}).get("rom", -1)
+                                arena = mem.get("tflite", {}).get("arenaSize", -1)
 
-                            ram_list.append(-1)
-                            try:
-                                rom_list.append(round(second_json['gpuOrMpuAccelerator']['rom']/1024/1024+0.005, 2))
+                                ram_eon = mem.get("eon", {}).get("ram", -1)
+                                rom_eon = mem.get("eon", {}).get("rom", -1)
+                                arena_eon = mem.get("eon", {}).get("arenaSize", -1)   
+
                             except Exception as e:
-                                rom_list.append(-1)
-                            try:
-                                lat_list.append(second_json['gpuOrMpuAccelerator']['timePerInferenceMs'])
-                            except Exception as e:
-                                lat_list.append(-1)
+                                print(f"Error getting profile results: {e}")
 
-                            #except Exception as e:
-                            #    print(f"Error getting profile results: {e}")
+                            export_metrics = saved_models_edgeimpulse + model_type_load + '_' + model_type + '_' + device_type + '_metrics_sdk.txt'
+                        
+                        #### with HTTP API ####
+                        elif profile_http == 1:
 
+                            # https://docs.edgeimpulse.com/reference/edge-impulse-api/jobs/profile_tflite_model
+                            def profile_model():
+                                print('profile_model...')
 
-                            for filpath, device, ram, rom, lat in zip(metrics_outputpath_list, metrics_device_list, ram_list, rom_list, lat_list):
-                                with open(filpath, 'a') as f:
-                                    #"rep,device_type,quant_type,ram_eon[KB],rom_eon[MB],lat[ms]\n"
-                                    f.write(f"{rep},{device},{quant_type},{ram},{rom},{lat}\n")
+                                #url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/pretrained-model/profile"
+                                url = f"https://studio.edgeimpulse.com/v1/api/{PROJECT_ID}/jobs/profile-tflite"
                                 
-                                if rep == len(repetitions_list)-1:
-                                    with open(filpath, mode='r', newline='') as csvfile:
-                                        reader = csv.DictReader(csvfile)
-                                        lat_values = []
-                                        row_template = None
+                                # Leggi e codifica il modello in base64
+                                with open(model_path_tflite, 'rb') as f:
+                                    model_base64 = base64.b64encode(f.read()).decode('utf-8')
 
-                                        for row in reader:
-                                            print(row['lat[ms]'])
-                                            lat = int(row['lat[ms]'])
-                                            lat_values.append(lat)
-                                            if row_template is None:
-                                                row_template = row  # salva una riga (i valori costanti)
+                                payload = {
+                                    'tfliteFileBase64': model_base64,
+                                    "device": DEVICE
+                                }
+                                response = requests.post(url, headers=HEADERS, json=payload)
 
-                                    lat_mean = sum(lat_values) / len(lat_values) if lat_values else 0.0
+                                if response.status_code == 200:
+                                    profile_result = response.json()
+                                    #print(json.dumps(profile_result, indent=2))
+                                else:
+                                    print(f"Errore nel profiling del modello: {response.status_code} - {response.text}")
 
-                                    fieldnames = ['rep', 'device_type', 'quant_type', 'ram_eon[KB]', 'rom_eon[MB]', 'lat[ms]']
-                                    with open(filpath, mode='a', newline='') as csvfile:
-                                        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                                return response.json()['id']
+                                    
+                            #if upload_model_on_edgeimpulse == 1:
+                            #    upload_model()
+                            #    upload_model_on_edgeimpulse = 0
+                            upload_model()
 
-                                        #writer.writeheader()
-                                        writer.writerow({
-                                            'rep': 'mean'+len(repetitions_list)+'run',
-                                            'device_type': row_template['device_type'],
-                                            'quant_type': row_template['quant_type'],
-                                            'ram_eon[KB]': row_template['ram_eon[KB]'],
-                                            'rom_eon[MB]': row_template['rom_eon[MB]'],
-                                            'lat[ms]': f"{lat_mean}"
-                                        })
-  
-                            elapsed = (time.time() - t)/60
-                            print(f"Elapsed time: {elapsed} min\n")
+                            job_id = profile_model()
+                            result = get_profiling_result(job_id)
+                            print(json.dumps(result, indent=2))
 
+                            # Salva il risultato su file JSON per uso futuro
+                            model_path_json = saved_models_edgeimpulse + f"profiling_result_{model_type}_{device_type}_http.json"
+                            with open(model_path_json, "w") as f:
+                                json.dump(result, f, indent=2)
 
-                        # Calculate latency mean
-                        ultime_righe = []
+                            try:
+                                ram = result['memory']['tflite']['ram']
+                                rom = result['memory']['tflite']['rom']
+                                arena = result['memory']['tflite']['arenaSize']
+                                
+                                ram_eon = result['memory']['eon']['ram']
+                                rom_eon = result['memory']['eon']['rom']
+                                arena_eon = result['memory']['eon']['arenaSize']
+                                
+                                lat = result['timePerInferenceMs']
 
-                        for filepath in metrics_outputpath_list:
-                            with open(filepath, mode='r', newline='') as csvfile:
-                                reader = list(csv.DictReader(csvfile))
-                                ultima_riga = reader[-1]
-                                ultime_righe.append(ultima_riga)
+                                isSupportedOnMcu = result['isSupportedOnMcu']
+                                hasPerformance = result['hasPerformance']
 
-                        with open(metrics_outputpath_mean, mode='w', newline='') as csvfile:
-                            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                            writer.writeheader()
-                            writer.writerows(ultime_righe)
+                            except Exception as e:
+                                print(f"Error getting profile results: {e}")
 
-                    # Crea file finale con tutti i risultati del profiling per i vari dispositivi
+                            export_metrics = saved_models_edgeimpulse + model_type_load + '_' + model_type + '_' + device_type + '_metrics_http.txt'
 
-                    #header = None
-                    #with open(metrics_outputpath_merge, mode='w', newline='') as out_csv:
-                    #    writer = None
-                    #
-                    #    for filepath in metrics_outputpath_mean_list:
-                    #        with open(filepath, mode='r', newline='') as in_csv:
-                    #            reader = csv.DictReader(in_csv)
-                    #            if header is None:
-                    #                header = reader.fieldnames
-                    #                writer = csv.DictWriter(out_csv, fieldnames=header)
-                    #                writer.writeheader()
-                    #            for row in reader:
-                    #                writer.writerow(row)
+                        #### Collect profiling results ####
+                        with open(export_metrics, 'w') as f:
+                            f.write(f"TFLite: RAM={ram}, ROM={rom}, Arena={arena}\n"
+                                    f"EON:    RAM={ram_eon}, ROM={rom_eon}, Arena={arena_eon}\n"
+                                    f"Latency: {lat} ms\n"
+                                    f"isSupportedOnMcu: {isSupportedOnMcu}\n"
+                                    f"hasPerformance: {hasPerformance}")
 
-                    # Crea file finale con tutti i risultati del profiling per i vari dispositivi interlacciati
-                    header = None
-                    all_rows = []
+                        with open(export_metrics_all, 'a') as f:
+                            #f.write(f"{model_type},{device_type},{ram},{rom},{arena},{ram_eon},{rom_eon},{arena_eon},{lat},{isSupportedOnMcu},{hasPerformance}\n")
+                            f.write(f"{device_type},{model_type},{ram_eon},{rom_eon},{lat}\n")
 
-                    # Legge tutte le righe (senza header) da ciascun file
-                    for filepath in metrics_outputpath_mean_list:
-                        with open(filepath, mode='r', newline='') as in_csv:
-                            reader = list(csv.DictReader(in_csv))
-                            if header is None:
-                                header = reader[0].keys()
-                            all_rows.append(reader)
+                        elapsed = (time.time() - t)/60
+                        print(f"Elapsed time: {elapsed} min\n")
 
-                    # Verifica che tutti abbiano lo stesso numero di righe
-                    num_rows = len(all_rows[0])
-                    assert all(len(rows) == num_rows for rows in all_rows), "I file devono avere lo stesso numero di righe."
+                        if deploy == 1:
+                            #### Edge Impulse Deploy ####
+                            
+                            # Set model input type
+                            model_input_type = ei.model.input_type.OtherInput()
 
-                    # Scrive l'output interlacciato
-                    with open(metrics_outputpath_merge, mode='w', newline='') as out_csv:
-                        writer = csv.DictWriter(out_csv, fieldnames=header)
-                        writer.writeheader()
-                        for i in range(num_rows):
-                            for file_rows in all_rows:
-                                writer.writerow(file_rows[i])
+                            # Set model information, such as your list of labels
+                            model_output_type = ei.model.output_type.Classification(labels=labels)
+                            
+                            # Create C++ library with trained model
+                            deploy_bytes = None
+                            try:
+                                deploy_bytes = ei.model.deploy(model=model_to_profile,
+                                                                model_output_type=model_output_type,
+                                                                model_input_type=model_input_type,
+                                                                deploy_target='zip',
+                                                                output_directory=saved_models_edgeimpulse)
+                            except Exception as e:
+                                print(f"Could not profile: {e}")
 
-
-
-                        #if deploy == 1:
-                        #    #### Edge Impulse Deploy ####
-                        #    
-                        #    # Set model input type
-                        #    model_input_type = ei.model.input_type.OtherInput()
-                        #
-                        #    # Set model information, such as your list of labels
-                        #    model_output_type = ei.model.output_type.Classification(labels=labels)
-                        #    
-                        #    # Create C++ library with trained model
-                        #    deploy_bytes = None
-                        #    try:
-                        #        deploy_bytes = ei.model.deploy(model=model_to_profile,
-                        #                                        model_output_type=model_output_type,
-                        #                                        model_input_type=model_input_type,
-                        #                                        deploy_target='zip',
-                        #                                        output_directory=saved_models_edgeimpulse)
-                        #    except Exception as e:
-                        #        print(f"Could not profile: {e}")
-                        #
-                        #    # Write the downloaded raw bytes to a file
-                        #    if deploy_bytes:
-                        #        deploy_filename = saved_models_edgeimpulse + model_type_load + '_' + quant_type + '_' + device_type + '_deploy_bytes.zip'
-                        #        with open(deploy_filename, 'wb') as f:
-                        #            f.write(deploy_bytes.getvalue())
+                            # Write the downloaded raw bytes to a file
+                            if deploy_bytes:
+                                deploy_filename = saved_models_edgeimpulse + model_type_load + '_' + model_type + '_' + device_type + '_deploy_bytes.zip'
+                                with open(deploy_filename, 'wb') as f:
+                                    f.write(deploy_bytes.getvalue())
             
             # %%
             ################################ Predict with Loaded Model ################################
             Rate_OPT_py_load_val = 0
             Rate_DL_py_load_val = 0
-            Rate_OPT_py_load_test = 0
-            Rate_DL_py_load_test = 0
-            Rate_OPT_py_load = 0
-            Rate_DL_py_load = 0
-            Rate_OPT_py_load_test_tflite = 0
-            Rate_DL_py_load_test_tflite = 0
             if predict_loaded_model_flag == 1:
                 save_files_flag = 0
-                test = 0 # Predict with val set
-                ##Rate_OPT_py_load_val, Rate_DL_py_load_val   = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
-                save_files_flag = 0
-                test = 1 # Predict with test set
-                #Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
-                save_files_flag = 0
-                test = 2 # Predict with all dataset
-                #Rate_OPT_py_load, Rate_DL_py_load = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
-                save_files_flag = 0
-                test = 3 # Predict with TF-Lite Model
-                #Rate_OPT_py_load_test_tflite, Rate_DL_py_load_test_tflite = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, tflite_quant_model, network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
-                save_files_flag = 1
-                test = 4 # Predict with TF-Lite Model with all dataset
-                Rate_OPT_py_load_tflite, Rate_DL_py_load_tflite = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, tflite_quant_model, network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+                test = 0
+                #Rate_OPT_py_load_val, Rate_DL_py_load_val   = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+                Rate_OPT_py_load_val = 0
+                Rate_DL_py_load_val = 0
+                test = 1
+                Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+                #Rate_OPT_py_load_test = 0
+                #Rate_DL_py_load_test = 0
+                test = 2
+                Rate_OPT_py_load, Rate_DL_py_load = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
             
             learning_rate = model_py.optimizer.learning_rate.numpy()
             print(f"Learning rate loaded model: {learning_rate}")
@@ -1119,38 +954,6 @@ for i, ris in enumerate(My_ar):
         # %%
         ################################ Train Model ################################
         if train_model_flag == 1 and load_model_flag == 0:
-
-            log_dir = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/tensorboard_logs_test/"
-            tensorboard_command = [
-                "tensorboard",
-                f"--logdir={log_dir}",
-                "--port=6006",
-                "--host=localhost"
-            ]
-
-            # Funzione per trovare e terminare TensorBoard se è già in esecuzione
-            def terminate_tensorboard():
-                for process in psutil.process_iter(['pid', 'name', 'cmdline']):
-                    try:
-                        if 'tensorboard' in process.info['name'] or \
-                        (process.info['cmdline'] and 'tensorboard' in process.info['cmdline'][0]):
-                            print(f"\nTerminazione di TensorBoard con PID: {process.info['pid']}")
-                            os.kill(process.info['pid'], signal.SIGTERM)
-                    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                        pass
-
-            # Controlla se TensorBoard è già in esecuzione
-            try:
-                # Avvia TensorBoard in background
-                tensorboard_process = subprocess.Popen(tensorboard_command)
-                print(f"\nTensorBoard avviato in background.")
-            except:
-                print(f"\nfErrore nell'avvio di TensorBoard: {e}")
-                # Chiudi TensorBoard se è già in esecuzione
-                terminate_tensorboard()
-                # Avvia TensorBoard in background
-                tensorboard_process = subprocess.Popen(tensorboard_command)
-                print(f"\nTensorBoard avviato in background.")
 
             # Define the neural network architecture
             model_py = Sequential([
@@ -1257,6 +1060,7 @@ for i, ris in enumerate(My_ar):
 
             # %%
             ## DL Model Prediction
+            # # SOSTITUIRE X_val CON X_test!!!
             test = 0
             Rate_OPT_py_val, Rate_DL_py_val  = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
             test = 1
@@ -1281,28 +1085,19 @@ for i, ris in enumerate(My_ar):
             print(f"Rate_DL_valOld: {Rate_DL_valOld}")
 
         # Output finali       
-        try:
-            if load_model_flag == 1:
-                print(f"\nRate_OPT_py_load_val: {Rate_OPT_py_load_val}")
-                print(f"Rate_DL_py_load_val: {Rate_DL_py_load_val}")
+        if load_model_flag == 1:
+            print(f"\nRate_OPT_py_load_val: {Rate_OPT_py_load_val}")
+            print(f"Rate_DL_py_load_val: {Rate_DL_py_load_val}")
 
-                print(f"\nRate_OPT_py_load_test: {Rate_OPT_py_load_test}")
-                print(f"Rate_DL_py_load_test: {Rate_DL_py_load_test}")
-                print(f"Rate_DL_py_load_test_tflite: {Rate_DL_py_load_test_tflite}")
-                
-                print(f"\nRate_OPT_py_load: {Rate_OPT_py_load}")
-                print(f"Rate_DL_py_load: {Rate_DL_py_load}")
-
-                print(f"\nRate_OPT_py_load_tflite: {Rate_OPT_py_load_tflite}")
-                print(f"Rate_DL_py_load_tflite: {Rate_DL_py_load_tflite}")
-            if train_model_flag == 1:
-                print(f"\nRate_DL_py_test: {Rate_DL_py_test}")
-                print(f"Rate_DL_py_val: {Rate_DL_py_val}")
-        except Exception as e:
-            print('Some missing info to print, no problem')
+            print(f"\nRate_OPT_py_load_test: {Rate_OPT_py_load_test}")
+            print(f"Rate_DL_py_load_test: {Rate_DL_py_load_test}")
+            
+            print(f"\nRate_OPT_py_load: {Rate_OPT_py_load}")
+            print(f"Rate_DL_py_load: {Rate_DL_py_load}")
+        if train_model_flag == 1:
+            print(f"\nRate_DL_py_test: {Rate_DL_py_test}")
+            print(f"Rate_DL_py_val: {Rate_DL_py_val}")
         
         print(f"\nRicorda che Rate_DL_valOld non può essere confrontato con Rate_DL_py_load_val e Rate_DL_py_load_test, perchè il primo è calcolato sul validation set old, mentre i secondi sul val e test set nuovi")
 
         tf.keras.backend.clear_session()
-
-#logfile.close()

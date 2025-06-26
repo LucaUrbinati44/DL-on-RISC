@@ -4,3 +4,24 @@ DeepMIMOv1-LIS-DeepLearning-Taha/Output
 DeepMIMOv1-LIS-DeepLearning-Taha/Outputv2
 DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python
 DeepMIMOv1-LIS-DeepLearning-Taha/Output Matlab
+
+renode_boards/litex-vexriscv-tensorflow-lite-demo/*
+!renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/
+
+renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/*
+!renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/
+
+renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/*
+!renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/
+
+renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/*
+!renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/
+
+renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/*
+!renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/examples/
+
+renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/examples/*
+!renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/examples/magic_wand/
+!renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/examples/ml_on_risc/
+
+renode_portable

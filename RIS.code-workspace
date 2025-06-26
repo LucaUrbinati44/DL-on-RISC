@@ -3,5 +3,25 @@
 		{
 			"path": "."
 		}
-	]
+	],
+	"settings": {
+		"favorites.resources": [
+			{
+				"filePath": "renode_examples/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/examples/magic_wand",
+				"group": "Default"
+			},
+			{
+				"filePath": "renode_examples/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/tools/make/downloads/zephyr",
+				"group": "Default"
+			},
+			{
+				"filePath": "renode_examples/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/tools/make/gen",
+				"group": "Default"
+			},
+			{
+				"filePath": "renode_examples/litex-vexriscv-tensorflow-lite-demo/renode",
+				"group": "Default"
+			}
+		]
+	}
 }
