@@ -314,6 +314,7 @@ saved_models_tfsaved2 = network_folder_out + 'saved_models_tfsaved2/'
 saved_models_tflite = network_folder_out + 'saved_models_tflite/'
 saved_models_edgeimpulse = network_folder_out + 'saved_models_edgeimpulse/'
 figure_folder = output_folder + 'Figures/'
+test_data_npy_path = output_folder + 'Test_data/'
 
 import os
 
@@ -329,7 +330,8 @@ folders = [
     saved_models_tfsaved2,
     saved_models_tflite,
     saved_models_edgeimpulse,
-    figure_folder
+    figure_folder,
+    test_data_npy_path
 ]
 
 for folder in folders:
@@ -632,6 +634,12 @@ for i, ris in enumerate(My_ar):
             xtrain = X_train
             xval = X_val
             xtest = X_test
+
+        print("Save test data to npy")
+        xtest_npy_filename = test_data_npy_path + 'test_set' + end_folder_Training_Size_dd + '.npy'
+        np.save(xtest_npy_filename, xtest)
+
+        #os._exit(0)
 
         # %%
         ## DL Model Training and Prediction

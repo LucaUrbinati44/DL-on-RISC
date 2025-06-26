@@ -32,6 +32,9 @@ max_epochs_load = 60
 Training_Size = [10000]
 Training_Size_dd = Training_Size[0]
 
+end_folder = '_seed' + str(seed) + '_grid' + str(Ur_rows[1]) + '_M' + str(My) + str(Mz) + '_Mbar' + str(M_bar)
+end_folder_Training_Size_dd = end_folder + '_' + str(Training_Size_dd)
+
 base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
 
 input_folder = base_folder + 'Output Matlab/'
@@ -54,6 +57,8 @@ figure_folder = output_folder + 'Figures/'
 profiling_ei_folder = output_folder + 'Profiling_Search/'
 profiling_renode_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/examples/ml_on_risc/c_models'
 header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
+test_data_npy_path = output_folder + 'Test_data/'
+test_data_renode_path = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/renode_boards/litex-vexriscv-tensorflow-lite-demo/renode/'
 
 folders = [
     output_folder,
@@ -69,7 +74,8 @@ folders = [
     saved_models_edgeimpulse,
     figure_folder,
     profiling_ei_folder,
-    profiling_renode_folder
+    profiling_renode_folder,
+    test_data_npy_path
 ]
 
 for folder in folders:
@@ -79,7 +85,6 @@ for folder in folders:
     #else:
     #    print(f"La cartella esiste già: {folder}")
 
-
 # ----- Costruzione del modello MLP parametrico -----
 def build_mlp(input_dim, output_dim, num_layers, hidden_units_list):
     model = tf.keras.Sequential([tf.keras.Input(shape=(input_dim,), name='input')])
@@ -87,7 +92,6 @@ def build_mlp(input_dim, output_dim, num_layers, hidden_units_list):
         model.add(tf.keras.layers.Dense(hidden_units_list[i], activation='relu', name=f'hidden_{i}'))
     model.add(tf.keras.layers.Dense(output_dim, activation=None, name='output'))
     return model
-
 
 # ----- Conversione in TF-Lite INT8 -----
 def convert_to_tflite_int8(model, x_sample):
@@ -104,13 +108,33 @@ def convert_to_tflite_int8(model, x_sample):
 
 def get_model_path_tflite():
     print('*** get_model_path_tflite')
-    end_folder = '_seed' + str(seed) + '_grid' + str(Ur_rows[1]) + '_M' + str(My) + str(Mz) + '_Mbar' + str(M_bar)
-    end_folder_Training_Size_dd = end_folder + '_' + str(Training_Size_dd)
     end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
     model_type_load = 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
     model_path_tflite = saved_models_tflite + model_type_load + '_quant.tflite'
     return model_type_load, model_path_tflite
+
+# ----- Export test data for inference -----
+def export_test_data(size='small'):
+    print('*** export_test_data')
+    xtest_npy_filename = test_data_npy_path + 'test_set' + end_folder_Training_Size_dd + '.npy'
+    xtest = np.load(xtest_npy_filename)
+    print(xtest.shape)
     
+    if size == 'small':
+        xtest_size = 100
+    else:
+        xtest_size = xtest.shape[0]
+
+    print(xtest[:(xtest_size-1),:].shape)
+
+    xtest_renode_filename = test_data_renode_path + 'test_set_' + size + '.data'
+    with open(xtest_renode_filename, 'w') as f:
+        # map(str, sample): trasforma ogni elemento del vettore sample in una stringa.
+        # ' '.join(...): concatena tutte queste stringhe, separandole con uno spazio.
+        for sample in xtest[:xtest_size,:]:
+            line = ' '.join(map(str, sample))
+            f.write(line + '\n')
+
 # ----- Export TF-Lite INT8 model to C for TFLM -----
 def export_to_c(model_type_load, model_path_tflite, save_dir="./"):
     print('*** export_to_c')
@@ -484,6 +508,10 @@ if __name__ == "__main__":
     RELOAD = 1  # Cambia in 1 per saltare Edge Impulse e usare i file salvati
 
     output_csv = profiling_ei_folder + 'profiling_grid_results.csv'
+
+    # Attivare al bisogno
+    #export_test_data(size='small')
+    #export_test_data(size='full')
 
     for input_dim in input_dims:
         
