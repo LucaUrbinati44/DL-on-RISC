@@ -25,6 +25,8 @@ limitations under the License.
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
+#include <cstdio>
+
 
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
@@ -43,6 +45,9 @@ uint8_t tensor_arena[kTensorArenaSize];
 
 // The name of this function is important for Arduino compatibility.
 void setup() {
+
+  printf("Enter setup\n");
+
   // Set up logging. Google style is to avoid globals or statics because of
   // lifetime uncertainty, but since this has a trivial destructor it's okay.
   static tflite::MicroErrorReporter micro_error_reporter;  // NOLINT
@@ -95,27 +100,43 @@ void setup() {
   TfLiteStatus setup_status = SetupAccelerometer(error_reporter);
   if (setup_status != kTfLiteOk) {
     TF_LITE_REPORT_ERROR(error_reporter, "Set up failed\n");
+  } else {
+    TF_LITE_REPORT_ERROR(error_reporter, "Set up succeeded\n");
   }
+
+  printf("Exit setup\n");
 }
 
 void loop() {
+
+  //printf("Enter loop\n");
 
   // Attempt to read new data from the accelerometer.
   bool got_data =
       ReadAccelerometer(error_reporter, model_input->data.f, input_length);
   // If there was no new data, wait until next time.
-  if (!got_data) return;
+  //if (!got_data) return;
+  if (got_data) {
+      //printf("got data\n");
+  } else {
+      printf("no data yet\n");
+      return;
+  }
 
   // Run inference, and report any error.
+  printf("Invoke...\n");
   TfLiteStatus invoke_status = interpreter->Invoke();
   if (invoke_status != kTfLiteOk) {
-    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on index: %d\n",
-                         begin_index);
+    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on index: %d\n");
+                            //begin_index);
     return;
   }
   // Analyze the results to obtain a prediction
   int gesture_index = PredictGesture(interpreter->output(0)->data.f);
+  printf("gesture_index: %d\n", gesture_index);
 
   // Produce an output
   HandleOutput(error_reporter, gesture_index);
+  fflush(stdout);
+
 }

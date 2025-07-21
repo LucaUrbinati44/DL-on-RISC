@@ -2,6 +2,8 @@
 #include "tensorflow/lite/micro/examples/magic_wand/accelerometer_handler_local.h"
 #include "tensorflow/lite/micro/examples/magic_wand/constants.h"
 #include "tensorflow/lite/micro/examples/magic_wand/gesture_predictor.h"
+
+// include the model
 #include "tensorflow/lite/micro/examples/magic_wand/magic_wand_model_data.h"
 #include "tensorflow/lite/micro/examples/magic_wand/output_handler.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
@@ -9,7 +11,6 @@
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
-#include <cstdio>
 
 
 // Globals, used for compatibility with Arduino-style sketches.
@@ -18,6 +19,8 @@ tflite::ErrorReporter* error_reporter = nullptr;
 const tflite::Model* model = nullptr;
 tflite::MicroInterpreter* interpreter = nullptr;
 TfLiteTensor* model_input = nullptr;
+TfLiteTensor* model_output = nullptr;
+int sample_index = 1;
 int input_length;
 
 // Create an area of memory to use for input, output, and intermediate arrays.
@@ -35,8 +38,9 @@ void setup() {
     // Set up logging. Google style is to avoid globals or statics because of
     // lifetime uncertainty, but since this has a trivial destructor it's okay.
     static tflite::MicroErrorReporter micro_error_reporter;  // NOLINT
-    error_reporter = &micro_error_reporter;
+    error_reporter = &micro_error_reporter; // This variable will be passed into the interpreter, which allows it to write log
 
+    // Load a model
     // Map the model into a usable data structure. This doesn't involve any
     // copying or parsing, it's a very lightweight operation.
     model = tflite::GetModel(g_magic_wand_model_data);
@@ -48,6 +52,8 @@ void setup() {
         return;
     }
 
+    // The MicroMutableOpResolver will be used by the interpreter to register and access the operations that are used by the model.
+    // It requires a template parameter indicating the number of ops that will be registered (i.e., the number in <>).
     // Pull in only the operation implementations we need.
     // This relies on a complete list of all the ops needed by this graph.
     // An easier approach is to just use the AllOpsResolver, but this will
@@ -60,22 +66,28 @@ void setup() {
     micro_op_resolver.AddMaxPool2D();
     micro_op_resolver.AddSoftmax();
 
-    // Build an interpreter to run the model with.
+    // Build/Instantiate an interpreter to run the model with.
     static tflite::MicroInterpreter static_interpreter(
         model, micro_op_resolver, tensor_arena, kTensorArenaSize, error_reporter);
     interpreter = &static_interpreter;
 
-    // Allocate memory from the tensor_arena for the model's tensors.
+    // Tell the interpreter to allocate memory from the tensor_arena for the model's tensors.
     interpreter->AllocateTensors();
 
-    // Obtain pointer to the model's input tensor.
+    // Obtain pointer to the model's input and output tensors. 0 represents the first (and only) input/output tensor.
     model_input = interpreter->input(0);
+    model_output = interpreter->output(0);
+
+    // Make sure the input has the properties we expect
     if ((model_input->dims->size != 4) || (model_input->dims->data[0] != 1) ||
         (model_input->dims->data[1] != 128) ||
         (model_input->dims->data[2] != kChannelNumber) ||
         (model_input->type != kTfLiteFloat32)) {
-        TF_LITE_REPORT_ERROR(error_reporter,
-                             "Bad input tensor parameters in model");
+        TF_LITE_REPORT_ERROR(error_reporter, "Bad input tensor parameters in model");
+        printf("%d\n", model_input->dims->size);
+        printf("%d\n", model_input->dims->data[0]);
+        printf("%d\n", model_input->dims->data[1]);
+        printf("%d\n", model_input->type);
         return;
     }
 
@@ -93,31 +105,33 @@ void setup() {
 
 void loop() {
 
-    //printf("Enter loop\n");
-        
+    // Provide an input to the model, we set the contents of the input tensor
     // Attempt to read new data from the accelerometer.
     bool got_data = 
         ReadAccelerometer(error_reporter, model_input->data.f, input_length);
     // If there was no new data, wait until next time.
     //if (!got_data) return;
     if (got_data) {
-        //printf("got data\n");
+        printf("got data\n");
     } else {
         printf("no data yet\n");
         return;
     }
 
-    // Run inference, and report any error.
-    printf("Invoke...\n");
+    // Run inference
+    printf("Invoke for sample %d...\n", sample_index);
     TfLiteStatus invoke_status = interpreter->Invoke();
+    // The possible values of TfLiteStatus, defined in common.h, are kTfLiteOk and kTfLiteError
     if (invoke_status != kTfLiteOk) {
-        TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on index: %d\n");
-                            //begin_index);
+        TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on index: %d\n", sample_index++);
         return;
-    }        
-    // Analyze the results to obtain a prediction
-    int gesture_index = PredictGesture(interpreter->output(0)->data.f);
+    }
+            
+    // Analyze the results to obtain a prediction. 0 represents the first (and only) output tensor
+    int gesture_index = PredictGesture(model_output->data.f);
     printf("gesture_index: %d\n", gesture_index);
+
+    sample_index++;
 
     // Produce an output
     HandleOutput(error_reporter, gesture_index);

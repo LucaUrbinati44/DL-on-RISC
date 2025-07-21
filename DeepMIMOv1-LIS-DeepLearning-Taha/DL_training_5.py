@@ -147,16 +147,16 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./"):
         hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1]) + "_" + str(hidden_units_list[2])
 
     model_name = model_type_load + f"_in{input_dim}_out{output_dim}_nl{num_layers}_hul{hul}"
-    header_path = os.path.join(save_dir, f"{model_name}.h")
-    source_path = os.path.join(save_dir, f"{model_name}.cc")
+    header_path = os.path.join(save_dir, f"{model_name}_model_data.h")
+    source_path = os.path.join(save_dir, f"{model_name}_model_data.cc")
 
     #generate_header(header_path, model_name)
     guard = f"{model_name.upper()}_H_".replace(".", "_")
     with open(header_path, "w") as f:
         f.write(f"#ifndef {guard}\n")
         f.write(f"#define {guard}\n\n")
-        f.write(f"extern const unsigned char {model_name}[];\n")
-        f.write(f"extern const int {model_name}_len;\n\n")
+        f.write(f"extern const unsigned char g_{model_name}_model_data[];\n")
+        f.write(f"extern const int g_{model_name}_model_data_len;\n\n")
         f.write(f"#endif  // {guard}\n")
 
     #generate_source(source_path, model_path_tflite, model_name)
@@ -191,7 +191,7 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./"):
     #print(model_path_tflite_lowercase)
     first_line_old = f"unsigned char {model_path_tflite_lowercase}[] = {{"
     # Aggiungi include dell'header
-    first_line_new = f"#include \"{header_folder}/{model_name}.h\"\nalignas(8) const unsigned char {var_name}[] = {{"
+    first_line_new = f"#include \"{header_folder}/{model_name}_model_data.h\"\nalignas(8) const unsigned char g_{var_name}_model_data[] = {{"
     var_name = 'model_tflite' # default
     last_line_old = f"unsigned int {model_path_tflite_lowercase}_len"
     last_line_new = f"unsigned int {var_name}_len"
