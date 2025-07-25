@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+np.set_printoptions(threshold=np.inf)
+
 import edgeimpulse as ei
 import csv
 import os
@@ -10,6 +12,10 @@ from contextlib import redirect_stdout
 import random
 from statistics import mean, stdev
 import re
+from tensorflow.keras.saving import load_model
+from ai_edge_litert.interpreter import Interpreter
+
+print("TensorFlow version:", tf.__version__)
 
 ei.API_KEY = "ei_4a58ede09ec501541b8239002c9ee96833f9fac84c339500a2a04eb3b7c9bcfc"
 PROJECT_ID = 712872
@@ -113,27 +119,188 @@ def get_model_path_tflite():
     model_path_tflite = saved_models_tflite + model_type_load + '_quant.tflite'
     return model_type_load, model_path_tflite
 
+def mse_custom(y_true, y_pred):
+    # Calcola l'errore quadratico tra vero e predetto
+    squared_error = tf.square(y_true - y_pred)  # shape: (batch_size, output_dim)=6200,1024
+
+    # Somma degli errori lungo l'ultima dimensione (output_dim)
+    sum_squared_error = tf.reduce_sum(squared_error, axis=-1)  # shape: (batch_size,)=6200
+
+    # Media su tutto il batch
+    loss = 0.5 * tf.reduce_mean(sum_squared_error)  # scalar
+    return loss
+
 # ----- Export test data for inference -----
-def export_test_data(size='small'):
+def export_test_data(model_path_tflite, size='small'):
     print('*** export_test_data')
     xtest_npy_filename = test_data_npy_path + 'test_set' + end_folder_Training_Size_dd + '.npy'
     xtest = np.load(xtest_npy_filename)
     print(xtest.shape)
     
     if size == 'small':
-        xtest_size = 100
+        xtest_size = 1
     else:
         xtest_size = xtest.shape[0]
 
-    print(xtest[:(xtest_size-1),:].shape)
+    print(xtest[:xtest_size,:].shape)
 
     xtest_renode_filename = test_data_renode_path + 'test_set_' + size + '.data'
     with open(xtest_renode_filename, 'w') as f:
         # map(str, sample): trasforma ogni elemento del vettore sample in una stringa.
         # ' '.join(...): concatena tutte queste stringhe, separandole con uno spazio.
+        f.write(' '.join([f'ch{i+1}' for i in range(xtest.shape[1])]) + '\n')
         for sample in xtest[:xtest_size,:]:
-            line = ' '.join(map(str, sample))
+            line = ','.join(map(str, sample))
             f.write(line + '\n')
+    #with open(xtest_renode_filename, 'w') as f:
+    #    f.write('data\n')  # intestazione richiesta per il campo BinaryData
+    #    for sample in xtest[:xtest_size, :]:
+    #        # Conversione delle xtest.shape[1] features float32 in una sola stringa esadecimale continua per il formato Renode Binary Data 
+    #        sample_bytes = sample.astype(np.float32).tobytes()
+    #        hex_str = sample_bytes.hex()
+    #        f.write(f'{hex_str}\n')
+
+    xtest_header_filename = test_data_renode_path + 'test_set_' + size + '.h'
+    num_samples, sample_size = xtest.shape
+    with open(xtest_header_filename, 'w') as f:
+        f.write("#ifndef SAMPLE_DATA_H\n")
+        f.write("#define SAMPLE_DATA_H\n\n")
+        f.write(f"#define NUM_SAMPLES {num_samples}\n")
+        #f.write(f"#define SAMPLE_SIZE {sample_size}\n\n")
+        #f.write("const float samples[NUM_SAMPLES][SAMPLE_SIZE] = {\n")
+        f.write("const float samples[NUM_SAMPLES][INPUT_FEATURE_SIZE] = {\n")
+        
+        for i, sample in enumerate(xtest):
+            # converto ogni valore in stringa formattata a 6 decimali
+            sample_str = ", ".join(f"{x:.6f}f" for x in sample)
+            if i == num_samples - 1:
+                f.write(f"    {{ {sample_str} }}\n")
+            else:
+                f.write(f"    {{ {sample_str} }},\n")
+        f.write("};\n\n")
+        f.write("#endif // SAMPLE_DATA_H\n")
+
+    # Esempio di utilizzo:
+    # xtest = np.random.rand(5, 1024)  # esempio di 5 sample da 1024 feature
+    # generate_header_from_array(xtest, "sample_data.h")
+    
+
+    # load tflite model
+    with open(model_path_tflite, 'rb') as f:
+        tflite_quant_model = f.read()
+    print('TFLite model loaded')
+
+    from tensorflow.lite.python import schema_py_generated as schema_fb
+
+    tflite_model = schema_fb.Model.GetRootAsModel(tflite_quant_model, 0)
+
+    # Gets metadata from the model file.
+    for i in range(tflite_model.MetadataLength()):
+        meta = tflite_model.Metadata(i)
+        if meta.Name().decode("utf-8") == "min_runtime_version":
+            buffer_index = meta.Buffer()
+            metadata = tflite_model.Buffers(buffer_index)
+            min_runtime_version_bytes = metadata.DataAsNumpy().tobytes()
+            print(min_runtime_version_bytes)
+        
+    return
+
+    # inference using tflite model with xtest
+    #Loading and running a LiteRT model involves the following steps:
+    #1) Loading the model into memory.
+    #2) Building an Interpreter based on an existing model.
+    # Load the LiteRT model and allocate tensors.
+    interpreter = Interpreter(model_content=tflite_quant_model)
+    interpreter.allocate_tensors()
+    details = interpreter.get_tensor_details()
+
+    # Stampa l'elenco degli operatori
+    for op in interpreter._get_ops_details():
+        print(op['op_name'])
+
+    #3) Setting input tensor values.
+    # Get input and output tensors.
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    #input_dtype = input_details[0]['dtype'] #int8
+    #output_dtype = input_details[0]['dtype']
+    #print('input_dtype:', input_dtype) # [   1 1024]
+    #print('output_dtype:', output_dtype)
+    #input_shape = input_details[0]['shape']
+    #output_shape = output_details[0]['shape']
+    #print('input_shape:', input_shape)
+    #print('output_shape:', output_shape)
+
+    input_scale, input_zero_point = input_details[0]['quantization']
+    print(f'input_scale: {input_scale:.6f}')
+    print(f'input_zero_point: {input_zero_point:.6f}')
+    output_scale, output_zero_point = output_details[0]['quantization']
+    print(f'output_scale: {output_scale:.6f}')
+    print(f'output_zero_point: {output_zero_point:.6f}')
+        
+    input_float = xtest[:xtest_size,:]
+    #print('input_float.shape:', input_float.shape) # (3100, 1024)
+    #print('np.max(input_float):', np.max(input_float))
+    #print('np.min(input_float):', np.min(input_float))
+
+    num_samples = input_float.shape[0]
+    output_float = []
+
+    for i in range(num_samples):
+    #for i in range(3):
+        #print('i:', i)
+
+        sample = input_float[i]  # shape: (1024,)
+        #print('sample.shape:', sample.shape)
+        print('\nfloat_input:', ' '.join([f"{x:.6f}" for x in sample]))
+        sample = np.expand_dims(sample, axis=0)  # shape: (1, 1024)
+        input_int8 = np.round(sample / input_scale + input_zero_point).astype(np.int8)
+        print('\nquantized_input:', ' '.join([f"{x}" for x in input_int8.flatten()]))
+        #print('input_int8.shape:', input_int8.shape)
+        #print('np.max(input_int8):', np.max(input_int8))
+        #print('np.min(input_int8):', np.min(input_int8))
+
+        #4) Invoking inferences.
+        # Test the model on input data.
+        #input_float = np.array(np.random.random_sample(input_shape), dtype=np.float32) # random input data
+
+        interpreter.set_tensor(input_details[0]['index'], input_int8)
+        interpreter.invoke()
+
+        #5) Outputting tensor values
+        # The function `get_tensor()` returns a copy of the tensor data.
+        # Use `tensor()` in order to get a pointer to the tensor.
+        output_int8 = interpreter.get_tensor(output_details[0]['index'])
+        #print('output_int8.shape:', output_int8.shape)
+        #print('np.max(output_int8):', np.max(output_int8))
+        #print('np.min(output_int8):', np.min(output_int8))
+        output_deq = (output_int8.astype(np.float32) - output_zero_point) * output_scale
+        print('\nquantized_output:', ' '.join([f"{x}" for x in output_int8.flatten()]))
+        print('\ndequantized_output:', ' '.join([f"{x:.6f}" for x in output_deq[0]]))
+        #print('output_deq.shape:', output_deq.shape)
+        #print('np.max(output_deq):', np.max(output_deq))
+        #print('np.min(output_deq):', np.min(output_deq))
+        output_float.append(output_deq[0])  # output_deq.shape: (1, 1024) -> prendi [0]
+        
+        print(f"\ncodebook_index {i+1}: {np.argmax(output_deq[0])}\n")
+
+    YPredicted = np.stack(output_float, axis=0)  # shape: (3100, 1024)
+    #print(f'YPredicted.shape: {YPredicted.shape}')
+
+    Indmax_DL_py = np.argmax(YPredicted, axis=1)
+    #print(f'Indmax_DL_py.shape: {Indmax_DL_py.shape}')
+    # Questi devono essere numeri interi
+    print(f'np.min(Indmax_DL_py): {np.min(Indmax_DL_py)}')
+    print(f'np.max(Indmax_DL_py): {np.max(Indmax_DL_py)}')
+    print(Indmax_DL_py[0:5])
+
+    # save inference results as golden output on a .data file for TFLM comparison
+    Indmax_DL_py_renode_filename = test_data_renode_path + 'golden_output_codebook_' + size + '.data'
+    with open(Indmax_DL_py_renode_filename, 'w') as f:
+        # trasforma ogni elemento in una stringa
+        for sample in Indmax_DL_py[:xtest_size]:
+            f.write(str(sample) + '\n')
+
 
 # ----- Export TF-Lite INT8 model to C for TFLM -----
 def export_to_c(model_type_load, model_path_tflite, save_dir="./"):
@@ -477,20 +644,26 @@ def run_experiment(input_dim, output_dim, num_layers, hidden_units_list, x_sampl
     #model = build_mlp(input_dim, output_dim, num_layers, hidden_units_list)
     #model.compile(optimizer='adam', loss='mse')
     #model.summary()
+    
     model_type_load, model_path_tflite = get_model_path_tflite()
-    model_name = export_to_c(model_type_load, model_path_tflite, save_dir=profiling_renode_folder)
-    #model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, macs = get_model_info(model)
-    #tflite_model = convert_to_tflite_int8(model, x_sample)
-    #summary = profile_model_ei(tflite_model, reload=RELOAD, save_dir=profiling_ei_folder)
-    inference_time = profile_model_renode(model_name, reload=RELOAD, save_dir=profiling_ei_folder)
-    #save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, output_csv)
+
+    # Attivare al bisogno
+    export_test_data(model_path_tflite, size='small')
+    #export_test_data(size='full')
+    
+    #model_name = export_to_c(model_type_load, model_path_tflite, save_dir=profiling_renode_folder)
+    ##model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, macs = get_model_info(model)
+    ##tflite_model = convert_to_tflite_int8(model, x_sample)
+    ##summary = profile_model_ei(tflite_model, reload=RELOAD, save_dir=profiling_ei_folder)
+    #inference_time = profile_model_renode(model_name, reload=RELOAD, save_dir=profiling_ei_folder)
+    ##save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, output_csv)
 
 # %%
 
 # --- ESEMPIO USO --- #
 if __name__ == "__main__":
 
-    debug = 1
+    debug = 1 # 0 = loop; 1 = modello di Taha
 
     # DEFINISCI TU LO SPAZIO DI RICERCA QUI:
     if debug == 0:
@@ -508,10 +681,6 @@ if __name__ == "__main__":
     RELOAD = 1  # Cambia in 1 per saltare Edge Impulse e usare i file salvati
 
     output_csv = profiling_ei_folder + 'profiling_grid_results.csv'
-
-    # Attivare al bisogno
-    #export_test_data(size='small')
-    #export_test_data(size='full')
 
     for input_dim in input_dims:
         

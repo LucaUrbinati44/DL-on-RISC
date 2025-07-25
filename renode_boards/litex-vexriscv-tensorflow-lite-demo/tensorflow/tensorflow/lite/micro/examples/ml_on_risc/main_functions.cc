@@ -1,24 +1,10 @@
-/* Copyright 2019 The TensorFlow Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-==============================================================================*/
-
-// Get started: https://ai.google.dev/edge/litert/microcontrollers/get_started
-
+#include "tensorflow/lite/micro/examples/ml_on_risc/config.h"
+#include "tensorflow/lite/micro/examples/ml_on_risc/dequantize_output.h"
+#include "tensorflow/lite/micro/examples/ml_on_risc/extract_codebook_index.h"
 #include "tensorflow/lite/micro/examples/ml_on_risc/main_functions.h"
-#include "tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_uart.h"
-
-// include the model
+#include "tensorflow/lite/micro/examples/ml_on_risc/quantize_input.h"
+#include "tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_file.h"
+//#include "tensorflow/lite/micro/examples/ml_on_risc/write_sample_to_file.h"
 #include "tensorflow/lite/micro/examples/ml_on_risc/c_models/model_py_test_seed0_grid1200_M3232_Mbar8_10000_60_in1024_out1024_nl3_hul1024_4096_4096_model_data.h"
 
 #include "tensorflow/lite/micro/micro_error_reporter.h" // outputs debug information.
@@ -26,6 +12,7 @@ limitations under the License.
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h" // provides the operations used by the interpreter to run the model
 #include "tensorflow/lite/schema/schema_generated.h" // contains the schema for the LiteRT FlatBuffer model file format
 #include "tensorflow/lite/version.h" // provides versioning information for the LiteRT schema
+
 
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
@@ -35,17 +22,27 @@ tflite::MicroInterpreter* interpreter = nullptr;
 TfLiteTensor* model_input = nullptr;
 TfLiteTensor* model_output = nullptr;
 int sample_index = 1;
-int test_set_length = 100;
+int test_set_length = 1; // TODO
+
+float input_scale;
+int input_zero_point;
+float output_scale;
+int output_zero_point;
+
+float float_input[INPUT_FEATURE_SIZE];
+float dequantized_output[OUTPUT_FEATURE_SIZE];
 
 // Create an area of memory to use for input, output, and intermediate arrays.
 // The size of this will depend on the model you're using, and may need to be
 // determined by experimentation.
-constexpr int kTensorArenaSize = 60 * 1024;
+constexpr int kTensorArenaSize = 60 * 1024; // initiale: 60kB
 uint8_t tensor_arena[kTensorArenaSize];
 }  // namespace
 
 // The name of this function is important for Arduino compatibility.
 void setup() {
+
+  DPRINTF("Enter setup\n");
 
   // Set up logging. Google style is to avoid globals or statics because of
   // lifetime uncertainty, but since this has a trivial destructor it's okay.
@@ -71,8 +68,8 @@ void setup() {
   // An easier approach is to just use the AllOpsResolver, but this will
   // incur some penalty in code space for op implementations that are not
   // needed by this graph.
-  static tflite::MicroMutableOpResolver<2> micro_op_resolver;  // NOLINT
-  micro_op_resolver.AddConv2D();
+  static tflite::MicroMutableOpResolver<1> micro_op_resolver;  // NOLINT
+  //micro_op_resolver.AddConv2D();
   //micro_op_resolver.AddDepthwiseConv2D();
   micro_op_resolver.AddFullyConnected();
   //micro_op_resolver.AddMaxPool2D();
@@ -92,52 +89,57 @@ void setup() {
 
   // Make sure the input has the properties we expect
   if ((model_input->dims->size != 2) || (model_input->dims->data[0] != 1) ||
-      (model_input->dims->data[1] != FEATURE_SIZE) ||
-      (model_input->type != kTfLiteFloat32)) { // The input is a 32 bit floating point value
-    TF_LITE_REPORT_ERROR(error_reporter,
-                         "Bad input tensor parameters in model");
+      (model_input->dims->data[1] != INPUT_FEATURE_SIZE) || 
+      (model_input->type != kTfLiteInt8)) {
+    TF_LITE_REPORT_ERROR(error_reporter, "Bad input tensor parameters in model");
     return;
   }
+
+  // Obtain scale and zero point
+  input_scale = model_input->params.scale;
+  input_zero_point = model_input->params.zero_point;
+  output_scale = model_output->params.scale;
+  output_zero_point = model_output->params.zero_point;
+
+  DPRINTF("input_scale: %0.6f\n", (double)input_scale);
+  DPRINTF("input_zero_point: %d\n", input_zero_point);
+  DPRINTF("output_scale: %0.6f\n", (double)output_scale);
+  DPRINTF("output_zero_point: %d\n\n", output_zero_point);
 
 }
 
 void loop() {
 
-  if(sample_index == test_set_length) {
-    printf("done (no more data to run)\n");
+  if(sample_index == test_set_length+1) {
+    DPRINTF("done (no more data to run)\n");
     return;
   }
 
-  // Provide an input to the model, we set the contents of the input tensor
-  // Attempt to read new data from the sensor
-  bool got_data = read_sample_from_uart(model_input->data.f);
-  // If there was no new data, wait until next time.
-  //if (!got_data) return;
+  bool got_data = read_sample_from_file(float_input);
   if (got_data) {
-      printf("got data\n");
+    //DPRINTF("got data\n");
   } else {
-      printf("no data yet\n");
+      DPRINTF("no data yet\n");
       return;
   }
 
-  // Run inference
-  printf("Invoke for sample %d...\n", sample_index);
-  //TfLiteStatus invoke_status = interpreter->Invoke();
+  quantize_input(float_input, input_scale, input_zero_point, model_input->data.int8);
+
+  //DPRINTF("Invoke for sample %d...\n", sample_index);
+  TfLiteStatus invoke_status = interpreter->Invoke();
   // The possible values of TfLiteStatus, defined in common.h, are kTfLiteOk and kTfLiteError
-  //if (invoke_status != kTfLiteOk) {
-  //  TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed\n");
-  //  return;
-  //}
-  // Analyze the results to obtain a prediction. 0 represents the first (and only) output tensor
-  // Obtain the output value from the tensor
-  //compare_outputs(model_output->data.f); // TODO
+  if (invoke_status != kTfLiteOk) {
+    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on index: %d\n", sample_index++);
+    return;
+  }
+  
+  dequantize_output(model_output->data.int8, output_scale, output_zero_point, dequantized_output);
+
+  int codebook_index = extract_codebook_index(dequantized_output);
+  DPRINTF("codebook_index %d: %d\n\n", sample_index, codebook_index);
+
+  //write_sample_to_file(codebook_index);
 
   sample_index++;
-
-  // Produce an output
-  //HandleOutput(error_reporter, value);
-
-  // Check that the output value is within 0.05 of the expected value
-  //TF_LITE_MICRO_EXPECT_NEAR(0., value, 0.05);
 
 }

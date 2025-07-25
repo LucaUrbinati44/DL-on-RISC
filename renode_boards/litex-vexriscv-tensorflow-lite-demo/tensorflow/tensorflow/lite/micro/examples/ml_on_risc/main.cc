@@ -1,27 +1,7 @@
-/* Copyright 2019 The TensorFlow Authors. All Rights Reserved.
+//#define DEBUG_x86
+//#define DEBUG_PRINT
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-==============================================================================*/
-
-#define DEBUG_x86
-
-#ifdef DEBUG_x86
-#include "tensorflow/lite/micro/examples/ml_on_risc/main_functions_local.h"
-#include <thread>
-#include <chrono>
-#else
-#include "tensorflow/lite/micro/examples/ml_on_risc/main_functions.h"
-#endif
+#include "config.h"
 
 // This is the default main used on systems that have the standard C entry
 // point. Other devices (for example FreeRTOS or ESP32) that have different
@@ -32,7 +12,7 @@ int main(int argc, char* argv[]) {
   while (true) {
     loop();
     #ifdef DEBUG_x86
-    std::this_thread::sleep_for(std::chrono::milliseconds(10)); // pause
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // pause
     #endif
   }
 }
