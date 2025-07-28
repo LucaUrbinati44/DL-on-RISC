@@ -1,8 +1,12 @@
 #define DEBUG_x86
 #define DEBUG_PRINT
 
+#define INPUT_FEATURE_SIZE 1024
+#define OUTPUT_FEATURE_SIZE 1024
+
 #ifdef DEBUG_x86
 #include "tensorflow/lite/micro/examples/ml_on_risc/main_functions_local.h"
+#include "../renode/test_set_small_10.h"
 #include <thread>
 #include <chrono>
 #include <cstdio>
@@ -27,6 +31,3 @@
 #else
 #define DPRINTF(...) // niente
 #endif
-
-#define INPUT_FEATURE_SIZE 1024
-#define OUTPUT_FEATURE_SIZE 1024

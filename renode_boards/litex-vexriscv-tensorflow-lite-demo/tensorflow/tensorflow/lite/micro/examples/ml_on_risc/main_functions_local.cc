@@ -3,10 +3,11 @@
 #include "tensorflow/lite/micro/examples/ml_on_risc/extract_codebook_index.h"
 #include "tensorflow/lite/micro/examples/ml_on_risc/main_functions_local.h"
 #include "tensorflow/lite/micro/examples/ml_on_risc/quantize_input.h"
-#include "tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_file_local.h"
+#include "../renode/test_set_small_10.h"
+//#include "tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_file_local.h"
+#include "tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_file_local_v2.h"
 #include "tensorflow/lite/micro/examples/ml_on_risc/write_sample_to_file_local.h"
 #include "tensorflow/lite/micro/examples/ml_on_risc/c_models/model_py_test_seed0_grid1200_M3232_Mbar8_10000_60_in1024_out1024_nl3_hul1024_4096_4096_model_data.h"
-#include "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/renode_boards/litex-vexriscv-tensorflow-lite-demo/renode/test_set_small.h"
 
 #include "tensorflow/lite/micro/micro_error_reporter.h" // outputs debug information.
 #include "tensorflow/lite/micro/micro_interpreter.h" // contains code to load and run models
@@ -23,7 +24,7 @@ tflite::MicroInterpreter* interpreter = nullptr;
 TfLiteTensor* model_input = nullptr;
 TfLiteTensor* model_output = nullptr;
 int sample_index = 1;
-int test_set_length = 1; // TODO
+//int test_set_length = 1; // TODO
 
 float input_scale;
 int input_zero_point;
@@ -115,7 +116,8 @@ void setup() {
 
 void loop() {
 
-  if(sample_index == test_set_length+1) {
+  //if(sample_index == test_set_length+1) {
+  if(sample_index == NUM_SAMPLES+1) {
     DPRINTF("done (no more data to run)\n");
     return;
   }

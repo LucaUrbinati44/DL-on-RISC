@@ -12,6 +12,7 @@ from contextlib import redirect_stdout
 import random
 from statistics import mean, stdev
 import re
+import h5py
 from tensorflow.keras.saving import load_model
 from ai_edge_litert.interpreter import Interpreter
 
@@ -117,7 +118,7 @@ def get_model_path_tflite():
     end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
     model_type_load = 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
     model_path_tflite = saved_models_tflite + model_type_load + '_quant.tflite'
-    return model_type_load, model_path_tflite
+    return end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite
 
 def mse_custom(y_true, y_pred):
     # Calcola l'errore quadratico tra vero e predetto
@@ -131,14 +132,14 @@ def mse_custom(y_true, y_pred):
     return loss
 
 # ----- Export test data for inference -----
-def export_test_data(model_path_tflite, size='small'):
+def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, size='small'):
     print('*** export_test_data')
     xtest_npy_filename = test_data_npy_path + 'test_set' + end_folder_Training_Size_dd + '.npy'
     xtest = np.load(xtest_npy_filename)
     print(xtest.shape)
     
     if size == 'small':
-        xtest_size = 1
+        xtest_size = 10
     else:
         xtest_size = xtest.shape[0]
 
@@ -160,8 +161,9 @@ def export_test_data(model_path_tflite, size='small'):
     #        hex_str = sample_bytes.hex()
     #        f.write(f'{hex_str}\n')
 
-    xtest_header_filename = test_data_renode_path + 'test_set_' + size + '.h'
-    num_samples, sample_size = xtest.shape
+    xtest_header_filename = test_data_renode_path + 'test_set_' + size + '_' + str(xtest_size) + '.h'
+    num_samples = xtest_size
+    sample_size = xtest.shape[1]
     with open(xtest_header_filename, 'w') as f:
         f.write("#ifndef SAMPLE_DATA_H\n")
         f.write("#define SAMPLE_DATA_H\n\n")
@@ -170,7 +172,7 @@ def export_test_data(model_path_tflite, size='small'):
         #f.write("const float samples[NUM_SAMPLES][SAMPLE_SIZE] = {\n")
         f.write("const float samples[NUM_SAMPLES][INPUT_FEATURE_SIZE] = {\n")
         
-        for i, sample in enumerate(xtest):
+        for i, sample in enumerate(xtest[:xtest_size]):
             # converto ogni valore in stringa formattata a 6 decimali
             sample_str = ", ".join(f"{x:.6f}f" for x in sample)
             if i == num_samples - 1:
@@ -203,7 +205,7 @@ def export_test_data(model_path_tflite, size='small'):
             min_runtime_version_bytes = metadata.DataAsNumpy().tobytes()
             print(min_runtime_version_bytes)
         
-    return
+    #return
 
     # inference using tflite model with xtest
     #Loading and running a LiteRT model involves the following steps:
@@ -294,12 +296,23 @@ def export_test_data(model_path_tflite, size='small'):
     print(f'np.max(Indmax_DL_py): {np.max(Indmax_DL_py)}')
     print(Indmax_DL_py[0:5])
 
-    # save inference results as golden output on a .data file for TFLM comparison
-    Indmax_DL_py_renode_filename = test_data_renode_path + 'golden_output_codebook_' + size + '.data'
-    with open(Indmax_DL_py_renode_filename, 'w') as f:
+    # save int8 inference results as golden output on a .data file for TFLM comparison
+    Indmax_DL_py_renode_filename_int8 = test_data_renode_path + 'golden_output_codebook_int8_' + size + '.data'
+    with open(Indmax_DL_py_renode_filename_int8, 'w') as f:
         # trasforma ogni elemento in una stringa
         for sample in Indmax_DL_py[:xtest_size]:
             f.write(str(sample) + '\n')
+
+    # save float32 inference results as golden output on a .data file for TFLM comparisong
+    filename_Indmax_DL_py = network_folder_out_RateDLpy + 'Indmax_DL_py' + '_test' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    with h5py.File(filename_Indmax_DL_py, 'r') as f:
+        Indmax_DL_py = np.array(f['Indmax_DL_py'][:], dtype=np.float32)
+        print(f"\nIndmax_DL_py loaded")
+    Indmax_DL_py_renode_filename_float32 = test_data_renode_path + 'golden_output_codebook_float32_' + size + '.data'
+    with open(Indmax_DL_py_renode_filename_float32, 'w') as f:
+        # trasforma ogni elemento in una stringa
+        for sample in Indmax_DL_py[:xtest_size]:
+            f.write(str(int(sample)) + '\n')
 
 
 # ----- Export TF-Lite INT8 model to C for TFLM -----
@@ -645,10 +658,10 @@ def run_experiment(input_dim, output_dim, num_layers, hidden_units_list, x_sampl
     #model.compile(optimizer='adam', loss='mse')
     #model.summary()
     
-    model_type_load, model_path_tflite = get_model_path_tflite()
+    end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite = get_model_path_tflite()
 
     # Attivare al bisogno
-    export_test_data(model_path_tflite, size='small')
+    export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, size='small')
     #export_test_data(size='full')
     
     #model_name = export_to_c(model_type_load, model_path_tflite, save_dir=profiling_renode_folder)

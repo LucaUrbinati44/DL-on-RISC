@@ -27,7 +27,7 @@ tensorflow/lite/micro/examples/ml_on_risc/dequantize_output.cc \
 tensorflow/lite/micro/examples/ml_on_risc/extract_codebook_index.cc \
 tensorflow/lite/micro/examples/ml_on_risc/main_functions_local.cc \
 tensorflow/lite/micro/examples/ml_on_risc/quantize_input.cc \
-tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_file_local.cc \
+tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_file_local_v2.cc \
 tensorflow/lite/micro/examples/ml_on_risc/write_sample_to_file_local.cc \
 tensorflow/lite/micro/examples/ml_on_risc/c_models/model_py_test_seed0_grid1200_M3232_Mbar8_10000_60_in1024_out1024_nl3_hul1024_4096_4096_model_data.cc
 
@@ -47,7 +47,8 @@ tensorflow/lite/micro/examples/ml_on_risc/dequantize_output.h \
 tensorflow/lite/micro/examples/ml_on_risc/extract_codebook_index.h \
 tensorflow/lite/micro/examples/ml_on_risc/main_functions_local.h \
 tensorflow/lite/micro/examples/ml_on_risc/quantize_input.h \
-tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_file_local.h \
+../renode/test_set_small_10.h \
+tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_file_local_v2.h \
 tensorflow/lite/micro/examples/ml_on_risc/write_sample_to_file_local.h \
 tensorflow/lite/micro/examples/ml_on_risc/c_models/model_py_test_seed0_grid1200_M3232_Mbar8_10000_60_in1024_out1024_nl3_hul1024_4096_4096_model_data.h
 

@@ -138,12 +138,12 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
         # Get input and output tensors.
         input_details = interpreter.get_input_details()
         output_details = interpreter.get_output_details()
-        input_dtype = input_details[0]['dtype'] #int8
-        output_dtype = input_details[0]['dtype']
+        #input_dtype = input_details[0]['dtype'] #int8
+        #output_dtype = input_details[0]['dtype']
         #print('input_dtype:', input_dtype) # [   1 1024]
         #print('output_dtype:', output_dtype)
-        input_shape = input_details[0]['shape']
-        output_shape = output_details[0]['shape']
+        #input_shape = input_details[0]['shape']
+        #output_shape = output_details[0]['shape']
         #print('input_shape:', input_shape)
         #print('output_shape:', output_shape)
 
@@ -250,11 +250,10 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
                 f.create_dataset('Rate_OPT_py', data=Rate_OPT_py)
                 print(f"\nRate_OPT_py saved in {filename_Rate_OPT_py}")
 
-        if test == 3 or test == 4:
-            with h5py.File(filename_Indmax_DL_py, 'w') as f:
-                f.create_dataset('Indmax_DL_py', data=Indmax_DL_py)
-                print(f"\nIndmax_DL_py saved in {filename_Indmax_DL_py}")
-            
+        with h5py.File(filename_Indmax_DL_py, 'w') as f:
+            f.create_dataset('Indmax_DL_py', data=Indmax_DL_py)
+            print(f"\nIndmax_DL_py saved in {filename_Indmax_DL_py}")
+        
         if test == 3:
             with h5py.File(filename_MaxR_DL_py, 'w') as f:
                 f.create_dataset('MaxR_DL_py', data=MaxR_DL_py)
@@ -1108,9 +1107,9 @@ for i, ris in enumerate(My_ar):
                 save_files_flag = 0
                 test = 0 # Predict with val set
                 ##Rate_OPT_py_load_val, Rate_DL_py_load_val   = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
-                save_files_flag = 0
+                save_files_flag = 1
                 test = 1 # Predict with test set
-                #Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+                Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
                 save_files_flag = 0
                 test = 2 # Predict with all dataset
                 #Rate_OPT_py_load, Rate_DL_py_load = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
@@ -1119,7 +1118,7 @@ for i, ris in enumerate(My_ar):
                 #Rate_OPT_py_load_test_tflite, Rate_DL_py_load_test_tflite = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, tflite_quant_model, network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
                 save_files_flag = 1
                 test = 4 # Predict with TF-Lite Model with all dataset
-                Rate_OPT_py_load_tflite, Rate_DL_py_load_tflite = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, tflite_quant_model, network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+                #Rate_OPT_py_load_tflite, Rate_DL_py_load_tflite = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, tflite_quant_model, network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
             
             learning_rate = model_py.optimizer.learning_rate.numpy()
             print(f"Learning rate loaded model: {learning_rate}")
