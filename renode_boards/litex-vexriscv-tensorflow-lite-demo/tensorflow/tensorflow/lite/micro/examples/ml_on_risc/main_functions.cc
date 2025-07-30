@@ -3,7 +3,8 @@
 #include "tensorflow/lite/micro/examples/ml_on_risc/extract_codebook_index.h"
 #include "tensorflow/lite/micro/examples/ml_on_risc/main_functions.h"
 #include "tensorflow/lite/micro/examples/ml_on_risc/quantize_input.h"
-#include "tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_file.h"
+#include "../renode/test_set_small_10.h"
+#include "tensorflow/lite/micro/examples/ml_on_risc/read_sample_from_file_local_v2.h"
 //#include "tensorflow/lite/micro/examples/ml_on_risc/write_sample_to_file.h"
 #include "tensorflow/lite/micro/examples/ml_on_risc/c_models/model_py_test_seed0_grid1200_M3232_Mbar8_10000_60_in1024_out1024_nl3_hul1024_4096_4096_model_data.h"
 
@@ -22,7 +23,9 @@ tflite::MicroInterpreter* interpreter = nullptr;
 TfLiteTensor* model_input = nullptr;
 TfLiteTensor* model_output = nullptr;
 int sample_index = 1;
-int test_set_length = 1; // TODO
+//int test_set_length = 1; // TODO
+
+bool finish = 0;
 
 float input_scale;
 int input_zero_point;
@@ -42,7 +45,7 @@ uint8_t tensor_arena[kTensorArenaSize];
 // The name of this function is important for Arduino compatibility.
 void setup() {
 
-  DPRINTF("Enter setup\n");
+  printf("Enter setup\n");
 
   // Set up logging. Google style is to avoid globals or statics because of
   // lifetime uncertainty, but since this has a trivial destructor it's okay.
@@ -110,21 +113,28 @@ void setup() {
 
 void loop() {
 
-  if(sample_index == test_set_length+1) {
-    DPRINTF("done (no more data to run)\n");
+  //if(sample_index == test_set_length+1) {
+  if(sample_index == NUM_SAMPLES+1) {
+    if (finish == 0) {
+      printf("done (no more data to run)\n");
+      finish = 1;
+    }
     return;
   }
 
-  bool got_data = read_sample_from_file(float_input);
+  printf('data\n');
+  bool got_data = read_sample_from_file_local_v2(float_input);
   if (got_data) {
     //DPRINTF("got data\n");
   } else {
-      DPRINTF("no data yet\n");
-      return;
+    DPRINTF("no data yet\n");
+    return;
   }
 
+  printf('quant\n');
   quantize_input(float_input, input_scale, input_zero_point, model_input->data.int8);
 
+  printf('invoke\n');
   //DPRINTF("Invoke for sample %d...\n", sample_index);
   TfLiteStatus invoke_status = interpreter->Invoke();
   // The possible values of TfLiteStatus, defined in common.h, are kTfLiteOk and kTfLiteError
@@ -133,10 +143,13 @@ void loop() {
     return;
   }
   
+  printf('dequant\n');
   dequantize_output(model_output->data.int8, output_scale, output_zero_point, dequantized_output);
 
+  printf('extract\n');
   int codebook_index = extract_codebook_index(dequantized_output);
-  DPRINTF("codebook_index %d: %d\n\n", sample_index, codebook_index);
+  //DPRINTF("codebook_index %d: %d\n\n", sample_index, codebook_index);
+  printf("%d\n", codebook_index);
 
   //write_sample_to_file(codebook_index);
 

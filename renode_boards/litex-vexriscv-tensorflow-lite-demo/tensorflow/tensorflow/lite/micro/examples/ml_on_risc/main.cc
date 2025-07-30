@@ -1,6 +1,3 @@
-//#define DEBUG_x86
-//#define DEBUG_PRINT
-
 #include "config.h"
 
 // This is the default main used on systems that have the standard C entry
