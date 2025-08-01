@@ -61,7 +61,8 @@ saved_models_tfsaved2 = network_folder_out + 'saved_models_tfsaved2/'
 saved_models_tflite = network_folder_out + 'saved_models_tflite/'
 saved_models_edgeimpulse = network_folder_out + 'saved_models_edgeimpulse/'
 figure_folder = output_folder + 'Figures/'
-profiling_ei_folder = output_folder + 'Profiling_Search/'
+profiling_ei_folder = output_folder + 'Profiling_Search_EI/'
+profiling_estimation_folder = output_folder + 'Profiling_Search_Estimation/'
 profiling_renode_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/renode_boards/litex-vexriscv-tensorflow-lite-demo/tensorflow/tensorflow/lite/micro/examples/ml_on_risc/c_models'
 header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
 test_data_npy_path = output_folder + 'Test_data/'
@@ -81,6 +82,7 @@ folders = [
     saved_models_edgeimpulse,
     figure_folder,
     profiling_ei_folder,
+    profiling_estimation_folder,
     profiling_renode_folder,
     test_data_npy_path
 ]
@@ -297,7 +299,7 @@ def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_l
     print(Indmax_DL_py[0:5])
 
     # save int8 inference results as golden output on a .data file for TFLM comparison
-    Indmax_DL_py_renode_filename_int8 = test_data_renode_path + 'golden_output_codebook_int8_' + size + '.data'
+    Indmax_DL_py_renode_filename_int8 = test_data_renode_path + 'output_golden_codebook_int8_' + size + '.data'
     with open(Indmax_DL_py_renode_filename_int8, 'w') as f:
         # trasforma ogni elemento in una stringa
         for sample in Indmax_DL_py[:xtest_size]:
@@ -308,7 +310,7 @@ def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_l
     with h5py.File(filename_Indmax_DL_py, 'r') as f:
         Indmax_DL_py = np.array(f['Indmax_DL_py'][:], dtype=np.float32)
         print(f"\nIndmax_DL_py loaded")
-    Indmax_DL_py_renode_filename_float32 = test_data_renode_path + 'golden_output_codebook_float32_' + size + '.data'
+    Indmax_DL_py_renode_filename_float32 = test_data_renode_path + 'output_golden_codebook_float32_' + size + '.data'
     with open(Indmax_DL_py_renode_filename_float32, 'w') as f:
         # trasforma ogni elemento in una stringa
         for sample in Indmax_DL_py[:xtest_size]:
@@ -617,6 +619,50 @@ def get_model_info(model):
 
     return round(model_size_float32_kb, 1), round(model_size_float32_mb, 1), round(model_size_int8_kb, 1), round(model_size_int8_mb, 1), int(macs)
 
+def get_model_info_precise(model):
+    #print('*** Profiling RAM/ROM (modello solo Dense, int8 target)')
+
+    # ROM: peso del modello in float32 e in int8 (1 byte per peso/bias)
+    model_size_bytes_float32 = 0
+    model_size_bytes_int8 = 0
+    for v in model.trainable_weights:
+        model_size_bytes_float32 += np.prod(v.shape) * 4
+        model_size_bytes_int8 += np.prod(v.shape)
+
+    model_size_float32_kb = model_size_bytes_float32 / 1024
+    model_size_int8_kb = model_size_bytes_int8 / 1024
+    model_size_int8_mb = model_size_bytes_int8 / 1024 / 1024
+
+    # MACs totali (product kernel shape)
+    macs = 0
+    for layer in model.layers:
+        if isinstance(layer, tf.keras.layers.Dense):
+            macs += np.prod(layer.kernel.shape)
+
+    # RAM: tensor arena (int8)
+    input_elements = model.input_shape[1]
+    max_intermediate = 0
+    output_elements = 0
+
+    for layer in model.layers:
+        if isinstance(layer, tf.keras.layers.Dense):
+            output_elements = layer.units
+            if output_elements > max_intermediate:
+                max_intermediate = output_elements
+
+    input_tensor_bytes = input_elements  # int8: 1 byte
+    output_tensor_bytes = output_elements
+    max_intermediate_tensor_bytes = max_intermediate
+    overhead_struct_bytes = 4096  # stima conservativa (struct + allocazioni)
+    stack_bytes = 2048            # stack base
+
+    ram_total_bytes = input_tensor_bytes + output_tensor_bytes + max_intermediate_tensor_bytes + overhead_struct_bytes + stack_bytes
+    ram_total_kb = ram_total_bytes / 1024
+
+    return round(model_size_int8_kb, 2), round(model_size_int8_mb, 2), round(ram_total_kb, 2), macs
+
+
+
 # ----- Salva risultati del profiling su file -----
 def save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, output_csv):
     print('*** save_results')
@@ -651,12 +697,53 @@ def save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, mo
             }
             writer.writerow(row)
 
+
+# ----- Salva risultati del profiling su file -----
+def save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
+                    model_size_int8_kb, model_size_int8_mb, ram_total_kb, macs, output_csv):
+
+    #print('*** save_results')
+    
+    fieldnames = [
+        'active_cell', 'input_dim', 'num_layers', 'hidden_units_list', 'output_dim',
+        'model_size_int8_kb', 'model_size_int8_mb', 'ram_total_kb', 'mac_ops'
+    ]
+    
+    write_header = not os.path.exists(output_csv)
+
+    with open(output_csv, 'a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+
+        row = {
+            'active_cell': active_cell,
+            'input_dim': input_dim,
+            'num_layers': num_layers,
+            'hidden_units_list': hidden_units_list,
+            'output_dim': output_dim,
+            'model_size_int8_kb': model_size_int8_kb,
+            'model_size_int8_mb': model_size_int8_mb,
+            'ram_total_kb': ram_total_kb,
+            'mac_ops': macs
+        }
+
+        writer.writerow(row)
+
 # ----- Run di una singola configurazione -----
-def run_experiment(input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv):
-    print('*** run_experiment')
-    #model = build_mlp(input_dim, output_dim, num_layers, hidden_units_list)
-    #model.compile(optimizer='adam', loss='mse')
+def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv):
+    #print('*** run_experiment')
+    model = build_mlp(input_dim, output_dim, num_layers, hidden_units_list)
+    model.compile(optimizer='adam', loss='mse')
     #model.summary()
+
+    model_size_int8_kb, model_size_int8_mb, ram_total_kb, macs = get_model_info_precise(model)
+
+    save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
+                    model_size_int8_kb, model_size_int8_mb, ram_total_kb, macs, 
+                    output_csv)
+
+    return
     
     end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite = get_model_path_tflite()
 
@@ -665,8 +752,8 @@ def run_experiment(input_dim, output_dim, num_layers, hidden_units_list, x_sampl
     #export_test_data(size='full')
     
     #model_name = export_to_c(model_type_load, model_path_tflite, save_dir=profiling_renode_folder)
-    ##model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, macs = get_model_info(model)
     ##tflite_model = convert_to_tflite_int8(model, x_sample)
+    #model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, macs = get_model_info(model)
     ##summary = profile_model_ei(tflite_model, reload=RELOAD, save_dir=profiling_ei_folder)
     #inference_time = profile_model_renode(model_name, reload=RELOAD, save_dir=profiling_ei_folder)
     ##save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, output_csv)
@@ -676,16 +763,24 @@ def run_experiment(input_dim, output_dim, num_layers, hidden_units_list, x_sampl
 # --- ESEMPIO USO --- #
 if __name__ == "__main__":
 
-    debug = 1 # 0 = loop; 1 = modello di Taha
+    debug = 0 # 0 = loop; 1 = modello di Taha
+
+    subcarriers = 64 # costante
 
     # DEFINISCI TU LO SPAZIO DI RICERCA QUI:
+    # Teniamo inalterati:
+    # - subcarriers
+    # - proporzioni tra i neuroni nei vari layer
     if debug == 0:
-        input_dims = [1, 1024]            # Numero di feature in ingresso
-        output_dims = [1024, 256, 64]     # Numero di neuroni di uscita
+        #input_dims = [1, 1024]            # Numero di feature in ingresso
+        # 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
+        active_cells = [1,2,4,8,12,16]
+        output_dims = [1024, 512, 256, 128, 64]     # Numero di neuroni di uscita
         num_layers_list = [0,1,2,3]       # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
     else:    
         # modello di Taha
-        input_dims = [1024]
+        #input_dims = [1024]
+        active_cells = [8]
         output_dims = [1024]
         num_layers_list = [3]
         
@@ -693,9 +788,12 @@ if __name__ == "__main__":
     REPETITIONS = 1 # TODO: portare a 10
     RELOAD = 1  # Cambia in 1 per saltare Edge Impulse e usare i file salvati
 
-    output_csv = profiling_ei_folder + 'profiling_grid_results.csv'
+    #output_csv = profiling_ei_folder + 'profiling_grid_results.csv'
+    output_csv = profiling_estimation_folder + 'profiling_grid_results.csv'
 
-    for input_dim in input_dims:
+    for active_cell in active_cells:
+        
+        input_dim = active_cell * subcarriers * 2 #    8 celle attive x 64 subcarriers x 2 (real/img) = 1024
         
         # Sample fake data per quantizzazione
         x_sample = np.random.rand(100, input_dim).astype(np.float32)
@@ -706,8 +804,8 @@ if __name__ == "__main__":
                 
                 hidden_units_list = [input_dim, 4*input_dim, 4*input_dim]     # Numero di neuroni per layer
             
-                print(f"Profiling: in={input_dim}, out={output_dim}, layers={num_layers}, units={hidden_units_list}")
-                run_experiment(input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv)
+                print(f"Profiling: act_cell={active_cell}, in={input_dim}, out={output_dim}, layers={num_layers}, units={hidden_units_list}")
+                run_experiment(active_cell,input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv)
 
     #model_py = Sequential([
     #    Input(shape=(X_train.shape[1],), name='input'),
@@ -726,3 +824,5 @@ if __name__ == "__main__":
 
     #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully4_'),
     #])
+
+    
