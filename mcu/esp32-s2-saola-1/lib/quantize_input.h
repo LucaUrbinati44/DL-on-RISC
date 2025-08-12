@@ -1,6 +1,0 @@
-#ifndef TENSORFLOW_LITE_MICRO_EXAMPLES_ML_ON_RISC_QUANTIZE_INPUT_H_
-#define TENSORFLOW_LITE_MICRO_EXAMPLES_ML_ON_RISC_QUANTIZE_INPUT_H_
-
-void quantize_input(float* buffer_in, float scale, int zero_point, int8_t* buffer_out);
-
-#endif  // TENSORFLOW_LITE_MICRO_EXAMPLES_ML_ON_RISC_QUANTIZE_INPUT_H_

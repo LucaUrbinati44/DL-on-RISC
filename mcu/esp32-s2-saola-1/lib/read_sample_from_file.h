@@ -1,8 +1,0 @@
-#ifndef TENSORFLOW_LITE_MICRO_EXAMPLES_ML_ON_RISC_READ_SAMPLE_FROM_FILE_H_
-#define TENSORFLOW_LITE_MICRO_EXAMPLES_ML_ON_RISC_READ_SAMPLE_FROM_FILE_H_
-
-#include "tensorflow/lite/micro/examples/ml_on_risc/config.h"
-
-bool read_sample_from_file(float* buffer);
-
-#endif  // TENSORFLOW_LITE_MICRO_EXAMPLES_ML_ON_RISC_READ_SAMPLE_FROM_FILE_H_

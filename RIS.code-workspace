@@ -1,7 +1,20 @@
 {
 	"folders": [
 		{
+			"name": "RIS",
 			"path": "."
+		},
+		{
+			"name": "rp2040_windows",
+			"path": "mcu/rp2040_windows"
+		},
+		{
+			"name": "esp32-s2-saola-tflm",
+			"path": "mcu/esp32-s2-saola-tflm"
+		},
+		{
+			"name": "esp32-s2-saola-blink",
+			"path": "mcu/esp32-s2-saola-blink"
 		}
 	],
 	"settings": {

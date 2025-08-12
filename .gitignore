@@ -49,3 +49,16 @@ renode_boards/litex-vexriscv-tensorflow-lite-demo/tflite-micro/tensorflow/lite/m
 
 renode_boards/litex-vexriscv-tensorflow-lite-demo/tflite-micro/tensorflow/lite/micro/examples/ml_on_risc/c_models/model_py_test_seed0_grid1200_M3232_Mbar8_10000_60_in1024_out1024_nl3_hul1024_4096_4096_model_data.cc
 renode_boards/litex-vexriscv-tensorflow-lite-demo/tflite-micro/tensorflow/lite/micro/examples/ml_on_risc/c_models/xxd_output_temp.h
+
+mcu/esp32-s2-saola-blink/.pio
+mcu/esp32-s2-saola-blink/.vscode
+mcu/esp32-s2-saola-blink/include/model*
+mcu/esp32-s2-saola-blink/no
+
+mcu/esp32-s2-saola-tflm/.pio
+mcu/esp32-s2-saola-tflm/.vscode
+mcu/esp32-s2-saola-tflm/include/model*
+mcu/esp32-s2-saola-tflm/no
+
+mcu/rp2040_windows/.pio
+mcu/rp2040_windows/.vscode
