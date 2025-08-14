@@ -1,5 +1,5 @@
 #include <config.h>
-#include <model_py_test_seed0_grid1200_M3232_Mbar8_10000_60_in1024_out1024_nl3_hul1024_4096_4096_model_data.h>
+#include <mlp_model_data.h>
 
 #include <dequantize_output.h>
 #include <extract_codebook_index.h>
@@ -72,7 +72,7 @@ void setup()
   // Load a model
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
-  model = tflite::GetModel(g_model_py_test_seed0_grid1200_M3232_Mbar8_10000_60_in1024_out1024_nl3_hul1024_4096_4096_model_data);
+  model = tflite::GetModel(g_mlp_model_data);
   if (model->version() != TFLITE_SCHEMA_VERSION)
   {
     TF_LITE_REPORT_ERROR(error_reporter,

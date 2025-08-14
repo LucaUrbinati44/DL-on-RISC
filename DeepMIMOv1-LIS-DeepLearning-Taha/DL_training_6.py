@@ -15,6 +15,9 @@ import h5py
 from tensorflow.keras.saving import load_model
 from ai_edge_litert.interpreter import Interpreter
 
+import subprocess
+
+
 print("TensorFlow version:", tf.__version__)
 
 # Imposta il seed globale
@@ -57,8 +60,9 @@ saved_models_tfsaved2 = network_folder_out + 'saved_models_tfsaved2/'
 saved_models_tflite = network_folder_out + 'saved_models_tflite/'
 figure_folder = output_folder + 'Figures/'
 profiling_estimation_folder = output_folder + 'Profiling_Search_Estimation/'
-profiling_mcu_folder = output_folder + 'Profiling_Search_MCU/'
-pio_projects_folder = '/mnt/c/Users/Work/Documents/PlatformIO/Projects/'
+mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
+#pio_projects_folder = '/mnt/c/Users/Work/Documents/PlatformIO/Projects/'
+pio_projects_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/'
 header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
 test_data_npy_path = output_folder + 'Test_data/'
 
@@ -75,7 +79,7 @@ folders = [
     saved_models_tflite,
     figure_folder,
     profiling_estimation_folder,
-    profiling_mcu_folder,
+    mcu_profiling_folder,
     pio_projects_folder,
     test_data_npy_path
 ]
@@ -96,7 +100,7 @@ def build_mlp(input_dim, output_dim, num_layers, hidden_units_list):
     return model
 
 # ----- Conversione in TF-Lite INT8 -----
-def convert_to_tflite_int8(model, x_sample):
+def convert_to_tflite_int8(model, x_sample, model_path_tflite):
     def representative_data_gen():
         for i in range(min(100, len(x_sample))):
             yield [x_sample[i:i+1].astype(np.float32)]
@@ -106,13 +110,16 @@ def convert_to_tflite_int8(model, x_sample):
     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
     converter.inference_input_type = tf.int8
     converter.inference_output_type = tf.int8
-    return converter.convert()
+    tflite_quant_model = converter.convert()
 
-def get_model_path_tflite():
-    print('*** get_model_path_tflite')
+    with open(model_path_tflite, 'wb') as f:
+        f.write(tflite_quant_model)
+
+def get_model_path_tflite(tflite_models_folder, dummy=''):
+    print('\n*** get_model_path_tflite')
     end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
-    model_type_load = 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
-    model_path_tflite = saved_models_tflite + model_type_load + '_quant.tflite'
+    model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
+    model_path_tflite = tflite_models_folder + model_type_load + '_quant.tflite'
     return end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite
 
 def mse_custom(y_true, y_pred):
@@ -128,7 +135,7 @@ def mse_custom(y_true, y_pred):
 
 # ----- Export test data for inference -----
 def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, size='small'):
-    print('*** export_test_data')
+    print('\n*** export_test_data')
     xtest_npy_filename = test_data_npy_path + 'test_set' + end_folder_Training_Size_dd + '.npy'
     xtest = np.load(xtest_npy_filename)
     print(xtest.shape)
@@ -311,17 +318,21 @@ def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_l
 
 
 # ----- Export TF-Lite INT8 model to C for TFLM -----
-def export_to_c(model_type_load, model_path_tflite, save_dir="./"):
-    print('*** export_to_c')
+def export_to_c(model_type_load, model_path_tflite, save_dir="./", simple=True):
+    print('\n*** export_to_c')
 
-    if len(hidden_units_list) == 1:
-        hul = str(hidden_units_list[0])
-    elif len(hidden_units_list) == 2:
-        hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1])
-    elif len(hidden_units_list) == 3:
-        hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1]) + "_" + str(hidden_units_list[2])
+    if simple == False:
+        if len(hidden_units_list) == 1:
+            hul = str(hidden_units_list[0])
+        elif len(hidden_units_list) == 2:
+            hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1])
+        elif len(hidden_units_list) == 3:
+            hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1]) + "_" + str(hidden_units_list[2])
 
-    model_name = model_type_load + f"_in{input_dim}_out{output_dim}_nl{num_layers}_hul{hul}"
+        model_name = model_type_load + f"_in{input_dim}_out{output_dim}_nl{num_layers}_hul{hul}"
+    else:
+        model_name = 'mlp'
+        
     header_path = os.path.join(save_dir, f"{model_name}_model_data.h")
     source_path = os.path.join(save_dir, f"{model_name}_model_data.cc")
 
@@ -330,7 +341,7 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./"):
     with open(header_path, "w") as f:
         f.write(f"#ifndef {guard}\n")
         f.write(f"#define {guard}\n\n")
-        f.write(f"extern const unsigned char g_{model_name}_model_data[];\n")
+        f.write(f"extern const unsigned char g_{model_name}_model_data[] PROGMEM;\n")
         f.write(f"extern const int g_{model_name}_model_data_len;\n\n")
         f.write(f"#endif  // {guard}\n")
 
@@ -367,7 +378,8 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./"):
     #print(model_path_tflite_lowercase)
     first_line_old = f"unsigned char {model_path_tflite_lowercase}[] = {{"
     # Aggiungi include dell'header
-    first_line_new = f"#include \"{mcu_include_folder}/{model_name}_model_data.h\"\nalignas(8) const unsigned char g_{var_name}_model_data[] = {{"
+    # PROGMEM serve per salvare il modello in Flash invece che in RAM
+    first_line_new = f"#include <config.h>\n#include \"{mcu_lib_model_folder}/{model_name}_model_data.h\"\nalignas(8) const unsigned char g_{var_name}_model_data[] PROGMEM = {{"
     var_name = 'model_tflite' # default
     last_line_old = f"unsigned int {model_path_tflite_lowercase}_len"
     last_line_new = f"unsigned int {var_name}_len"
@@ -398,40 +410,8 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./"):
     return model_name
 
 # ----- Stima delle MAC operations e della dimensione del modello -----
-def get_model_info(model):
-    print('*** get_model_info')
-    model_size_bytes_float32 = 0
-    model_size_bytes_int8 = 0
-    for v in model.trainable_weights:
-        #try:
-        #    dtype = tf.as_dtype(v.dtype)
-        #    size_in_bytes = dtype.size
-        #except:
-        # fallback a float32 (4 bytes)
-        #size_in_bytes = 32 / 8 
-        
-        #print(v.shape)
-        #print(np.prod(v.shape))
-        
-        model_size_bytes_float32 += np.prod(v.shape) * 32 / 8 # bias incluso perchè questo for loop itera su pesi e bias
-        model_size_bytes_int8 += np.prod(v.shape)
-
-    #print(model_size_bytes_float32)
-    model_size_float32_kb = model_size_bytes_float32 / (1024)
-    model_size_float32_mb = model_size_bytes_float32 / (1024 ** 2)
-    model_size_int8_kb = model_size_bytes_int8 / (1024)
-    model_size_int8_mb = model_size_bytes_int8 / (1024 ** 2)
-
-    # Stima delle MACs (input_dim * output_dim per ogni Dense)
-    macs = 0
-    for layer in model.layers:
-        if isinstance(layer, tf.keras.layers.Dense):
-            macs += np.prod(layer.kernel.shape)
-
-    return round(model_size_float32_kb, 1), round(model_size_float32_mb, 1), round(model_size_int8_kb, 1), round(model_size_int8_mb, 1), int(macs)
-
-def get_model_info_precise(model):
-    #print('*** Profiling RAM/ROM (modello solo Dense, int8 target)')
+def get_model_info_precise(model, model_path_tflite, save_dir='./'):
+    #print('\n*** Profiling RAM/ROM (modello solo Dense, int8 target)')
 
     # ROM: peso del modello in float32 e in int8 (1 byte per peso/bias)
     model_size_bytes_float32 = 0
@@ -440,9 +420,9 @@ def get_model_info_precise(model):
         model_size_bytes_float32 += np.prod(v.shape) * 4
         model_size_bytes_int8 += np.prod(v.shape)
 
-    model_size_float32_kb = model_size_bytes_float32 / 1024
-    model_size_int8_kb = model_size_bytes_int8 / 1024
-    model_size_int8_mb = model_size_bytes_int8 / 1024 / 1024
+    model_size_float32_kb = model_size_bytes_float32 /1024
+    model_size_int8_kb = model_size_bytes_int8 /1024
+    model_size_int8_mb = model_size_bytes_int8 /1024 /1024
 
     # MACs totali (product kernel shape)
     macs = 0
@@ -470,30 +450,87 @@ def get_model_info_precise(model):
     ram_total_bytes = input_tensor_bytes + output_tensor_bytes + max_intermediate_tensor_bytes + overhead_struct_bytes + stack_bytes
     ram_total_kb = ram_total_bytes / 1024
 
-    return round(model_size_int8_kb, 2), round(model_size_int8_mb, 2), round(ram_total_kb, 2), macs
+    model_file_size_int8_mb = os.path.getsize(model_path_tflite) #/ 1024 / 1024
 
-# ----- Recupera RAM e ROM da file di log generato da PlatformIO -----
-def parse_compilation_logfile():
+    len_pattern = re.compile(r"unsigned\s+int\s+model_tflite_len\s*=\s*(\d+);", re.IGNORECASE)
+    
+    model_name = 'mlp'
+    source_path = os.path.join(save_dir, f"{model_name}_model_data.cc")
+    with open(source_path, 'r', encoding='utf-8', errors='ignore') as f:
+        for line in f:
+            match = len_pattern.search(line)
+            if match:
+                bytes_used = int(match.group(1))
+                model_h_size_int8_mb = bytes_used #/ 1024 / 1024
+
+    return round(model_size_int8_kb, 2), round(model_size_int8_mb, 2), round(model_file_size_int8_mb, 2), round(model_h_size_int8_mb, 2), round(ram_total_kb, 2), macs
+
+# ----- Recupera RAM e Flash da file di log generato da PlatformIO -----
+def parse_compilation_logfile(file_path):
     """
     Estrae i byte usati per RAM e Flash da un file di log di PlatformIO.
+    Se viene rilevato un overflow di RAM o Flash, assegna -1.
     Restituisce un dizionario: {'RAM': <int>, 'Flash': <int>}
     """
-    usage = {}
-    pattern = re.compile(r'(RAM|Flash):.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
+    RAM_KB = 'OK'
+    Flash_MB = 'OK'
 
-    with open(file_path, 'r', encoding='utf-8') as f:
+    CLK_FREQ_MHZ = 'OK'
+    RAM_HW_KB = 'OK'
+    Flash_HW_MB = 'OK'
+
+    # Pattern normale quando la compilazione ha successo
+    # | significa "o"
+    # : — corrisponde al carattere due punti letterale.
+    # .*? — corrisponde a qualsiasi carattere (tranne newline), in modo non greedy (prende il minimo necessario)
+    # used\s+ — la parola "used" seguita da almeno uno spazio
+    # (\d+) — gruppo catturante: una sequenza di cifre (numeri interi), che rappresenta i byte usati
+    # \s+bytes — uno o più spazi seguiti dalla parola "bytes"
+    #no_overflow = re.compile(r'^\s*(RAM|Flash):.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
+    ram_pattern = re.compile(r'^\s*RAM:.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
+    flash_pattern = re.compile(r'^\s*Flash:.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
+    hardware_pattern = re.compile(r"HARDWARE:\s+\S+\s+(\d+)MHz,\s+(\d+)KB RAM,\s+(\d+)MB Flash", re.IGNORECASE)
+
+    # Pattern di errore da overflow
+    # \d+ per indicare un numero di byte (così non catturi testo non previsto).
+    # re.IGNORECASE per sicurezza, anche se di solito PlatformIO le scrive in minuscolo.
+    overflow_flash = re.compile(r"region `drom0_0_seg' overflowed by \d+ bytes", re.IGNORECASE)
+    overflow_ram   = re.compile(r"region `dram0_0_seg' overflowed by \d+ bytes", re.IGNORECASE)
+
+    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
         for line in f:
-            match = pattern.search(line)
-            if match:
-                mem_type = match.group(1).upper()
-                bytes_used = int(match.group(2))
-                usage[mem_type] = bytes_used
+            #print("repr(line):", repr(line))
 
-    return usage
+            match = ram_pattern.search(line)
+            if match:
+                bytes_used = int(match.group(1))
+                RAM_KB = bytes_used  /1024
+            
+            match = flash_pattern.search(line)
+            if match:
+                bytes_used = int(match.group(1))
+                print(bytes_used)
+                Flash_MB = bytes_used /1024 /1024
+            
+            match = hardware_pattern.search(line)
+            if match:
+                CLK_FREQ_MHZ = int(match.group(1))
+                RAM_HW_KB = int(match.group(2))
+                Flash_HW_MB = int(match.group(3))
+
+            # Cerca overflow RAM
+            if overflow_ram.search(line):
+                RAM_KB = -1
+
+            # Cerca overflow Flash
+            if overflow_flash.search(line):
+                Flash_MB = -1
+
+    return RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB
 
 # ----- Salva risultati del profiling su file -----
 def save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, output_csv):
-    print('*** save_results')
+    print('\n*** save_results')
     fieldnames = [
         'input_dim', 'num_layers', 'hidden_units_list', 'output_dim',
         'device_type', 'model_size_float32_kb', 'model_size_float32_mb', 'model_size_int8_kb', 'model_size_int8_mb', 'mac_ops',
@@ -528,13 +565,13 @@ def save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, mo
 
 # ----- Salva risultati del profiling su file -----
 def save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
-                    model_size_int8_kb, model_size_int8_mb, ram_total_kb, macs, output_csv):
+                    model_size_int8_kb, model_size_int8_mb, model_file_size_int8_mb, ram_total_kb, macs, output_csv):
 
-    #print('*** save_results')
+    #print('\n*** save_results')
     
     fieldnames = [
         'active_cell', 'input_dim', 'num_layers', 'hidden_units_list', 'output_dim',
-        'model_size_int8_kb', 'model_size_int8_mb', 'ram_total_kb', 'mac_ops'
+        'model_size_int8_kb', 'model_size_int8_mb', 'model_file_size_int8_mb', 'ram_total_kb', 'mac_ops'
     ]
     
     write_header = not os.path.exists(output_csv)
@@ -552,43 +589,117 @@ def save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units
             'output_dim': output_dim,
             'model_size_int8_kb': model_size_int8_kb,
             'model_size_int8_mb': model_size_int8_mb,
+            'model_file_size_int8_mb': model_file_size_int8_mb,
             'ram_total_kb': ram_total_kb,
             'mac_ops': macs
         }
 
         writer.writerow(row)
 
+
+# ----- Salva risultati del profiling su file -----
+def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
+                    model_size_int8_kb, model_size_int8_mb, model_file_size_int8_mb, model_h_size_int8_mb, ram_total_kb,
+                    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, latency_us,
+                    output_csv):
+
+    #print('\n*** save_results')
+    
+    fieldnames = [
+        'active_cell', 'input_dim', 'num_layers', 'hidden_units_list', 'output_dim',
+        'model_size_int8_kb', 'model_size_int8_mb', 'model_file_size_int8_mb', 'model_h_size_int8_mb', 'ram_total_kb', 
+        'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 'latency_us'
+    ]
+    
+    write_header = not os.path.exists(output_csv)
+
+    with open(output_csv, 'a', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        if write_header:
+            writer.writeheader()
+
+        row = {
+            'active_cell': active_cell,
+            'input_dim': input_dim,
+            'num_layers': num_layers,
+            'hidden_units_list': hidden_units_list,
+            'output_dim': output_dim,
+            'model_size_int8_kb': model_size_int8_kb,
+            'model_size_int8_mb': model_size_int8_mb,
+            'model_file_size_int8_mb': model_file_size_int8_mb,
+            'model_h_size_int8_mb': model_h_size_int8_mb,
+            'ram_total_kb': ram_total_kb,
+            'RAM_KB': RAM_KB, 
+            'Flash_MB': Flash_MB, 
+            'CLK_FREQ_MHZ': CLK_FREQ_MHZ, 
+            'RAM_HW_KB': RAM_HW_KB, 
+            'Flash_HW_MB': Flash_HW_MB,
+            'latency_us': latency_us
+        }
+
+        writer.writerow(row)
+
 # ----- Run di una singola configurazione -----
 def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv):
-    #print('*** run_experiment')
+    #print('\n*** run_experiment')
+
+    # Crea modello
     model = build_mlp(input_dim, output_dim, num_layers, hidden_units_list)
     model.compile(optimizer='adam', loss='mse')
     #model.summary()
 
-    model_size_int8_kb, model_size_int8_mb, ram_total_kb, macs = get_model_info_precise(model)
-
-    save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
-                    model_size_int8_kb, model_size_int8_mb, ram_total_kb, macs, 
-                    output_csv)
     
-    # TODO: invece di questa riga, fare quantizazione del modello
-    end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite = get_model_path_tflite()
+    # Crea o recupera nome del modello tflite
+    #end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite = get_model_path_tflite(saved_models_tflite, dummy='')
+    end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite = get_model_path_tflite(mcu_profiling_folder, dummy='dummy_')
 
+    
+    # Converti modello keras in tflite int8
+    #convert_to_tflite_int8(model, x_sample, model_path_tflite)
+
+    model_size_int8_kb, model_size_int8_mb, model_file_size_int8_mb, model_h_size_int8_mb, ram_total_kb, macs = get_model_info_precise(model, model_path_tflite, save_dir=mcu_lib_model_folder)
+    #save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
+    #                model_size_int8_kb, model_size_int8_mb, model_file_size_int8_mb, ram_total_kb, macs, 
+    #                output_csv)
+    
     # Attivare al bisogno
+    # Esporta dati di test di ingresso e uscita
     #export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, size='small')
     #export_test_data(size='full')
     
-    # TODO: COMMENTATO TEMPORANEAMENTE
-    #model_name = export_to_c(model_type_load, model_path_tflite, save_dir=mcu_include_folder)
+    # Esporta il modello in formato header file per TFLM
+    #model_name = export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder, simple=True)
 
-    #os.system('pio run --environment ' + mcu_type + ' -t upload > ' + os.path.join(mcu_folder, 'compilation.txt'))
+    # Lancia compilazione e upload firmware in maniera bloccante
     compilation_logfile = os.path.join(mcu_folder, 'compilation.txt')
-    os.system('pio run --environment ' + mcu_type + ' --project-dir ' + mcu_folder + ' > ' + compilation_logfile)
-    print('ARRIVATO QUI')
 
-    ram, rom = parse_compilation_logfile(compilation_logfile)
+    if debug2 == 0:
+        #os.system('pio run --environment ' + mcu_type + ' -t upload > ' + os.path.join(mcu_folder, 'compilation.txt'))
+        print(f"Lancio pio run... Segui gli avanzamenti qui: {compilation_logfile}")
+        with open(compilation_logfile, "w", encoding="utf-8") as logfile:
+            subprocess.run(
+                ["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder],
+                stdout=logfile,
+                stderr=subprocess.STDOUT,
+                check=False
+            )
 
-    ##tflite_model = convert_to_tflite_int8(model, x_sample)
+    # Lancia il parser per recuperare RAM e ROM da compilation output
+    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB = parse_compilation_logfile(compilation_logfile)
+
+    print(RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB)
+
+    # Lancia serial feeded and logger per calcolare la latenza
+    # TODO:
+    latency_us = -1
+
+    # Appendi risultati nel file output_csv
+    # TODO:
+    save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
+                    model_size_int8_kb, model_size_int8_mb, model_file_size_int8_mb, model_h_size_int8_mb, ram_total_kb, 
+                    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, latency_us,
+                    output_csv)
+
     #model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, macs = get_model_info(model)
     ##summary = profile_model_ei(tflite_model, reload=RELOAD, save_dir=profiling_ei_folder)
     #inference_time = profile_model_renode(model_name, reload=RELOAD, save_dir=profiling_ei_folder)
@@ -600,6 +711,7 @@ def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_
 if __name__ == "__main__":
 
     debug = 1 # 0 = loop; 1 = modello di Taha
+    debug2 = 0
 
     subcarriers = 64 # costante
 
@@ -616,14 +728,17 @@ if __name__ == "__main__":
     else:    
         # modello di Taha
         #input_dims = [1024]
-        active_cells = [8]
-        output_dims = [1024]
-        num_layers_list = [3]
+        #active_cells = [8]
+        #output_dims = [1024]
+        #num_layers_list = [3]
+        active_cells = [1]
+        output_dims = [64]
+        num_layers_list = [0]
         
-    mcu_type = 'esp32-s2-saola-1'
+    mcu_type = 'esp32-s2-saola-tflm'
     mcu_folder = pio_projects_folder + mcu_type
-    mcu_include_folder = os.path.join(mcu_folder, 'include') 
-    output_csv = profiling_mcu_folder + 'profiling_grid_results.csv'
+    mcu_lib_model_folder = os.path.join(mcu_folder, 'lib/model') 
+    output_csv = mcu_profiling_folder + 'profiling_grid_results.csv'
 
     if not os.path.exists(mcu_folder):  # Controlla se la cartella esiste
         os.makedirs(mcu_folder, exist_ok=True)  # Crea la cartella se non esiste
@@ -647,10 +762,10 @@ if __name__ == "__main__":
         # Sample fake data per quantizzazione
         x_sample = np.random.rand(10, input_dim).astype(np.float32)
             
-        data_csv = profiling_mcu_folder + 'data.csv'
+        data_csv = mcu_profiling_folder + 'data.csv'
         with open(data_csv, 'w') as f:
             # trasforma ogni elemento in una stringa
-            for sample in x_sample[:input_dim]:
+            for sample in x_sample[:input_dim,:]:
                 f.write(str(sample) + '\n')
         print(f"\nDati creati: {data_csv}")
 
@@ -660,25 +775,6 @@ if __name__ == "__main__":
                 
                 hidden_units_list = [input_dim, 4*input_dim, 4*input_dim]     # Numero di neuroni per layer
             
-                print(f"\nProfiling: act_cell={active_cell}, in={input_dim}, out={output_dim}, layers={num_layers}, units={hidden_units_list}")
+                print(f"\nProfiling: act_cell={active_cell}, in={input_dim}, out={output_dim}, layers={num_layers}, hidden_units={hidden_units_list}")
                 run_experiment(active_cell,input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv)
-
-    #model_py = Sequential([
-    #    Input(shape=(X_train.shape[1],), name='input'),
-
-    #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully1_'),
-    #    ReLU(name='relu1'),
-    #    Dropout(0.5, name='dropout1'),
-
-    #    Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully2_'),
-    #    ReLU(name='relu2'),
-    #    Dropout(0.5, name='dropout2'),
-
-    #    Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully3_'),
-    #    ReLU(name='relu3'),
-    #    Dropout(0.5, name='dropout3'),
-
-    #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully4_'),
-    #])
-
     
