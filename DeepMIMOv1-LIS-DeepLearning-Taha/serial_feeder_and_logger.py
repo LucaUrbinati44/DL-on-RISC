@@ -16,7 +16,7 @@ delimiter = ' '
 
 # File di log con timestamp
 timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-LOG_FILE = f"logs/log_{BOARD}_{timestamp_str}.txt"
+LOG_FILE = f"/mnt/c/Users/Work/Desktop/deepMIMO/RIS/logs/log_{BOARD}_{timestamp_str}.txt"
 
 next_command = "NEXT"        # Comando seriale che invia dati in seriale
 
@@ -44,6 +44,9 @@ def main():
                 # Scrivere su log
                 log.write(f"{line}\n")
 
+                # TODO: parsificare la riga in cerca dei tempi per le varie fasi del micro e dell'output del codebook
+                # Accumulare i vari tempi
+
                 # Attendere (while) segnale di NEXT dall'MCU (cioè quando richiede i dati)
                 if line == next_command:
                     sample_str = delimiter.join(datarow) + '\n'
@@ -52,6 +55,9 @@ def main():
                     ser.write(sample_str.encode('utf-8'))
                     print(f"Inviato: {sample_str.strip()}")
                     break
+        
+        # TODO: ritornare i tempi medi di ogni fase utilizzando una variabile contatore per il numero di dati/righe con len(datafile)
+        #return 
 
 if __name__ == "__main__":
     main()

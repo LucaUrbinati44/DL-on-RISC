@@ -702,7 +702,8 @@ def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_
         print(f"\n*** Lancio pio run... Segui gli avanzamenti qui: {compilation_logfile}")
         with open(compilation_logfile, "w", encoding="utf-8") as logfile:
             subprocess.run(
-                ["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder],
+                #["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder],
+                ["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder, "--target", "upload"],
                 stdout=logfile,
                 stderr=subprocess.STDOUT,
                 check=False

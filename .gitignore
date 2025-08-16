@@ -52,13 +52,15 @@ renode_boards/litex-vexriscv-tensorflow-lite-demo/tflite-micro/tensorflow/lite/m
 
 mcu/esp32-s2-saola-blink/.pio
 mcu/esp32-s2-saola-blink/.vscode
-mcu/esp32-s2-saola-blink/include/model*
+mcu/esp32-s2-saola-blink/lib/model
 mcu/esp32-s2-saola-blink/no
 
 mcu/esp32-s2-saola-tflm/.pio
 mcu/esp32-s2-saola-tflm/.vscode
-mcu/esp32-s2-saola-tflm/include/model*
+mcu/esp32-s2-saola-tflm/lib/model
 mcu/esp32-s2-saola-tflm/no
 
 mcu/rp2040_windows/.pio
 mcu/rp2040_windows/.vscode
+mcu/rp2040_windows/lib/model
+mcu/rp2040_windows/no

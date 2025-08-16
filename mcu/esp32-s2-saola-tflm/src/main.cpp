@@ -35,7 +35,7 @@ void loop()
     }
     else
     {
-      Serial.println("no data yet\n");
+      Serial.println("no data yet");
       delay(3000);
     }
   }
@@ -50,15 +50,12 @@ void loop()
   {
     float_input[index++] = atof(token);
     token = strtok(nullptr, " ");
+    Serial.println(float_input[index++])
   }
+
+  Serial.println("Calculating...");
 
   delay(8000);
 
-  Serial.println('ok');
+  Serial.println("Done");
 }
-
-// put function definitions here:
-// int myFunction(int x, int y)
-//{
-//  return x + y;
-//}
