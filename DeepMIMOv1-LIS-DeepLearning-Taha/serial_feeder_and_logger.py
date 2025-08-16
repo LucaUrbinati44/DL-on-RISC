@@ -7,28 +7,31 @@ from datetime import datetime
 SERIAL_PORT = '/dev/ttyUSB0'
 BAUD_RATE = 115200
 BOARD = 'esp32'
-csv_file = 'data.csv'
+
+base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
+output_folder = base_folder + 'Output_Python/'
+mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
+data_csv = mcu_profiling_folder + 'data.csv'
 delimiter = ' '
 
 # File di log con timestamp
 timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 LOG_FILE = f"logs/log_{BOARD}_{timestamp_str}.txt"
 
-stop_command = "STOP"        # Comando seriale che arresta il logger
 next_command = "NEXT"        # Comando seriale che invia dati in seriale
 
 def main():
 
     # Apertura porta seriale
-    with open(csv_file, newline='') as f, \
+    with open(data_csv, newline='') as f, \
         serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as ser, \
         open(LOG_FILE, 'w') as log:
 
-        reader = csv.reader(f, delimiter=delimiter)
-        print("Avviato logger + feeder su", serial_port)
+        datafile = csv.reader(f, delimiter=delimiter)
+        print("Avviato logger + feeder su", SERIAL_PORT)
 
         # Per ogni riga del file di dati
-        for row in reader:
+        for datarow in datafile:
 
             while True:
 
@@ -43,7 +46,7 @@ def main():
 
                 # Attendere (while) segnale di NEXT dall'MCU (cioè quando richiede i dati)
                 if line == next_command:
-                    sample_str = delimiter.join(row) + '\n'
+                    sample_str = delimiter.join(datarow) + '\n'
 
                     # Inviare la riga di dati all'MCU
                     ser.write(sample_str.encode('utf-8'))

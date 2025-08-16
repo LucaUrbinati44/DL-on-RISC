@@ -1,8 +1,8 @@
 // #define DEBUG_x86
 // #define DEBUG_PRINT
 
-#define INPUT_FEATURE_SIZE 1024
-#define OUTPUT_FEATURE_SIZE 1024
+#define INPUT_FEATURE_SIZE 128
+#define OUTPUT_FEATURE_SIZE 64
 
 #include <Arduino.h>
 
