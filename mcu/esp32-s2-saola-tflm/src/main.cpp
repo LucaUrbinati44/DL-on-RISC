@@ -46,16 +46,21 @@ void loop()
   // Parsing dei valori
   int index = 0;
   char *token = strtok((char *)line.c_str(), " ");
+  float float_token;
+  Serial.print("Ricevuto: ");
   while (token != nullptr && index < INPUT_FEATURE_SIZE)
   {
-    float_input[index++] = atof(token);
+    float_token = atof(token);
+    float_input[index++] = float_token;
     token = strtok(nullptr, " ");
-    Serial.println(float_input[index++])
+    Serial.print(float_token, 8);
+    Serial.print(" ");
   }
+  Serial.println("");
 
-  Serial.println("Calculating...");
-
-  delay(8000);
-
-  Serial.println("Done");
+  Serial.println("normalize_input [us]: 10");
+  Serial.println("quantize_input [us]: 11");
+  Serial.println("interpreter_invoke [us]: 12");
+  Serial.println("dequantize_output [us]: 13");
+  Serial.println("extract_codebook_index [us]: 255");
 }

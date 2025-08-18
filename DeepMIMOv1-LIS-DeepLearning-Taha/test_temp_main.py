@@ -14,7 +14,7 @@ Mz_ar = [32]
 #Training_Size = [2000, 4000, 6000, 8000]
 Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000]
 #Training_Size = [8000, 10000, 14000, 18000, 22000, 26000, 30000]
-Training_Size = [10000]
+Training_Size = [10000, 30000]
 
 # training
 #max_epochs_load = 0

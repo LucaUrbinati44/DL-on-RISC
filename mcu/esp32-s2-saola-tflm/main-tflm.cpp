@@ -33,6 +33,7 @@ namespace
   int output_zero_point;
 
   float float_input[INPUT_FEATURE_SIZE];
+  float float_input_normalized[INPUT_FEATURE_SIZE];
   float dequantized_output[OUTPUT_FEATURE_SIZE];
 
   // Create an area of memory to use for input, output, and intermediate arrays.
@@ -189,16 +190,25 @@ void loop()
   }
 
   int64_t ta = esp_timer_get_time();
-  quantize_input(float_input, input_scale, input_zero_point, model_input->data.int8);
+  for (int i = 0; i < INPUT_FEATURE_SIZE; i++)
+  {
+    float_input_normalized[i] = (float_input[i] - mean_array[i]) / sqrtf(variance_array[i]);
+  }
   int64_t tb = esp_timer_get_time();
-  Serial.print("Elapsed time ESP quantize_input [us]: ");
+  Serial.print("normalize_input [us]: ");
+  Serial.println(tb - ta - overhead_esp);
+
+  ta = esp_timer_get_time();
+  quantize_input(float_input_normalized, input_scale, input_zero_point, model_input->data.int8);
+  tb = esp_timer_get_time();
+  Serial.print("quantize_input [us]: ");
   Serial.println(tb - ta - overhead_esp);
 
   // Serial.println("Invoke for sample %d...\n", sample_index);
   ta = esp_timer_get_time();
   TfLiteStatus invoke_status = interpreter->Invoke();
   tb = esp_timer_get_time();
-  Serial.print("Elapsed time ESP interpreter->Invoke [us]: ");
+  Serial.print("interpreter->Invoke [us]: ");
   Serial.println(tb - ta - overhead_esp);
 
   // The possible values of TfLiteStatus, defined in common.h, are kTfLiteOk and kTfLiteError
@@ -211,13 +221,13 @@ void loop()
   ta = esp_timer_get_time();
   dequantize_output(model_output->data.int8, output_scale, output_zero_point, dequantized_output);
   tb = esp_timer_get_time();
-  Serial.print("Elapsed time ESP dequantize_output [us]: ");
+  Serial.print("dequantize_output [us]: ");
   Serial.println(tb - ta - overhead_esp);
 
   ta = esp_timer_get_time();
   int codebook_index = extract_codebook_index(dequantized_output);
   tb = esp_timer_get_time();
-  Serial.print("Elapsed time ESP extract_codebook_index [us]: ");
+  Serial.print("extract_codebook_index [us]: ");
   Serial.println(tb - ta - overhead_esp);
 
   // Serial.println("codebook_index %d: %d\n\n", sample_index, codebook_index);

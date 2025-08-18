@@ -14,9 +14,11 @@ import re
 import h5py
 from tensorflow.keras.saving import load_model
 from ai_edge_litert.interpreter import Interpreter
+from tensorflow.lite.python import schema_py_generated as schema_fb
 
 import subprocess
 
+import serial_feeder_and_logger
 
 print("TensorFlow version:", tf.__version__)
 
@@ -61,10 +63,14 @@ saved_models_tflite = network_folder_out + 'saved_models_tflite/'
 figure_folder = output_folder + 'Figures/'
 profiling_estimation_folder = output_folder + 'Profiling_Search_Estimation/'
 mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
+mcu_profiling_folder_output = mcu_profiling_folder + 'output_data/'
+mcu_profiling_folder_model = mcu_profiling_folder + 'model/'
+mcu_profiling_folder_scaler = mcu_profiling_folder + 'scaler/'
+mcu_profiling_folder_test_data_normalized = mcu_profiling_folder + 'test_data_normalized/'
+mcu_profiling_folder_test_data = mcu_profiling_folder + 'test_data/'
 #pio_projects_folder = '/mnt/c/Users/Work/Documents/PlatformIO/Projects/'
 pio_projects_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/'
 header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
-test_data_npy_path = output_folder + 'Test_data/'
 
 folders = [
     output_folder,
@@ -80,8 +86,12 @@ folders = [
     figure_folder,
     profiling_estimation_folder,
     mcu_profiling_folder,
-    pio_projects_folder,
-    test_data_npy_path
+    mcu_profiling_folder_test_data,
+    mcu_profiling_folder_test_data_normalized,
+    mcu_profiling_folder_output,
+    mcu_profiling_folder_model,
+    mcu_profiling_folder_scaler,
+    pio_projects_folder
 ]
 
 for folder in folders:
@@ -115,12 +125,13 @@ def convert_to_tflite_int8(model, x_sample, model_path_tflite):
     with open(model_path_tflite, 'wb') as f:
         f.write(tflite_quant_model)
 
-def get_model_path_tflite(tflite_models_folder, dummy=''):
+def get_model_path_tflite(mcu_profiling_folder, dummy=''):
     print('\n*** get_model_path_tflite')
     end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
     model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
-    model_path_tflite = tflite_models_folder + model_type_load + '_quant.tflite'
-    return end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite
+    model_path_tflite = mcu_profiling_folder_model + model_type_load + '_quant.tflite'
+    codebook_index_filepath = mcu_profiling_folder_output + 'output_codebook_int8_' + model_type_load + '.txt'
+    return end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite, codebook_index_filepath
 
 def mse_custom(y_true, y_pred):
     # Calcola l'errore quadratico tra vero e predetto
@@ -136,10 +147,13 @@ def mse_custom(y_true, y_pred):
 # ----- Export test data for inference -----
 def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, size='small'):
     print('\n*** export_test_data')
-    xtest_npy_filename = test_data_npy_path + 'test_set' + end_folder_Training_Size_dd + '.npy'
+
+    # Recover npy test set
+    xtest_npy_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + '.npy'
     xtest = np.load(xtest_npy_filename)
     print(xtest.shape)
     
+    # Choose the number of test samples
     if size == 'small':
         xtest_size = 10
     else:
@@ -147,54 +161,29 @@ def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_l
 
     print(xtest[:xtest_size,:].shape)
 
-    xtest_renode_filename = test_data_renode_path + 'test_set_' + size + '.data'
-    with open(xtest_renode_filename, 'w') as f:
-        # map(str, sample): trasforma ogni elemento del vettore sample in una stringa.
-        # ' '.join(...): concatena tutte queste stringhe, separandole con uno spazio.
-        f.write(' '.join([f'ch{i+1}' for i in range(xtest.shape[1])]) + '\n')
-        for sample in xtest[:xtest_size,:]:
-            line = ','.join(map(str, sample))
-            f.write(line + '\n')
-    #with open(xtest_renode_filename, 'w') as f:
-    #    f.write('data\n')  # intestazione richiesta per il campo BinaryData
-    #    for sample in xtest[:xtest_size, :]:
-    #        # Conversione delle xtest.shape[1] features float32 in una sola stringa esadecimale continua per il formato Renode Binary Data 
-    #        sample_bytes = sample.astype(np.float32).tobytes()
-    #        hex_str = sample_bytes.hex()
-    #        f.write(f'{hex_str}\n')
+    # Convert the test set into a csv file
+    #xtest_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + size + '.csv'
+    #with open(xtest_filename, 'w') as f:
+    #    # map(str, sample): trasforma ogni elemento del vettore sample in una stringa.
+    #    # ' '.join(...): concatena tutte queste stringhe, separandole con uno spazio.
+    #    for sample in xtest[:xtest_size,:]:
+    #        f.write(" ".join(map(str, sample)) + "\n")
 
-    xtest_header_filename = test_data_renode_path + 'test_set_' + size + '_' + str(xtest_size) + '.h'
-    num_samples = xtest_size
-    sample_size = xtest.shape[1]
-    with open(xtest_header_filename, 'w') as f:
-        f.write("#ifndef SAMPLE_DATA_H\n")
-        f.write("#define SAMPLE_DATA_H\n\n")
-        f.write(f"#define NUM_SAMPLES {num_samples}\n")
-        #f.write(f"#define SAMPLE_SIZE {sample_size}\n\n")
-        #f.write("const float samples[NUM_SAMPLES][SAMPLE_SIZE] = {\n")
-        f.write("const float samples[NUM_SAMPLES][INPUT_FEATURE_SIZE] = {\n")
-        
-        for i, sample in enumerate(xtest[:xtest_size]):
-            # converto ogni valore in stringa formattata a 6 decimali
-            sample_str = ", ".join(f"{x:.6f}f" for x in sample)
-            if i == num_samples - 1:
-                f.write(f"    {{ {sample_str} }}\n")
-            else:
-                f.write(f"    {{ {sample_str} }},\n")
-        f.write("};\n\n")
-        f.write("#endif // SAMPLE_DATA_H\n")
+    # Load scalers
+    mean_array_filepath = mcu_profiling_folder_scaler + dummy + 'mean' + end_folder_Training_Size_dd + '.npy'
+    #with open(mean_array_filepath, 'r') as f:
+    #    mean_array = f.read()
+    mean_array = np.load(mean_array_filepath)
+            
+    variance_array_filepath = mcu_profiling_folder_scaler + dummy + 'variance' + end_folder_Training_Size_dd + '.npy'
+    #with open(variance_array_filepath, 'w') as f:
+    #    variance_array = f.read()
+    variance_array = np.load(variance_array_filepath)
 
-    # Esempio di utilizzo:
-    # xtest = np.random.rand(5, 1024)  # esempio di 5 sample da 1024 feature
-    # generate_header_from_array(xtest, "sample_data.h")
-    
-
-    # load tflite model
+    # Load the tflite model
     with open(model_path_tflite, 'rb') as f:
         tflite_quant_model = f.read()
     print('TFLite model loaded')
-
-    from tensorflow.lite.python import schema_py_generated as schema_fb
 
     tflite_model = schema_fb.Model.GetRootAsModel(tflite_quant_model, 0)
 
@@ -206,8 +195,6 @@ def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_l
             metadata = tflite_model.Buffers(buffer_index)
             min_runtime_version_bytes = metadata.DataAsNumpy().tobytes()
             print(min_runtime_version_bytes)
-        
-    #return
 
     # inference using tflite model with xtest
     #Loading and running a LiteRT model involves the following steps:
@@ -258,7 +245,10 @@ def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_l
         #print('sample.shape:', sample.shape)
         print('\nfloat_input:', ' '.join([f"{x:.6f}" for x in sample]))
         sample = np.expand_dims(sample, axis=0)  # shape: (1, 1024)
-        input_int8 = np.round(sample / input_scale + input_zero_point).astype(np.int8)
+
+        sample_normalized = np.array((sample - mean_array) / np.sqrt(variance_array), dtype=np.float32)
+
+        input_int8 = np.round(sample_normalized / input_scale + input_zero_point).astype(np.int8)
         print('\nquantized_input:', ' '.join([f"{x}" for x in input_int8.flatten()]))
         #print('input_int8.shape:', input_int8.shape)
         #print('np.max(input_int8):', np.max(input_int8))
@@ -299,9 +289,8 @@ def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_l
     print(Indmax_DL_py[0:5])
 
     # save int8 inference results as golden output on a .data file for TFLM comparison
-    Indmax_DL_py_renode_filename_int8 = test_data_renode_path + 'output_golden_codebook_int8_' + size + '.data'
+    Indmax_DL_py_renode_filename_int8 = mcu_profiling_folder_output + 'output_golden_codebook_int8_' + size + '.csv'
     with open(Indmax_DL_py_renode_filename_int8, 'w') as f:
-        # trasforma ogni elemento in una stringa
         for sample in Indmax_DL_py[:xtest_size]:
             f.write(str(sample) + '\n')
 
@@ -310,9 +299,8 @@ def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_l
     with h5py.File(filename_Indmax_DL_py, 'r') as f:
         Indmax_DL_py = np.array(f['Indmax_DL_py'][:], dtype=np.float32)
         print(f"\nIndmax_DL_py loaded")
-    Indmax_DL_py_renode_filename_float32 = test_data_renode_path + 'output_golden_codebook_float32_' + size + '.data'
+    Indmax_DL_py_renode_filename_float32 = mcu_profiling_folder_output + 'output_golden_codebook_float32_' + size + '.csv'
     with open(Indmax_DL_py_renode_filename_float32, 'w') as f:
-        # trasforma ogni elemento in una stringa
         for sample in Indmax_DL_py[:xtest_size]:
             f.write(str(int(sample)) + '\n')
 
@@ -468,16 +456,16 @@ def get_model_info_precise(model, model_path_tflite, save_dir='./'):
     return round(model_h_size_int8_kb, 2), round(model_file_size_int8_kb, 2), round(model_file_size_int8_mb, 2), 
 
 
-def change_config_file(file_path, new_input_size, new_output_size):
+def change_config_file_1(config_file_path, new_input_size, new_output_size):
 
-    print('\n*** change_config_file')
+    print('\n*** change_config_file_1')
 
     # regex per INPUT_FEATURE_SIZE e OUTPUT_FEATURE_SIZE
     pattern_input = re.compile(r"(#define\s+INPUT_FEATURE_SIZE\s+)\d+")
     pattern_output = re.compile(r"(#define\s+OUTPUT_FEATURE_SIZE\s+)\d+")
 
     # leggi file
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(config_file_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     # sostituisci i numeri
@@ -485,12 +473,42 @@ def change_config_file(file_path, new_input_size, new_output_size):
     content = pattern_output.sub(rf"\g<1>{new_output_size}", content)
 
     # salva file
-    with open(file_path, "w", encoding="utf-8") as f:
+    with open(config_file_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+def change_config_file_2(config_file_path, mean_array_filepath, variance_array_filepath):
+
+    print('\n*** change_config_file_2')
+ 
+    with open(config_file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    pattern_mean = re.compile(r"(const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    pattern_variance = re.compile(r"(const float variance_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+
+    #with open(mean_array_filepath, newline='', encoding="utf-8") as f:
+    #    reader = csv.reader(f)
+    #    row = next(reader)  # leggi unica riga
+    #    new_mean_array = [float(x) for x in row]        
+    mean_array = np.load(mean_array_filepath)[0]        
+    array_str = ", ".join(f"{v}f" for v in mean_array)
+    content = re.sub(pattern_mean, rf"\1\n    {array_str}\n\3", content)
+
+    #with open(variance_array_filepath, newline='', encoding="utf-8") as f:
+    #    reader = csv.reader(f)
+    #    row = next(reader)  # leggi unica riga
+    #    new_variance_array = [float(x) for x in row]        
+    variance_array = np.load(variance_array_filepath)[0]
+    array_str = ", ".join(f"{v}f" for v in variance_array)
+    content = re.sub(pattern_variance, rf"\1\n    {array_str}\n\3", content)
+
+    # salva file
+    with open(config_file_path, "w", encoding="utf-8") as f:
         f.write(content)
 
 
 # ----- Recupera RAM e Flash da file di log generato da PlatformIO -----
-def parse_compilation_logfile(file_path):
+def parse_compilation_logfile(config_file_path):
     """
     Estrae i byte usati per RAM e Flash da un file di log di PlatformIO.
     Se viene rilevato un overflow di RAM o Flash, assegna -1.
@@ -506,6 +524,8 @@ def parse_compilation_logfile(file_path):
     RAM_HW_KB = 0
     Flash_HW_MB = 0
 
+    Error = 0
+
     # Pattern normale quando la compilazione ha successo
     # | significa "o"
     # : — corrisponde al carattere due punti letterale.
@@ -517,6 +537,7 @@ def parse_compilation_logfile(file_path):
     ram_pattern = re.compile(r'^\s*RAM:.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
     flash_pattern = re.compile(r'^\s*Flash:.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
     hardware_pattern = re.compile(r"HARDWARE:\s+\S+\s+(\d+)MHz,\s+(\d+)KB RAM,\s+(\d+)MB Flash", re.IGNORECASE)
+    error_pattern = re.compile(r"\bError\b")
 
     # Pattern di errore da overflow
     # \d+ per indicare un numero di byte (così non catturi testo non previsto).
@@ -524,7 +545,7 @@ def parse_compilation_logfile(file_path):
     overflow_flash = re.compile(r"region `drom0_0_seg' overflowed by (\d+) bytes", re.IGNORECASE)
     overflow_ram   = re.compile(r"region `dram0_0_seg' overflowed by (\d+) bytes", re.IGNORECASE)
 
-    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+    with open(config_file_path, 'r', encoding='utf-8', errors='ignore') as f:
         for line in f:
             #print("repr(line):", repr(line))
 
@@ -554,7 +575,11 @@ def parse_compilation_logfile(file_path):
             if match:
                 Flash_MB = -int(match.group(1))
 
-    return round(RAM_KB,2), round(Flash_MB,2), round(CLK_FREQ_MHZ,2), round(RAM_HW_KB,2), round(Flash_HW_MB,2)
+            match = error_pattern.search(line)
+            if match:
+                Error = 1
+
+    return round(RAM_KB,2), round(Flash_MB,2), round(CLK_FREQ_MHZ,2), round(RAM_HW_KB,2), round(Flash_HW_MB,2), Error
 
 # ----- Salva risultati del profiling su file -----
 def save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, output_csv):
@@ -628,15 +653,17 @@ def save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units
 # ----- Salva risultati del profiling su file -----
 def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
                     model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
-                    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, latency_mean_us,
-                    output_csv):
+                    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB,
+                    avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, tot_latency_us, extract_codebook_index_list,
+                    output_csv, codebook_index_filepath):
 
     print('\n*** save_results_v3')
     
     fieldnames = [
         'active_cell', 'input_dim', 'num_layers', 'hidden_units_list', 'output_dim',
         'model_h_size_int8_kb', 'model_file_size_int8_kb', 'model_file_size_int8_mb',
-        'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 'latency_mean_us'
+        'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 
+        'avg_normalize_input_us', 'avg_quantize_input_us', 'avg_interpreter_invoke_us', 'avg_dequantize_output_us', 'tot_latency_us', 'extract_codebook_index_list[0:5]'
     ]
     
     write_header = not os.path.exists(output_csv)
@@ -660,13 +687,23 @@ def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units
             'CLK_FREQ_MHZ': CLK_FREQ_MHZ, 
             'RAM_HW_KB': RAM_HW_KB, 
             'Flash_HW_MB': Flash_HW_MB,
-            'latency_mean_us': latency_mean_us
+            'avg_normalize_input_us': avg_normalize_input_us,
+            'avg_quantize_input_us': avg_quantize_input_us,
+            'avg_interpreter_invoke_us': avg_interpreter_invoke_us,
+            'avg_dequantize_output_us': avg_dequantize_output_us,
+            'tot_latency_us': tot_latency_us,
+            'extract_codebook_index_list[0:5]': extract_codebook_index_list[0:5]
         }
 
         writer.writerow(row)
 
+    with open(codebook_index_filepath, 'w') as f:
+        # trasforma ogni elemento in una stringa
+        for codebook in extract_codebook_index_list:
+            f.write(str(codebook) + "\n")
+
 # ----- Run di una singola configurazione -----
-def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv):
+def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath):
     #print('\n*** run_experiment')
 
     # Crea modello
@@ -676,7 +713,7 @@ def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_
 
     # Crea o recupera nome del modello tflite
     #end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite = get_model_path_tflite(saved_models_tflite, dummy='')
-    end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite = get_model_path_tflite(mcu_profiling_folder, dummy='dummy_')
+    end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite, codebook_index_filepath = get_model_path_tflite(mcu_profiling_folder, dummy='dummy_')
 
     # Converti modello keras in tflite int8
     #convert_to_tflite_int8(model, x_sample, model_path_tflite)
@@ -686,44 +723,70 @@ def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_
     #                model_size_int8_kb, model_size_int8_mb, model_file_size_int8_mb, ram_total_kb, macs, 
     #                output_csv)
     
-    # Attivare al bisogno
+    # Attivare al bisogno, solo nel caso dummy=''
     # Esporta dati di test di ingresso e uscita
     #export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, size='small')
     #export_test_data(size='full')
     
     # Esporta il modello in formato header file per TFLM
     #model_name = export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder, simple=True)
+    
+    change_config_file_2(mcu_include_config, mean_array_filepath, variance_array_filepath)
 
     # Lancia compilazione e upload firmware in maniera bloccante
     compilation_logfile = os.path.join(mcu_folder, 'compilation_'+model_type_load+'.txt')
 
     if debug2 == 0:
-        #os.system('pio run --environment ' + mcu_type + ' -t upload > ' + os.path.join(mcu_folder, 'compilation.txt'))
         print(f"\n*** Lancio pio run... Segui gli avanzamenti qui: {compilation_logfile}")
+        #with open(compilation_logfile, "w", encoding="utf-8") as logfile:
+        #    subprocess.run(
+        #        #["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder],
+        #        ["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder, "--target", "upload"],
+        #        stdout=logfile,
+        #        stderr=subprocess.STDOUT,
+        #        check=False
+        #    )
         with open(compilation_logfile, "w", encoding="utf-8") as logfile:
-            subprocess.run(
+            process = subprocess.Popen(
                 #["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder],
                 ["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder, "--target", "upload"],
-                stdout=logfile,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                check=False
+                text=True
             )
+
+            for line in process.stdout:
+                print(line, end="")       # scrive a terminale
+                logfile.write(line)       # scrive sul file
+
+            process.wait()
 
     # Lancia il parser per recuperare RAM e ROM da compilation output
     # La Flash include non solo il modello perciò sarà maggiore di model_size_int8_mb
-    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB = parse_compilation_logfile(compilation_logfile)
+    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, Error = parse_compilation_logfile(compilation_logfile)
 
-    # Lancia serial feeded and logger per calcolare la latenza
-    # TODO:
-    latency_mean_us = -1
+    if Error == 0:
+        # Lancia serial feeded and logger per calcolare la latenza
+        # TODO:
+        #avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, extract_codebook_index_list, tot_latency_us, codebook_index = ....
+        avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, tot_latency_us, extract_codebook_index_list = serial_feeder_and_logger.main()
+    else:
+        avg_normalize_input_us = 0
+        avg_quantize_input_us = 0
+        avg_interpreter_invoke_us = 0
+        avg_dequantize_output_us = 0
+        tot_latency_us = 0
+        extract_codebook_index_list = [0, 0, 0, 0, 0]
 
-    print(RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, latency_mean_us)
+    print(RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, 
+        avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, tot_latency_us, extract_codebook_index_list[0:5])
 
     # Appendi risultati nel file output_csv
     save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
                     model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
-                    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, latency_mean_us,
-                    output_csv)
+                    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, 
+                    avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, tot_latency_us, extract_codebook_index_list,
+                    output_csv, codebook_index_filepath)
 
 # %%
 
@@ -731,7 +794,7 @@ def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_
 if __name__ == "__main__":
 
     debug = 1 # 0 = loop; 1 = modello di Taha
-    debug2 = 0
+    debug2 = 1
 
     subcarriers = 64 # costante
 
@@ -745,6 +808,8 @@ if __name__ == "__main__":
         active_cells = [1,2,4,8,12,16]
         output_dims = [1024, 512, 256, 128, 64]     # Numero di neuroni di uscita
         num_layers_list = [0,1,2,3]       # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
+
+        dummy = ''
     else:    
         # modello di Taha
         #input_dims = [1024]
@@ -754,6 +819,9 @@ if __name__ == "__main__":
         active_cells = [1]
         output_dims = [64]
         num_layers_list = [0]
+
+        dummy = 'dummy_'
+
         
     mcu_type = 'esp32-s2-saola-tflm'
     mcu_folder = pio_projects_folder + mcu_type
@@ -779,26 +847,42 @@ if __name__ == "__main__":
     for active_cell in active_cells:
         
         input_dim = active_cell * subcarriers * 2 #    8 celle attive x 64 subcarriers x 2 (real/img) = 1024
-        
-        # Sample fake data per quantizzazione
-        x_sample = np.random.rand(10, input_dim).astype(np.float32)
+
+        if debug == 1:
+            # Sample fake data for quantization
+            x_sample = np.random.rand(10, input_dim).astype(np.float32)
+            # Sample mean and variance for normalization
+            mean_array = np.random.rand(1, input_dim).astype(np.float32)
+            variance_array = np.random.rand(1, input_dim).astype(np.float32)
+
+            data_csv = mcu_profiling_folder_test_data + dummy + 'data.npy'
+            #with open(data_csv, 'w') as f:
+            #    for sample in x_sample:
+            #        f.write(" ".join(map(str, sample)) + "\n")
+            np.save(data_csv, x_sample)
+
+            mean_array_filepath = mcu_profiling_folder_scaler + dummy + 'mean' + end_folder_Training_Size_dd + '.npy'
+            #with open(mean_array_filepath, 'w') as f:
+            #    for sample in mean_array:
+            #        f.write(", ".join(map(str, sample)) + "\n")
+            np.save(mean_array_filepath, mean_array)
+                    
+            variance_array_filepath = mcu_profiling_folder_scaler + dummy + 'variance' + end_folder_Training_Size_dd + '.npy'
+            #with open(variance_array_filepath, 'w') as f:
+            #    for sample in variance_array:
+            #        f.write(", ".join(map(str, sample)) + "\n")
+            np.save(variance_array_filepath, variance_array)
             
-        data_csv = mcu_profiling_folder + 'data.csv'
-        with open(data_csv, 'w') as f:
-            # trasforma ogni elemento in una stringa
-            for sample in x_sample:
-                f.write(" ".join(map(str, sample)) + "\n")
-        print(f"\n--> Dati creati: {data_csv}")
-        #np.savetxt(data_csv, x_sample, delimiter=" ", fmt="%.6f")
+            print(f"\n--> Dati creati: {data_csv}")
 
         for output_dim in output_dims:
 
-            change_config_file(mcu_include_config, input_dim, output_dim)
+            change_config_file_1(mcu_include_config, input_dim, output_dim)
             
             for num_layers in num_layers_list:
                 
                 hidden_units_list = [input_dim, 4*input_dim, 4*input_dim]     # Numero di neuroni per layer
             
                 print(f"\n--> Profiling: act_cell={active_cell}, in={input_dim}, out={output_dim}, layers={num_layers}, hidden_units={hidden_units_list}")
-                run_experiment(active_cell,input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv)
+                run_experiment(active_cell,input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath)
     

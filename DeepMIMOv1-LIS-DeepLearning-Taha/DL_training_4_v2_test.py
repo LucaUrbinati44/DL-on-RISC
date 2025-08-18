@@ -313,7 +313,11 @@ saved_models_tfsaved2 = network_folder_out + 'saved_models_tfsaved2/'
 saved_models_tflite = network_folder_out + 'saved_models_tflite/'
 saved_models_edgeimpulse = network_folder_out + 'saved_models_edgeimpulse/'
 figure_folder = output_folder + 'Figures/'
-test_data_npy_path = output_folder + 'Test_data/'
+mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
+mcu_profiling_folder_model = mcu_profiling_folder + 'model/'
+mcu_profiling_folder_scaler = mcu_profiling_folder + 'scaler/'
+mcu_profiling_folder_test_data_normalized = mcu_profiling_folder + 'test_data_normalized/'
+mcu_profiling_folder_test_data = mcu_profiling_folder + 'test_data/'
 
 import os
 
@@ -330,7 +334,11 @@ folders = [
     saved_models_tflite,
     saved_models_edgeimpulse,
     figure_folder,
-    test_data_npy_path
+    mcu_profiling_folder,
+    mcu_profiling_folder_model,
+    mcu_profiling_folder_scaler,
+    mcu_profiling_folder_test_data_normalized,
+    mcu_profiling_folder_test_data
 ]
 
 for folder in folders:
@@ -616,13 +624,23 @@ for i, ris in enumerate(My_ar):
         #print(mean_array)
         #print(variance_array)
 
-        normalized = 1
+        print("Save test data to npy")
+        xtest_npy_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + '.npy'
+        np.save(xtest_npy_filename, X_test)
+        xtest_npy_filename = mcu_profiling_folder_test_data_normalized + 'test_set_normalized' + end_folder_Training_Size_dd + '.npy'
+        np.save(xtest_npy_filename, X_test_normalized)
+
+        print("Save scaler to npy")
+        xtest_npy_filename = mcu_profiling_folder_scaler + 'mean' + end_folder_Training_Size_dd + '.npy'
+        np.save(xtest_npy_filename, mean_array)
+        xtest_npy_filename = mcu_profiling_folder_scaler + 'variance' + end_folder_Training_Size_dd + '.npy'
+        np.save(xtest_npy_filename, variance_array)
 
         #print(X_train[0][0:5])
         #print(mean_array[0:5])
         #print(X_train_normalized[0][0:5])
 
-        ## DL Model Definition
+        normalized = 1
 
         if normalized == 1:
             xtrain = X_train_normalized
@@ -634,11 +652,8 @@ for i, ris in enumerate(My_ar):
             xval = X_val
             xtest = X_test
 
-        print("Save test data to npy")
-        xtest_npy_filename = test_data_npy_path + 'test_set' + end_folder_Training_Size_dd + '.npy'
-        np.save(xtest_npy_filename, xtest)
 
-        #os._exit(0)
+        os._exit(0)
 
         # %%
         ## DL Model Training and Prediction
