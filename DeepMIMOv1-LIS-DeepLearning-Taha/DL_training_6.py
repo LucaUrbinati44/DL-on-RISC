@@ -125,7 +125,7 @@ def convert_to_tflite_int8(model, x_sample, model_path_tflite):
     with open(model_path_tflite, 'wb') as f:
         f.write(tflite_quant_model)
 
-def get_model_path_tflite(mcu_profiling_folder, dummy=''):
+def get_model_path_tflite(mcu_profiling_folder, dummy):
     print('\n*** get_model_path_tflite')
     end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
     model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
@@ -145,7 +145,7 @@ def mse_custom(y_true, y_pred):
     return loss
 
 # ----- Export test data for inference -----
-def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, size='small'):
+def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, mean_array_filepath, variance_array_filepath, size='small'):
     print('\n*** export_test_data')
 
     # Recover npy test set
@@ -170,12 +170,12 @@ def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_l
     #        f.write(" ".join(map(str, sample)) + "\n")
 
     # Load scalers
-    mean_array_filepath = mcu_profiling_folder_scaler + dummy + 'mean' + end_folder_Training_Size_dd + '.npy'
+    #mean_array_filepath = mcu_profiling_folder_scaler + 'mean' + end_folder_Training_Size_dd + '.npy'
     #with open(mean_array_filepath, 'r') as f:
     #    mean_array = f.read()
     mean_array = np.load(mean_array_filepath)
             
-    variance_array_filepath = mcu_profiling_folder_scaler + dummy + 'variance' + end_folder_Training_Size_dd + '.npy'
+    #variance_array_filepath = mcu_profiling_folder_scaler + 'variance' + end_folder_Training_Size_dd + '.npy'
     #with open(variance_array_filepath, 'w') as f:
     #    variance_array = f.read()
     variance_array = np.load(variance_array_filepath)
@@ -367,7 +367,7 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./", simple=True):
     first_line_old = f"unsigned char {model_path_tflite_lowercase}[] = {{"
     # Aggiungi include dell'header
     # PROGMEM serve per salvare il modello in Flash invece che in RAM
-    first_line_new = f"#include <config.h>\n#include \"{mcu_lib_model_folder}/{model_name}_model_data.h\"\nalignas(8) const unsigned char g_{var_name}_model_data[] PROGMEM = {{"
+    first_line_new = f"#include <config.h>\n#include \"{mcu_lib_model_folder}{model_name}_model_data.h\"\nalignas(8) const unsigned char g_{var_name}_model_data[] PROGMEM = {{"
     var_name = 'model_tflite' # default
     last_line_old = f"unsigned int {model_path_tflite_lowercase}_len"
     last_line_new = f"unsigned int {var_name}_len"
@@ -393,9 +393,7 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./", simple=True):
         f.flush()
         os.fsync(f.fileno())
 
-    # TODO: cambiare riga di include nel main
-
-    return model_name
+    #return model_name
 
 # ----- Stima delle MAC operations e della dimensione del modello -----
 def get_model_info_precise(model, model_path_tflite, save_dir='./'):
@@ -456,7 +454,7 @@ def get_model_info_precise(model, model_path_tflite, save_dir='./'):
     return round(model_h_size_int8_kb, 2), round(model_file_size_int8_kb, 2), round(model_file_size_int8_mb, 2), 
 
 
-def change_config_file_1(config_file_path, new_input_size, new_output_size):
+def change_config_file_1(file_path, input_dim, output_dim):
 
     print('\n*** change_config_file_1')
 
@@ -465,22 +463,58 @@ def change_config_file_1(config_file_path, new_input_size, new_output_size):
     pattern_output = re.compile(r"(#define\s+OUTPUT_FEATURE_SIZE\s+)\d+")
 
     # leggi file
-    with open(config_file_path, "r", encoding="utf-8") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     # sostituisci i numeri
-    content = pattern_input.sub(rf"\g<1>{new_input_size}", content)
-    content = pattern_output.sub(rf"\g<1>{new_output_size}", content)
+    # r = raw string, cioè le backslash \ non vengono interpretate da Python.
+    # f = f-string, puoi mettere variabili dentro {}.
+    # \1 è un altro modo per riferirsi al primo gruppo catturato.
+    content = pattern_input.sub(rf"\g<1>{input_dim}", content)
+    content = pattern_output.sub(rf"\g<1>{output_dim}", content)
 
     # salva file
-    with open(config_file_path, "w", encoding="utf-8") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
 
-def change_config_file_2(config_file_path, mean_array_filepath, variance_array_filepath):
+def change_lib_file_1(folder_path, input_dim, output_dim):
+
+    print('\n*** change_lib_file_1')
+
+    normalize_input_file_path = folder_path+'normalize_input.cc'
+    quantize_input_file_path = folder_path+'quantize_input.cc'
+    dequantize_output_file_path = folder_path+'dequantize_output.cc'
+    extract_codebook_index_fast_file_path = folder_path+'extract_codebook_index_fast.cc'
+
+    file_path_list = [normalize_input_file_path, quantize_input_file_path, dequantize_output_file_path, extract_codebook_index_fast_file_path]
+    
+    # regex per unroll
+    pattern_unroll = re.compile(r"(#pragma\s+GCC\s+unroll\s+)\d+")
+
+    for i, file_path in enumerate(file_path_list):
+
+        # leggi file
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        if i < 2:
+            variable = input_dim
+        else:
+            variable = output_dim
+
+        # sostituisci i numeri
+        content = pattern_unroll.sub(rf"\g<1>{variable}", content)
+
+        # salva file
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(content)
+
+
+def change_config_file_2(file_path, mean_array_filepath, variance_array_filepath):
 
     print('\n*** change_config_file_2')
  
-    with open(config_file_path, "r", encoding="utf-8") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     pattern_mean = re.compile(r"(const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
@@ -492,7 +526,7 @@ def change_config_file_2(config_file_path, mean_array_filepath, variance_array_f
     #    new_mean_array = [float(x) for x in row]        
     mean_array = np.load(mean_array_filepath)[0]        
     array_str = ", ".join(f"{v}f" for v in mean_array)
-    content = re.sub(pattern_mean, rf"\1\n    {array_str}\n\3", content)
+    content = re.sub(pattern_mean, rf"\g<1>\n    {array_str}\n\3", content)
 
     #with open(variance_array_filepath, newline='', encoding="utf-8") as f:
     #    reader = csv.reader(f)
@@ -500,15 +534,15 @@ def change_config_file_2(config_file_path, mean_array_filepath, variance_array_f
     #    new_variance_array = [float(x) for x in row]        
     variance_array = np.load(variance_array_filepath)[0]
     array_str = ", ".join(f"{v}f" for v in variance_array)
-    content = re.sub(pattern_variance, rf"\1\n    {array_str}\n\3", content)
+    content = re.sub(pattern_variance, rf"\g<1>\n    {array_str}\n\3", content)
 
     # salva file
-    with open(config_file_path, "w", encoding="utf-8") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
 
 
 # ----- Recupera RAM e Flash da file di log generato da PlatformIO -----
-def parse_compilation_logfile(config_file_path):
+def parse_compilation_logfile(file_path):
     """
     Estrae i byte usati per RAM e Flash da un file di log di PlatformIO.
     Se viene rilevato un overflow di RAM o Flash, assegna -1.
@@ -545,7 +579,7 @@ def parse_compilation_logfile(config_file_path):
     overflow_flash = re.compile(r"region `drom0_0_seg' overflowed by (\d+) bytes", re.IGNORECASE)
     overflow_ram   = re.compile(r"region `dram0_0_seg' overflowed by (\d+) bytes", re.IGNORECASE)
 
-    with open(config_file_path, 'r', encoding='utf-8', errors='ignore') as f:
+    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
         for line in f:
             #print("repr(line):", repr(line))
 
@@ -654,7 +688,9 @@ def save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units
 def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
                     model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
                     RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB,
-                    avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, tot_latency_us, extract_codebook_index_list,
+                    avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, 
+                    avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, 
+                    tot_latency_us, extract_codebook_index_list, extract_codebook_index_fast_list,
                     output_csv, codebook_index_filepath):
 
     print('\n*** save_results_v3')
@@ -663,7 +699,9 @@ def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units
         'active_cell', 'input_dim', 'num_layers', 'hidden_units_list', 'output_dim',
         'model_h_size_int8_kb', 'model_file_size_int8_kb', 'model_file_size_int8_mb',
         'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 
-        'avg_normalize_input_us', 'avg_quantize_input_us', 'avg_interpreter_invoke_us', 'avg_dequantize_output_us', 'tot_latency_us', 'extract_codebook_index_list[0:5]'
+        'avg_normalize_input_us', 'avg_quantize_input_us', 'avg_interpreter_invoke_us', 'avg_dequantize_output_us', 
+        'avg_extract_codebook_index_us', 'avg_extract_codebook_index_fast_us',
+        'tot_latency_us', 'extract_codebook_index_list[0:5]', 'extract_codebook_index_fast_list[0:5]'
     ]
     
     write_header = not os.path.exists(output_csv)
@@ -674,28 +712,32 @@ def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units
             writer.writeheader()
 
         row = {
-            'active_cell': active_cell,
-            'input_dim': input_dim,
-            'num_layers': num_layers,
+            'active_cell':       active_cell,
+            'input_dim':         input_dim,
+            'num_layers':        num_layers,
             'hidden_units_list': hidden_units_list,
-            'output_dim': output_dim,
-            'model_h_size_int8_kb': model_h_size_int8_kb,
+            'output_dim':        output_dim,
+            'model_h_size_int8_kb':    model_h_size_int8_kb,
             'model_file_size_int8_kb': model_file_size_int8_kb,
             'model_file_size_int8_mb': model_file_size_int8_mb,
-            'RAM_KB': RAM_KB, 
-            'Flash_MB': Flash_MB, 
+            'RAM_KB':       RAM_KB, 
+            'Flash_MB':     Flash_MB, 
             'CLK_FREQ_MHZ': CLK_FREQ_MHZ, 
-            'RAM_HW_KB': RAM_HW_KB, 
-            'Flash_HW_MB': Flash_HW_MB,
-            'avg_normalize_input_us': avg_normalize_input_us,
-            'avg_quantize_input_us': avg_quantize_input_us,
-            'avg_interpreter_invoke_us': avg_interpreter_invoke_us,
-            'avg_dequantize_output_us': avg_dequantize_output_us,
-            'tot_latency_us': tot_latency_us,
-            'extract_codebook_index_list[0:5]': extract_codebook_index_list[0:5]
+            'RAM_HW_KB':    RAM_HW_KB, 
+            'Flash_HW_MB':  Flash_HW_MB,
+            'avg_normalize_input_us':             round(avg_normalize_input_us,             3),
+            'avg_quantize_input_us':              round(avg_quantize_input_us,              3),
+            'avg_interpreter_invoke_us':          round(avg_interpreter_invoke_us,          3),
+            'avg_dequantize_output_us':           round(avg_dequantize_output_us,           3),
+            'avg_extract_codebook_index_us':      round(avg_extract_codebook_index_us,      3),
+            'avg_extract_codebook_index_fast_us': round(avg_extract_codebook_index_fast_us, 3),
+            'tot_latency_us':                     round(tot_latency_us,                     3),
+            'extract_codebook_index_list[0:5]':      extract_codebook_index_list[0:5],
+            'extract_codebook_index_fast_list[0:5]': extract_codebook_index_fast_list[0:5]
         }
 
         writer.writerow(row)
+        print(json.dumps(row, indent=4))
 
     with open(codebook_index_filepath, 'w') as f:
         # trasforma ogni elemento in una stringa
@@ -703,7 +745,7 @@ def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units
             f.write(str(codebook) + "\n")
 
 # ----- Run di una singola configurazione -----
-def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath):
+def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath):
     #print('\n*** run_experiment')
 
     # Crea modello
@@ -712,24 +754,20 @@ def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_
     #model.summary()
 
     # Crea o recupera nome del modello tflite
-    #end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite = get_model_path_tflite(saved_models_tflite, dummy='')
-    end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite, codebook_index_filepath = get_model_path_tflite(mcu_profiling_folder, dummy='dummy_')
+    end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite, codebook_index_filepath = get_model_path_tflite(mcu_profiling_folder, dummy)
 
     # Converti modello keras in tflite int8
-    #convert_to_tflite_int8(model, x_sample, model_path_tflite)
+    convert_to_tflite_int8(model, x_sample, model_path_tflite)
 
     model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb = get_model_info_precise(model, model_path_tflite, save_dir=mcu_lib_model_folder)
-    #save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
-    #                model_size_int8_kb, model_size_int8_mb, model_file_size_int8_mb, ram_total_kb, macs, 
-    #                output_csv)
     
-    # Attivare al bisogno, solo nel caso dummy=''
-    # Esporta dati di test di ingresso e uscita
-    #export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, size='small')
-    #export_test_data(size='full')
+    if dummy == '':
+        # Esporta dati di test di ingresso e uscita
+        export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, mean_array_filepath, variance_array_filepath, size='small')
+        #export_test_data(size='full')
     
     # Esporta il modello in formato header file per TFLM
-    #model_name = export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder, simple=True)
+    export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder, simple=True)
     
     change_config_file_2(mcu_include_config, mean_array_filepath, variance_array_filepath)
 
@@ -749,7 +787,14 @@ def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_
         with open(compilation_logfile, "w", encoding="utf-8") as logfile:
             process = subprocess.Popen(
                 #["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder],
-                ["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder, "--target", "upload"],
+                #["pio", "run", "--environment", mcu_type+'', "--project-dir", mcu_folder, "--target", "upload"],
+                #["pio", "run", "--environment", mcu_type+'-o0', "--project-dir", mcu_folder, "--target", "upload"],
+                #["pio", "run", "--environment", mcu_type+'-o3', "--project-dir", mcu_folder, "--target", "upload"],
+                #["pio", "run", "--environment", mcu_type+'-o3-unrollallauto', "--project-dir", mcu_folder, "--target", "upload"],
+                #["pio", "run", "--environment", mcu_type+'-o3-unrollallforced', "--project-dir", mcu_folder, "--target", "upload"],
+                #["pio", "run", "--environment", mcu_type+'-o3-unrollallforced-selected', "--project-dir", mcu_folder, "--target", "upload"],
+                #["pio", "run", "--environment", mcu_type+'-o3-unroll-selected', "--project-dir", mcu_folder, "--target", "upload"],
+                ["pio", "run", "--environment", mcu_type+'-o3-unroll-norm', "--project-dir", mcu_folder, "--target", "upload"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True
@@ -767,25 +812,29 @@ def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_
 
     if Error == 0:
         # Lancia serial feeded and logger per calcolare la latenza
-        # TODO:
-        #avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, extract_codebook_index_list, tot_latency_us, codebook_index = ....
-        avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, tot_latency_us, extract_codebook_index_list = serial_feeder_and_logger.main()
+        avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, \
+        avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, \
+        tot_latency_us, extract_codebook_index_list, extract_codebook_index_fast_list  = serial_feeder_and_logger.main()
     else:
         avg_normalize_input_us = 0
         avg_quantize_input_us = 0
         avg_interpreter_invoke_us = 0
         avg_dequantize_output_us = 0
+        avg_extract_codebook_index_us = 0
+        avg_extract_codebook_index_fast_us = 0
         tot_latency_us = 0
         extract_codebook_index_list = [0, 0, 0, 0, 0]
-
-    print(RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, 
-        avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, tot_latency_us, extract_codebook_index_list[0:5])
+        extract_codebook_index_fast_list = [0, 0, 0, 0, 0]
+        
+    #print(RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB,avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, tot_latency_us, extract_codebook_index_list[0:5], extract_codebook_index_fast_list[0:5])
 
     # Appendi risultati nel file output_csv
     save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
                     model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
                     RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, 
-                    avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, tot_latency_us, extract_codebook_index_list,
+                    avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, 
+                    avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, 
+                    tot_latency_us, extract_codebook_index_list, extract_codebook_index_fast_list,
                     output_csv, codebook_index_filepath)
 
 # %%
@@ -793,10 +842,11 @@ def run_experiment(active_cell, input_dim, output_dim, num_layers, hidden_units_
 # --- ESEMPIO USO --- #
 if __name__ == "__main__":
 
-    debug = 1 # 0 = loop; 1 = modello di Taha
-    debug2 = 1
+    debug = 0 # 0 = loop; 1 = modello di Taha
+    debug2 = 0
+    dummy = 'dummy_'
 
-    subcarriers = 64 # costante
+    subcarriers = 64 # costante?
 
     # DEFINISCI TU LO SPAZIO DI RICERCA QUI:
     # Teniamo inalterati:
@@ -808,8 +858,12 @@ if __name__ == "__main__":
         active_cells = [1,2,4,8,12,16]
         output_dims = [1024, 512, 256, 128, 64]     # Numero di neuroni di uscita
         num_layers_list = [0,1,2,3]       # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
-
-        dummy = ''
+    elif debug == 1:
+        #input_dims = [1, 1024]            # Numero di feature in ingresso
+        # 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
+        active_cells = [1,2,4,8]
+        output_dims = [256]     # Numero di neuroni di uscita
+        num_layers_list = [0,1,2,3]       # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
     else:    
         # modello di Taha
         #input_dims = [1024]
@@ -820,13 +874,11 @@ if __name__ == "__main__":
         output_dims = [64]
         num_layers_list = [0]
 
-        dummy = 'dummy_'
-
-        
     mcu_type = 'esp32-s2-saola-tflm'
     mcu_folder = pio_projects_folder + mcu_type
     mcu_include_config = os.path.join(mcu_folder, 'include/config.h') 
-    mcu_lib_model_folder = os.path.join(mcu_folder, 'lib/model') 
+    mcu_lib_libluca_folder = os.path.join(mcu_folder, 'lib/lib-luca/') 
+    mcu_lib_model_folder = os.path.join(mcu_folder, 'lib/model/') 
     output_csv = mcu_profiling_folder + 'profiling_grid_results.csv'
 
     if not os.path.exists(mcu_folder):  # Controlla se la cartella esiste
@@ -848,41 +900,41 @@ if __name__ == "__main__":
         
         input_dim = active_cell * subcarriers * 2 #    8 celle attive x 64 subcarriers x 2 (real/img) = 1024
 
-        if debug == 1:
-            # Sample fake data for quantization
-            x_sample = np.random.rand(10, input_dim).astype(np.float32)
-            # Sample mean and variance for normalization
-            mean_array = np.random.rand(1, input_dim).astype(np.float32)
-            variance_array = np.random.rand(1, input_dim).astype(np.float32)
+        mean_array_filepath = mcu_profiling_folder_scaler + dummy + 'mean' + end_folder_Training_Size_dd + '.npy'            
+        variance_array_filepath = mcu_profiling_folder_scaler + dummy + 'variance' + end_folder_Training_Size_dd + '.npy'
 
-            data_csv = mcu_profiling_folder_test_data + dummy + 'data.npy'
-            #with open(data_csv, 'w') as f:
-            #    for sample in x_sample:
-            #        f.write(" ".join(map(str, sample)) + "\n")
-            np.save(data_csv, x_sample)
+        # Sample fake data for quantization
+        x_sample = np.random.rand(10, input_dim).astype(np.float32)
+        # Sample mean and variance for normalization
+        mean_array = np.random.rand(1, input_dim).astype(np.float32)
+        variance_array = np.random.rand(1, input_dim).astype(np.float32)
 
-            mean_array_filepath = mcu_profiling_folder_scaler + dummy + 'mean' + end_folder_Training_Size_dd + '.npy'
-            #with open(mean_array_filepath, 'w') as f:
-            #    for sample in mean_array:
-            #        f.write(", ".join(map(str, sample)) + "\n")
-            np.save(mean_array_filepath, mean_array)
-                    
-            variance_array_filepath = mcu_profiling_folder_scaler + dummy + 'variance' + end_folder_Training_Size_dd + '.npy'
-            #with open(variance_array_filepath, 'w') as f:
-            #    for sample in variance_array:
-            #        f.write(", ".join(map(str, sample)) + "\n")
-            np.save(variance_array_filepath, variance_array)
-            
-            print(f"\n--> Dati creati: {data_csv}")
+        data_csv = mcu_profiling_folder_test_data + dummy + 'data.npy'
+        #with open(data_csv, 'w') as f:
+        #    for sample in x_sample:
+        #        f.write(" ".join(map(str, sample)) + "\n")
+        np.save(data_csv, x_sample)
+
+        #with open(mean_array_filepath, 'w') as f:
+        #    for sample in mean_array:
+        #        f.write(", ".join(map(str, sample)) + "\n")
+        np.save(mean_array_filepath, mean_array)
+                
+        #with open(variance_array_filepath, 'w') as f:
+        #    for sample in variance_array:
+        #        f.write(", ".join(map(str, sample)) + "\n")
+        np.save(variance_array_filepath, variance_array)    
+        
+        print(f"\n--> Dati creati: {data_csv}")
 
         for output_dim in output_dims:
 
             change_config_file_1(mcu_include_config, input_dim, output_dim)
+            change_lib_file_1(mcu_lib_libluca_folder, input_dim, output_dim)
             
             for num_layers in num_layers_list:
                 
                 hidden_units_list = [input_dim, 4*input_dim, 4*input_dim]     # Numero di neuroni per layer
             
                 print(f"\n--> Profiling: act_cell={active_cell}, in={input_dim}, out={output_dim}, layers={num_layers}, hidden_units={hidden_units_list}")
-                run_experiment(active_cell,input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath)
-    
+                run_experiment(dummy, active_cell,input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath)

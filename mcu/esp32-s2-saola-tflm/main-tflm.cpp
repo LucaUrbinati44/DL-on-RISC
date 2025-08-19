@@ -152,12 +152,6 @@ void setup()
 
 void loop()
 {
-
-  // if (sample_index == NUM_SAMPLES + 1)
-  // {
-  //   Serial.println("done (no more data to run)\n");
-  //   return;
-  // }
   bool got_data;
 
   while (1)
@@ -183,11 +177,17 @@ void loop()
   // Parsing dei valori
   int index = 0;
   char *token = strtok((char *)line.c_str(), " ");
+  float float_token;
+  Serial.print("Ricevuto: ");
   while (token != nullptr && index < INPUT_FEATURE_SIZE)
   {
-    float_input[index++] = atof(token);
+    float_token = atof(token);
+    float_input[index++] = float_token;
     token = strtok(nullptr, " ");
+    Serial.print(float_token, 8);
+    Serial.print(" ");
   }
+  Serial.println("");
 
   int64_t ta = esp_timer_get_time();
   for (int i = 0; i < INPUT_FEATURE_SIZE; i++)
@@ -204,15 +204,13 @@ void loop()
   Serial.print("quantize_input [us]: ");
   Serial.println(tb - ta - overhead_esp);
 
-  // Serial.println("Invoke for sample %d...\n", sample_index);
   ta = esp_timer_get_time();
   TfLiteStatus invoke_status = interpreter->Invoke();
   tb = esp_timer_get_time();
-  Serial.print("interpreter->Invoke [us]: ");
+  Serial.print("interpreter_invoke [us]: ");
   Serial.println(tb - ta - overhead_esp);
 
-  // The possible values of TfLiteStatus, defined in common.h, are kTfLiteOk and kTfLiteError
-  if (invoke_status != kTfLiteOk)
+  if (invoke_status != kTfLiteOk) // The possible values of TfLiteStatus, defined in common.h, are kTfLiteOk and kTfLiteError
   {
     TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on index: %d\n", sample_index++);
     return;
@@ -227,11 +225,10 @@ void loop()
   ta = esp_timer_get_time();
   int codebook_index = extract_codebook_index(dequantized_output);
   tb = esp_timer_get_time();
-  Serial.print("extract_codebook_index [us]: ");
+  Serial.print("extract_codebook_index [#] [us]: ");
+  Serial.print(codebook_index);
+  Serial.print(" ");
   Serial.println(tb - ta - overhead_esp);
 
-  // Serial.println("codebook_index %d: %d\n\n", sample_index, codebook_index);
   Serial.println(codebook_index); // Scrive output sulla seriale
-
-  // sample_index++;
 }

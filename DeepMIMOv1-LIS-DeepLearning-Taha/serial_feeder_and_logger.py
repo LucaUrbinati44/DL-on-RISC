@@ -33,6 +33,9 @@ def main():
     interpreter_invoke_list = []
     dequantize_output_list = []
     extract_codebook_index_list = []
+    extract_codebook_index_time_list = []
+    extract_codebook_index_fast_list = []
+    extract_codebook_index_fast_time_list = []
 
     #with open(data_csv, newline='') as f, \
     x_sample = np.load(data_csv)
@@ -73,9 +76,15 @@ def main():
                 if match:
                     dequantize_output_list.append(int(match.group(1)))
 
-                match = re.match(r"extract_codebook_index \[us\]: (\d+)", line)
+                match = re.match(r"extract_codebook_index \[\#\] \[us\]: (\d+) (\d+)", line)
                 if match:
                     extract_codebook_index_list.append(int(match.group(1)))
+                    extract_codebook_index_time_list.append(int(match.group(2)))
+                
+                match = re.match(r"extract_codebook_index_fast \[\#\] \[us\]: (\d+) (\d+)", line)
+                if match:
+                    extract_codebook_index_fast_list.append(int(match.group(1)))
+                    extract_codebook_index_fast_time_list.append(int(match.group(2)))
 
                 # Attendere (while) segnale di NEXT dall'MCU (cioè quando richiede i dati)
                 if line == next_command:
@@ -88,11 +97,13 @@ def main():
                     break
 
     # Calcolo medie
-    avg_normalize_input = sum(normalize_input_list) / len(normalize_input_list) if normalize_input_list else 0
-    avg_quantize_input = sum(quantize_input_list) / len(quantize_input_list) if quantize_input_list else 0
-    avg_interpreter_invoke = sum(interpreter_invoke_list) / len(interpreter_invoke_list) if interpreter_invoke_list else 0
-    avg_dequantize_output = sum(dequantize_output_list) / len(dequantize_output_list) if dequantize_output_list else 0
-    tot_latency = avg_quantize_input + avg_interpreter_invoke + avg_dequantize_output
+    avg_normalize_input_us = sum(normalize_input_list) / len(normalize_input_list) if normalize_input_list else 0
+    avg_quantize_input_us = sum(quantize_input_list) / len(quantize_input_list) if quantize_input_list else 0
+    avg_interpreter_invoke_us = sum(interpreter_invoke_list) / len(interpreter_invoke_list) if interpreter_invoke_list else 0
+    avg_dequantize_output_us = sum(dequantize_output_list) / len(dequantize_output_list) if dequantize_output_list else 0
+    avg_extract_codebook_index_us = sum(extract_codebook_index_time_list) / len(extract_codebook_index_time_list) if extract_codebook_index_time_list else 0
+    avg_extract_codebook_index_fast_us = sum(extract_codebook_index_fast_time_list) / len(extract_codebook_index_fast_time_list) if extract_codebook_index_fast_time_list else 0
+    tot_latency_us = avg_normalize_input_us +  avg_quantize_input_us +  avg_interpreter_invoke_us +  avg_dequantize_output_us +  avg_extract_codebook_index_us
 
     # Ritorno delle medie e lista extract_codebook_index
-    return avg_normalize_input, avg_quantize_input, avg_interpreter_invoke, avg_dequantize_output, tot_latency, extract_codebook_index_list
+    return avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, tot_latency_us, extract_codebook_index_list, extract_codebook_index_fast_list

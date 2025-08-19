@@ -4,7 +4,9 @@
 void quantize_input(float *buffer_in, float scale, int zero_point, int8_t *buffer_out)
 {
 
-  // DPRINTF("quantized_input: ");
+#ifdef ENABLE_UNROLL_QUANTIZE
+#pragma GCC unroll 128
+#endif
   for (int i = 0; i < INPUT_FEATURE_SIZE; ++i)
   {
 
@@ -15,7 +17,5 @@ void quantize_input(float *buffer_in, float scale, int zero_point, int8_t *buffe
       q = -128;
 
     buffer_out[i] = static_cast<int8_t>(q);
-    // DPRINTF("%d ", (int)buffer_out[i]);
   }
-  // DPRINTF("\n\n");
 }

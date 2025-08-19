@@ -64,3 +64,5 @@ mcu/rp2040_windows/.pio
 mcu/rp2040_windows/.vscode
 mcu/rp2040_windows/lib/model
 mcu/rp2040_windows/no
+
+logs
