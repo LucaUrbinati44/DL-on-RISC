@@ -22,21 +22,16 @@
 namespace
 {
   tflite::ErrorReporter *error_reporter = nullptr;
-
-  uint8_t *model_ram = nullptr;
   const tflite::Model *model = nullptr;
-
-  // #ifdef NORMALIZE_FROM_RAM
-  //   float *variance_ram = nullptr;
-  //   float *mean_ram = nullptr;
-  // #endif
-
   tflite::MicroInterpreter *interpreter = nullptr;
   TfLiteTensor *model_input = nullptr;
   TfLiteTensor *model_output = nullptr;
+  int sample_index = 1;
+  // int test_set_length = 1; // TODO
 
-  // unsigned long overhead; // TODO: da togliere
+  unsigned long overhead; // TODO: da togliere
   unsigned long overhead_esp;
+  int counter = 0; // TODO: da togliere
 
   float input_scale;
   int input_zero_point;
@@ -50,7 +45,7 @@ namespace
   // Create an area of memory to use for input, output, and intermediate arrays.
   // The size of this will depend on the model you're using, and may need to be
   // determined by experimentation.
-  constexpr int kTensorArenaSize = 114 * 1024; // con valori superiori a 114KB non va su ESP32
+  constexpr int kTensorArenaSize = 32 * 1024; // con valori superiori a 114KB non va su ESP32
   uint8_t tensor_arena[kTensorArenaSize];
 } // namespace
 
@@ -110,16 +105,10 @@ static const char *region_of(const void *p)
 
 void printModelAndActivationsPlacement()
 {
-  // Indirizzo del modello (pesi) in Flash
+  // Indirizzo del modello (pesi)
   Serial.printf("Model addr: 0x%08" PRIxPTR "  region=%s  size=%d\n",
                 (uintptr_t)g_mlp_model_data,
                 region_of((const void *)g_mlp_model_data),
-                g_mlp_model_data_len);
-
-  // Indirizzo del modello (pesi) in RAM
-  Serial.printf("Model addr: 0x%08" PRIxPTR "  region=%s  size=%d\n",
-                (uintptr_t)model_ram,
-                region_of((const void *)model_ram),
                 g_mlp_model_data_len);
 
   // Indirizzo della tensor arena (attivazioni/buffer)
@@ -128,19 +117,6 @@ void printModelAndActivationsPlacement()
                 region_of((const void *)tensor_arena),
                 kTensorArenaSize);
 }
-
-// #ifdef NORMALIZE_FROM_RAM
-// void init_norm_arrays_to_ram()
-//{
-//   mean_ram = (float *)malloc(sizeof(float) * INPUT_FEATURE_SIZE);
-//   variance_ram = (float *)malloc(sizeof(float) * INPUT_FEATURE_SIZE);
-//   for (int i = 0; i < INPUT_FEATURE_SIZE; ++i)
-//   {
-//     mean_ram[i] = mean_array[i];
-//     variance_ram[i] = variance_array[i];
-//   }
-// }
-// #endif
 
 // The name of this function is important for Arduino compatibility.
 void setup()
@@ -152,7 +128,7 @@ void setup()
 
   delay(10000);
 
-  // printModelAndActivationsPlacement();
+  printModelAndActivationsPlacement();
 
   // unsigned long t0 = micros();
   // unsigned long t1 = micros();
@@ -174,14 +150,7 @@ void setup()
   // Load a model
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
-  // model = tflite::GetModel(g_mlp_model_data);
-
-  // Copy move from Flash to RAM
-  // uint8_t *model_ram = (uint8_t *)heap_caps_malloc(g_mlp_model_data_len, MALLOC_CAP_8BIT);
-  model_ram = (uint8_t *)malloc(g_mlp_model_data_len);
-  memcpy(model_ram, g_mlp_model_data, g_mlp_model_data_len);
-  model = tflite::GetModel(model_ram);
-
+  model = tflite::GetModel(g_mlp_model_data);
   if (model->version() != TFLITE_SCHEMA_VERSION)
   {
     TF_LITE_REPORT_ERROR(error_reporter,
@@ -258,14 +227,6 @@ void setup()
   Serial.printf("output_zero_point: %d\n\n", output_zero_point);
 
   printModelAndActivationsPlacement();
-
-  // #ifdef NORMALIZE_FROM_RAM
-  //   init_norm_arrays_to_ram();
-  // #endif
-
-  Serial.print("CPU Frequency: ");
-  Serial.print(getCpuFrequencyMhz());
-  Serial.println(" MHz");
 }
 
 void loop()
@@ -327,7 +288,7 @@ void loop()
 
   if (invoke_status != kTfLiteOk) // The possible values of TfLiteStatus, defined in common.h, are kTfLiteOk and kTfLiteError
   {
-    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed\n");
+    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on index: %d\n", sample_index++);
     return;
   }
 

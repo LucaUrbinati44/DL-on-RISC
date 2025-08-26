@@ -22,21 +22,17 @@
 namespace
 {
   tflite::ErrorReporter *error_reporter = nullptr;
-
   uint8_t *model_ram = nullptr;
   const tflite::Model *model = nullptr;
-
-  // #ifdef NORMALIZE_FROM_RAM
-  //   float *variance_ram = nullptr;
-  //   float *mean_ram = nullptr;
-  // #endif
-
   tflite::MicroInterpreter *interpreter = nullptr;
   TfLiteTensor *model_input = nullptr;
   TfLiteTensor *model_output = nullptr;
+  int sample_index = 1;
+  // int test_set_length = 1; // TODO
 
-  // unsigned long overhead; // TODO: da togliere
+  unsigned long overhead; // TODO: da togliere
   unsigned long overhead_esp;
+  int counter = 0; // TODO: da togliere
 
   float input_scale;
   int input_zero_point;
@@ -128,19 +124,6 @@ void printModelAndActivationsPlacement()
                 region_of((const void *)tensor_arena),
                 kTensorArenaSize);
 }
-
-// #ifdef NORMALIZE_FROM_RAM
-// void init_norm_arrays_to_ram()
-//{
-//   mean_ram = (float *)malloc(sizeof(float) * INPUT_FEATURE_SIZE);
-//   variance_ram = (float *)malloc(sizeof(float) * INPUT_FEATURE_SIZE);
-//   for (int i = 0; i < INPUT_FEATURE_SIZE; ++i)
-//   {
-//     mean_ram[i] = mean_array[i];
-//     variance_ram[i] = variance_array[i];
-//   }
-// }
-// #endif
 
 // The name of this function is important for Arduino compatibility.
 void setup()
@@ -259,10 +242,6 @@ void setup()
 
   printModelAndActivationsPlacement();
 
-  // #ifdef NORMALIZE_FROM_RAM
-  //   init_norm_arrays_to_ram();
-  // #endif
-
   Serial.print("CPU Frequency: ");
   Serial.print(getCpuFrequencyMhz());
   Serial.println(" MHz");
@@ -327,7 +306,7 @@ void loop()
 
   if (invoke_status != kTfLiteOk) // The possible values of TfLiteStatus, defined in common.h, are kTfLiteOk and kTfLiteError
   {
-    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed\n");
+    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on index: %d\n", sample_index++);
     return;
   }
 

@@ -329,8 +329,8 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./", simple=True):
     with open(header_path, "w") as f:
         f.write(f"#ifndef {guard}\n")
         f.write(f"#define {guard}\n\n")
-        f.write(f"extern const unsigned char g_{model_name}_model_data[] PROGMEM;\n")
-        f.write(f"extern const int g_{model_name}_model_data_len;\n\n")
+        f.write(f"extern const uint8_t g_{model_name}_model_data[] PROGMEM;\n")
+        f.write(f"extern const unsigned int g_{model_name}_model_data_len;\n\n")
         f.write(f"#endif  // {guard}\n")
 
     #generate_source(source_path, model_path_tflite, model_name)
@@ -367,10 +367,9 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./", simple=True):
     first_line_old = f"unsigned char {model_path_tflite_lowercase}[] = {{"
     # Aggiungi include dell'header
     # PROGMEM serve per salvare il modello in Flash invece che in RAM
-    first_line_new = f"#include <config.h>\n#include \"{mcu_lib_model_folder}{model_name}_model_data.h\"\nalignas(8) const unsigned char g_{var_name}_model_data[] PROGMEM = {{"
-    var_name = 'model_tflite' # default
+    first_line_new = f"#include <config.h>\n#include \"{mcu_lib_model_folder}{model_name}_model_data.h\"\nalignas(8) const uint8_t g_{var_name}_model_data[] PROGMEM = {{"
     last_line_old = f"unsigned int {model_path_tflite_lowercase}_len"
-    last_line_new = f"unsigned int {var_name}_len"
+    last_line_new = f"const unsigned int g_{model_name}_model_data_len"
     content = content.replace(first_line_old, first_line_new)
     content = content.replace(last_line_old, last_line_new)
     print(content[0:300])
@@ -440,7 +439,7 @@ def get_model_info_precise(model, model_path_tflite, save_dir='./'):
     model_file_size_int8_mb = model_file_size_int8_kb /1024
 
     # Sanity check che dà lo stesso risultato di os.path.getsize
-    len_pattern = re.compile(r"unsigned\s+int\s+model_tflite_len\s*=\s*(\d+);", re.IGNORECASE)
+    len_pattern = re.compile(r"const\s+unsigned\s+int\s+g_mlp_model_data_len\s*=\s*(\d+);", re.IGNORECASE)
     model_name = 'mlp'
     source_path = os.path.join(save_dir, f"{model_name}_model_data.cc")
     with open(source_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -510,15 +509,17 @@ def change_lib_file_1(folder_path, input_dim, output_dim):
             f.write(content)
 
 
-def change_config_file_2(file_path, mean_array_filepath, variance_array_filepath):
+def change_config_file_2(mcu_include_config, mean_array_filepath, variance_array_filepath):
 
     print('\n*** change_config_file_2')
  
-    with open(file_path, "r", encoding="utf-8") as f:
+    with open(mcu_include_config, "r", encoding="utf-8") as f:
         content = f.read()
 
-    pattern_mean = re.compile(r"(const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
-    pattern_variance = re.compile(r"(const float variance_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    pattern_mean = re.compile(r"(extern const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    pattern_variance = re.compile(r"(extern const float variance_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    #pattern_mean = re.compile(r"(const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    #pattern_variance = re.compile(r"(const float variance_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
 
     #with open(mean_array_filepath, newline='', encoding="utf-8") as f:
     #    reader = csv.reader(f)
@@ -534,10 +535,11 @@ def change_config_file_2(file_path, mean_array_filepath, variance_array_filepath
     #    new_variance_array = [float(x) for x in row]        
     variance_array = np.load(variance_array_filepath)[0]
     array_str = ", ".join(f"{v}f" for v in variance_array)
+    #array_str = ", ".join(f"{1/np.sqrt(v)}f" for v in variance_array)
     content = re.sub(pattern_variance, rf"\g<1>\n    {array_str}\n\3", content)
 
     # salva file
-    with open(file_path, "w", encoding="utf-8") as f:
+    with open(mcu_include_config, "w", encoding="utf-8") as f:
         f.write(content)
 
 
@@ -759,15 +761,15 @@ def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden
     # Converti modello keras in tflite int8
     convert_to_tflite_int8(model, x_sample, model_path_tflite)
 
-    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb = get_model_info_precise(model, model_path_tflite, save_dir=mcu_lib_model_folder)
+    # Esporta il modello in formato header file per TFLM
+    export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder, simple=True)
     
+    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb = get_model_info_precise(model, model_path_tflite, save_dir=mcu_lib_model_folder)
+
     if dummy == '':
         # Esporta dati di test di ingresso e uscita
         export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, mean_array_filepath, variance_array_filepath, size='small')
         #export_test_data(size='full')
-    
-    # Esporta il modello in formato header file per TFLM
-    export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder, simple=True)
     
     change_config_file_2(mcu_include_config, mean_array_filepath, variance_array_filepath)
 
@@ -842,7 +844,7 @@ def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden
 # --- ESEMPIO USO --- #
 if __name__ == "__main__":
 
-    debug = 0 # 0 = loop; 1 = modello di Taha
+    debug = 3 # 0 = loop; 1 = modello di Taha
     debug2 = 0
     dummy = 'dummy_'
 
@@ -859,11 +861,13 @@ if __name__ == "__main__":
         output_dims = [1024, 512, 256, 128, 64]     # Numero di neuroni di uscita
         num_layers_list = [0,1,2,3]       # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
     elif debug == 1:
-        #input_dims = [1, 1024]            # Numero di feature in ingresso
-        # 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
-        active_cells = [1,2,4,8]
-        output_dims = [256]     # Numero di neuroni di uscita
-        num_layers_list = [0,1,2,3]       # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
+        active_cells = [8]
+        output_dims = [512]
+        num_layers_list = [0,1]
+    elif debug == 2:
+        active_cells = [12,16]
+        output_dims = [1024, 512, 256, 128, 64]
+        num_layers_list = [0,1,2,3]
     else:    
         # modello di Taha
         #input_dims = [1024]
@@ -877,6 +881,7 @@ if __name__ == "__main__":
     mcu_type = 'esp32-s2-saola-tflm'
     mcu_folder = pio_projects_folder + mcu_type
     mcu_include_config = os.path.join(mcu_folder, 'include/config.h') 
+    #mcu_include_config = os.path.join(mcu_folder, 'lib/lib-luca/config.cc') 
     mcu_lib_libluca_folder = os.path.join(mcu_folder, 'lib/lib-luca/') 
     mcu_lib_model_folder = os.path.join(mcu_folder, 'lib/model/') 
     output_csv = mcu_profiling_folder + 'profiling_grid_results.csv'
