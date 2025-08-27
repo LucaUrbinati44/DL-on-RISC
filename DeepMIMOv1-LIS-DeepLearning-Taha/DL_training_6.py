@@ -516,10 +516,10 @@ def change_config_file_2(mcu_include_config, mean_array_filepath, variance_array
     with open(mcu_include_config, "r", encoding="utf-8") as f:
         content = f.read()
 
-    pattern_mean = re.compile(r"(extern const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
-    pattern_variance = re.compile(r"(extern const float variance_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
-    #pattern_mean = re.compile(r"(const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
-    #pattern_variance = re.compile(r"(const float variance_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    #pattern_mean = re.compile(r"(extern const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    #pattern_variance = re.compile(r"(extern const float variance_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    pattern_mean = re.compile(r"(const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    pattern_variance = re.compile(r"(const float variance_array_sqrt_inv\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
 
     #with open(mean_array_filepath, newline='', encoding="utf-8") as f:
     #    reader = csv.reader(f)
@@ -534,8 +534,8 @@ def change_config_file_2(mcu_include_config, mean_array_filepath, variance_array
     #    row = next(reader)  # leggi unica riga
     #    new_variance_array = [float(x) for x in row]        
     variance_array = np.load(variance_array_filepath)[0]
-    array_str = ", ".join(f"{v}f" for v in variance_array)
-    #array_str = ", ".join(f"{1/np.sqrt(v)}f" for v in variance_array)
+    #array_str = ", ".join(f"{v}f" for v in variance_array)
+    array_str = ", ".join(f"{1/np.sqrt(v)}f" for v in variance_array)
     content = re.sub(pattern_variance, rf"\g<1>\n    {array_str}\n\3", content)
 
     # salva file
@@ -796,6 +796,7 @@ def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden
                 #["pio", "run", "--environment", mcu_type+'-o3-unrollallforced', "--project-dir", mcu_folder, "--target", "upload"],
                 #["pio", "run", "--environment", mcu_type+'-o3-unrollallforced-selected', "--project-dir", mcu_folder, "--target", "upload"],
                 #["pio", "run", "--environment", mcu_type+'-o3-unroll-selected', "--project-dir", mcu_folder, "--target", "upload"],
+                #["pio", "run", "--environment", mcu_type+'-o3-unroll-norm-espnn', "--project-dir", mcu_folder, "--target", "upload"],
                 ["pio", "run", "--environment", mcu_type+'-o3-unroll-norm', "--project-dir", mcu_folder, "--target", "upload"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,

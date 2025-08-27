@@ -18,6 +18,90 @@
 #include <tensorflow/lite/schema/schema_generated.h>         // contains the schema for the LiteRT FlatBuffer model file format
 // #include "../lib/tflite-micro/tensorflow/lite/version.h"           // provides versioning information for the LiteRT schema
 
+#ifdef CONFIG_NN_OPTIMIZED
+#include <esp_nn.h>
+#include <fully_connected/esp_nn_fully_connected_ansi.c>
+#endif
+
+namespace tflite
+{
+  namespace ops
+  {
+    namespace micro
+    {
+      namespace fully_connected_espnn
+      {
+
+        struct OpDataFullyConnected
+        {
+          int32_t input_offset;
+          int32_t filter_offset;
+          int32_t output_offset;
+          int32_t output_multiplier;
+          int output_shift;
+          int32_t activation_min;
+          int32_t activation_max;
+        };
+
+        void *Init(TfLiteContext *context, const char *buffer, size_t length)
+        {
+          return nullptr;
+        }
+
+        TfLiteStatus Eval(TfLiteContext *context, TfLiteNode *node)
+        {
+          const TfLiteEvalTensor *input = tflite::micro::GetEvalInput(context, node, 0);
+          const TfLiteEvalTensor *filter = tflite::micro::GetEvalInput(context, node, 1);
+          const TfLiteEvalTensor *bias = tflite::micro::GetEvalInput(context, node, 2);
+          TfLiteEvalTensor *output = tflite::micro::GetEvalOutput(context, node, 0);
+
+          auto *params = reinterpret_cast<OpDataFullyConnected *>(node->user_data);
+
+          const int8_t *input_data = tflite::micro::GetTensorData<int8_t>(input);
+          const int8_t *filter_data = tflite::micro::GetTensorData<int8_t>(filter);
+          const int32_t *bias_data = tflite::micro::GetTensorData<int32_t>(bias);
+          int8_t *output_data = tflite::micro::GetTensorData<int8_t>(output);
+
+          const int row_len = input->dims->data[1];
+          const int out_channels = output->dims->data[1];
+
+          esp_nn_fully_connected_s8_ansi(
+              input_data,
+              params->input_offset,
+              row_len,
+              filter_data,
+              params->filter_offset,
+              bias_data,
+              output_data,
+              out_channels,
+              params->output_offset,
+              params->output_shift,
+              params->output_multiplier,
+              params->activation_min,
+              params->activation_max);
+
+          return kTfLiteOk;
+        }
+
+        // Funzione di registrazione
+        const TFLMRegistration &Register_ESP_NN_FullyConnected()
+        {
+          // Usa RegisterOp con le firme corrette:
+          // RegisterOp(init, prepare, eval, free, profile)
+          static TFLMRegistration r = tflite::micro::RegisterOp(
+              /*init=*/nullptr,
+              /*prepare=*/nullptr,
+              /*invoke=*/Eval,
+              /*free=*/nullptr,
+              /*profiling_string=*/nullptr);
+          return r;
+        }
+
+      } // namespace fully_connected_espnn
+    } // namespace micro
+  } // namespace ops
+} // namespace tflite
+
 // Globals, used for compatibility with Arduino-style sketches.
 namespace
 {
@@ -202,9 +286,15 @@ void setup()
   static tflite::MicroMutableOpResolver<1> micro_op_resolver; // NOLINT
   // micro_op_resolver.AddConv2D();
   // micro_op_resolver.AddDepthwiseConv2D();
-  micro_op_resolver.AddFullyConnected();
-  // micro_op_resolver.AddMaxPool2D();
-  // micro_op_resolver.AddSoftmax();
+  // #ifdef CONFIG_NN_OPTIMIZED
+  //  micro_op_resolver.AddFullyConnected(Register_ESP_NN_FULLY_CONNECTED()); // funziona solo con esp32-S3
+  // micro_op_resolver.AddFullyConnected(Register_GENERIC_FULLY_CONNECTED());
+  // #else
+  // micro_op_resolver.AddFullyConnected();
+  micro_op_resolver.AddFullyConnected(tflite::ops::micro::fully_connected_espnn::Register_ESP_NN_FullyConnected());
+  // #endif
+  //  micro_op_resolver.AddMaxPool2D();
+  //  micro_op_resolver.AddSoftmax();
 
   // Build/Instantiate an interpreter to run the model with.
   static tflite::MicroInterpreter static_interpreter(

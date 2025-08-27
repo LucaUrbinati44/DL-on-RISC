@@ -22,6 +22,7 @@ void normalize_input(float *buffer_in, float *buffer_out)
   for (int i = 0; i < INPUT_FEATURE_SIZE; ++i)
   {
     // buffer_out[i] = (buffer_in[i] - mean[i]) / sqrtf(var[i]);
-    buffer_out[i] = (buffer_in[i] - mean_array[i]) / sqrtf(variance_array[i]);
+    // buffer_out[i] = (buffer_in[i] - mean_array[i]) / sqrtf(variance_array[i]);
+    buffer_out[i] = (buffer_in[i] - mean_array[i]) * variance_array_sqrt_inv[i];
   }
 }
