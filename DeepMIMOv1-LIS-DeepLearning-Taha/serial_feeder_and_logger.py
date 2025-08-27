@@ -1,6 +1,6 @@
 import serial
-import time
-import csv
+#import time
+#import csv
 from datetime import datetime
 import re
 import numpy as np
@@ -25,8 +25,15 @@ LOG_FILE = f"/mnt/c/Users/Work/Desktop/deepMIMO/RIS/logs/log_{BOARD}_{timestamp_
 
 next_command = "NEXT"        # Comando seriale che invia dati in seriale
 
+def compute_stats(data_list):
+    if not data_list:
+        return None
+    arr = np.array(data_list)
+    # Deviazione standard (popolazione intera, ddof=0)
+    # Se vuoi quella campionaria (N-1 al denominatore): ddof=1
+    return np.mean(arr), np.percentile(arr, 50), np.percentile(arr, 95), np.std(arr, ddof=0)
 
-def main():
+def main(WARMUP_THRESHOLD):
     # Liste per accumulare i tempi
     normalize_input_list = []
     quantize_input_list = []
@@ -36,6 +43,9 @@ def main():
     extract_codebook_index_time_list = []
     extract_codebook_index_fast_list = []
     extract_codebook_index_fast_time_list = []
+    tot_latency_list = []
+    tot_latency_fast_list = []
+    Error = 0
 
     #with open(data_csv, newline='') as f, \
     x_sample = np.load(data_csv)
@@ -46,7 +56,7 @@ def main():
         print("Avviato logger + feeder su", SERIAL_PORT)
 
         #for datarow in datafile:
-        for sample in x_sample:
+        for idx, sample in enumerate(x_sample):
 
             while True:
                 
@@ -62,11 +72,13 @@ def main():
                 # Parsing dei tempi
                 match = re.match(r"normalize_input \[us\]: (\d+)", line)
                 if match:
-                    normalize_input_list.append(int(match.group(1)))
+                    if idx > WARMUP_THRESHOLD:
+                        normalize_input_list.append(int(match.group(1)))
                 
                 match = re.match(r"quantize_input \[us\]: (\d+)", line)
                 if match:
-                    quantize_input_list.append(int(match.group(1)))
+                    if idx > WARMUP_THRESHOLD:
+                        quantize_input_list.append(int(match.group(1)))
 
                 match = re.match(r"interpreter_invoke \[us\]: (\d+)", line)
                 if match:
@@ -74,17 +86,33 @@ def main():
 
                 match = re.match(r"dequantize_output \[us\]: (\d+)", line)
                 if match:
-                    dequantize_output_list.append(int(match.group(1)))
+                    if idx > WARMUP_THRESHOLD:
+                        dequantize_output_list.append(int(match.group(1)))
 
                 match = re.match(r"extract_codebook_index \[\#\] \[us\]: (\d+) (\d+)", line)
                 if match:
-                    extract_codebook_index_list.append(int(match.group(1)))
-                    extract_codebook_index_time_list.append(int(match.group(2)))
+                    if idx > WARMUP_THRESHOLD:
+                        extract_codebook_index_list.append(int(match.group(1)))
+                        extract_codebook_index_time_list.append(int(match.group(2)))
                 
                 match = re.match(r"extract_codebook_index_fast \[\#\] \[us\]: (\d+) (\d+)", line)
                 if match:
-                    extract_codebook_index_fast_list.append(int(match.group(1)))
-                    extract_codebook_index_fast_time_list.append(int(match.group(2)))
+                    if idx > WARMUP_THRESHOLD:
+                        extract_codebook_index_fast_list.append(int(match.group(1)))
+                        extract_codebook_index_fast_time_list.append(int(match.group(2)))
+
+                if idx > WARMUP_THRESHOLD:
+                    # TODO
+                    tot_latency      = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + dequantize_output_list[-1] + extract_codebook_index_time_list[-1]
+                    tot_latency_fast = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + extract_codebook_index_fast_time_list[-1]
+                    tot_latency_list.append(tot_latency)
+                    tot_latency_fast_list.append(tot_latency_fast)
+                
+                # Pattern che causa loop infinito
+                LOOP_PATTERN = re.compile(r"\bRebooting\b")
+                if LOOP_PATTERN.search(line):
+                    Error = 1
+                    break
 
                 # Attendere (while) segnale di NEXT dall'MCU (cioè quando richiede i dati)
                 if line == next_command:
@@ -96,15 +124,36 @@ def main():
                     print(f"Inviato: {sample_str.strip()}")
                     break
 
-    # Calcolo medie
-    avg_normalize_input_us = sum(normalize_input_list) / len(normalize_input_list) if normalize_input_list else 0
-    avg_quantize_input_us = sum(quantize_input_list) / len(quantize_input_list) if quantize_input_list else 0
-    avg_interpreter_invoke_us = sum(interpreter_invoke_list) / len(interpreter_invoke_list) if interpreter_invoke_list else 0
-    avg_dequantize_output_us = sum(dequantize_output_list) / len(dequantize_output_list) if dequantize_output_list else 0
-    avg_extract_codebook_index_us = sum(extract_codebook_index_time_list) / len(extract_codebook_index_time_list) if extract_codebook_index_time_list else 0
-    avg_extract_codebook_index_fast_us = sum(extract_codebook_index_fast_time_list) / len(extract_codebook_index_fast_time_list) if extract_codebook_index_fast_time_list else 0
-    tot_latency_us = avg_normalize_input_us +  avg_quantize_input_us +  avg_interpreter_invoke_us +  avg_dequantize_output_us +  avg_extract_codebook_index_us
-    #tot_latency_fast_us = avg_normalize_input_us +  avg_quantize_input_us +  avg_interpreter_invoke_us +  avg_extract_codebook_index_fast_us
+            if Error == 1:
+                break
+
+    #avg_normalize_input_us = sum(normalize_input_list) / len(normalize_input_list) if normalize_input_list else 0
+    #avg_quantize_input_us = sum(quantize_input_list) / len(quantize_input_list) if quantize_input_list else 0
+    #avg_interpreter_invoke_us = sum(interpreter_invoke_list) / len(interpreter_invoke_list) if interpreter_invoke_list else 0
+    #avg_dequantize_output_us = sum(dequantize_output_list) / len(dequantize_output_list) if dequantize_output_list else 0
+    #avg_extract_codebook_index_us = sum(extract_codebook_index_time_list) / len(extract_codebook_index_time_list) if extract_codebook_index_time_list else 0
+    #avg_extract_codebook_index_fast_us = sum(extract_codebook_index_fast_time_list) / len(extract_codebook_index_fast_time_list) if extract_codebook_index_fast_time_list else 0
+    #tot_latency_us = avg_normalize_input_us +  avg_quantize_input_us +  avg_interpreter_invoke_us + avg_dequantize_output_us +  avg_extract_codebook_index_us
+    #tot_latency_fast_us = avg_normalize_input_us +  avg_quantize_input_us +  avg_interpreter_invoke_us + avg_extract_codebook_index_fast_us
+
+    mean_norm, perc50_norm, perc95_norm, std_norm                                                 = compute_stats(normalize_input_list)
+    mean_quant, perc50_quant, perc95_quant, std_quant                                             = compute_stats(quantize_input_list)
+    mean_invoke, perc50_invoke, perc95_invoke, std_invoke                                         = compute_stats(interpreter_invoke_list)
+    mean_dequant, perc50_dequant, perc95_dequant, std_dequant                                     = compute_stats(dequantize_output_list)
+    mean_extract, perc50_extract, perc95_extract, std_extract                                     = compute_stats(extract_codebook_index_time_list)
+    mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast                 = compute_stats(extract_codebook_index_fast_time_list)
+    mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency                     = compute_stats(tot_latency_list)
+    mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast = compute_stats(tot_latency_fast_list)
 
     # Ritorno delle medie e lista extract_codebook_index
-    return avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, tot_latency_us, extract_codebook_index_list, extract_codebook_index_fast_list
+    #return avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, tot_latency_us, tot_latency_fast_us, extract_codebook_index_list, extract_codebook_index_fast_list, Error
+    return mean_norm, perc50_norm, perc95_norm, std_norm, \
+           mean_quant, perc50_quant, perc95_quant, std_quant, \
+           mean_invoke, perc50_invoke, perc95_invoke, std_invoke, \
+           mean_dequant, perc50_dequant, perc95_dequant, std_dequant, \
+           mean_extract, perc50_extract, perc95_extract, std_extract, \
+           mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, \
+           mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
+           mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
+           extract_codebook_index_list, extract_codebook_index_fast_list, Error
+    

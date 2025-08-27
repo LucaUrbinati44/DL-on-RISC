@@ -23,13 +23,10 @@ namespace
 {
   tflite::ErrorReporter *error_reporter = nullptr;
 
+#ifdef MODEL_IN_RAM
   uint8_t *model_ram = nullptr;
+#endif
   const tflite::Model *model = nullptr;
-
-  // #ifdef NORMALIZE_FROM_RAM
-  //   float *variance_ram = nullptr;
-  //   float *mean_ram = nullptr;
-  // #endif
 
   tflite::MicroInterpreter *interpreter = nullptr;
   TfLiteTensor *model_input = nullptr;
@@ -51,10 +48,11 @@ namespace
   // Create an area of memory to use for input, output, and intermediate arrays.
   // The size of this will depend on the model you're using, and may need to be
   // determined by experimentation.
-  constexpr int kTensorArenaSize = 114 * 1024; // con valori superiori a 114KB non va su ESP32
+  constexpr int kTensorArenaSize = 32 * 1024; // con valori superiori a 114KB non va su ESP32, confronti fatti con 114KB
   uint8_t tensor_arena[kTensorArenaSize];
 } // namespace
 
+/*
 static inline bool in_range(uintptr_t a, uintptr_t start, uintptr_t len)
 {
   return (a >= start) && (a < (start + len));
@@ -129,19 +127,7 @@ void printModelAndActivationsPlacement()
                 region_of((const void *)tensor_arena),
                 kTensorArenaSize);
 }
-
-// #ifdef NORMALIZE_FROM_RAM
-// void init_norm_arrays_to_ram()
-//{
-//   mean_ram = (float *)malloc(sizeof(float) * INPUT_FEATURE_SIZE);
-//   variance_ram = (float *)malloc(sizeof(float) * INPUT_FEATURE_SIZE);
-//   for (int i = 0; i < INPUT_FEATURE_SIZE; ++i)
-//   {
-//     mean_ram[i] = mean_array[i];
-//     variance_ram[i] = variance_array[i];
-//   }
-// }
-// #endif
+*/
 
 // The name of this function is important for Arduino compatibility.
 void setup()
@@ -152,8 +138,6 @@ void setup()
   Serial.begin(115200);
 
   delay(10000);
-
-  // printModelAndActivationsPlacement();
 
   // unsigned long t0 = micros();
   // unsigned long t1 = micros();
@@ -172,16 +156,18 @@ void setup()
   static tflite::MicroErrorReporter micro_error_reporter; // NOLINT
   error_reporter = &micro_error_reporter;                 // This variable will be passed into the interpreter, which allows it to write log
 
-  // Load a model
-  // Map the model into a usable data structure. This doesn't involve any
-  // copying or parsing, it's a very lightweight operation.
-  // model = tflite::GetModel(g_mlp_model_data);
-
+// Load a model
+#ifdef MODEL_IN_RAM
   // Copy move from Flash to RAM
-  // uint8_t *model_ram = (uint8_t *)heap_caps_malloc(g_mlp_model_data_len, MALLOC_CAP_8BIT);
+  Serial.println("*** Copy move from Flash to RAM");
   model_ram = (uint8_t *)malloc(g_mlp_model_data_len);
   memcpy(model_ram, g_mlp_model_data, g_mlp_model_data_len);
   model = tflite::GetModel(model_ram);
+#else
+  // Map the model into a usable data structure. This doesn't involve any
+  // copying or parsing, it's a very lightweight operation.
+  model = tflite::GetModel(g_mlp_model_data);
+#endif
 
   if (model->version() != TFLITE_SCHEMA_VERSION)
   {
@@ -260,11 +246,7 @@ void setup()
 
   input_scale_inv = 1.0f / input_scale;
 
-  printModelAndActivationsPlacement();
-
-  // #ifdef NORMALIZE_FROM_RAM
-  //   init_norm_arrays_to_ram();
-  // #endif
+  // printModelAndActivationsPlacement();
 
   Serial.print("CPU Frequency: ");
   Serial.print(getCpuFrequencyMhz());

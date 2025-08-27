@@ -688,24 +688,46 @@ def save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units
 
 # ----- Salva risultati del profiling su file -----
 def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
-                    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
-                    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB,
-                    avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, 
-                    avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, 
-                    tot_latency_us, extract_codebook_index_list, extract_codebook_index_fast_list,
+                    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
+                    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
+                    mean_norm, perc50_norm, perc95_norm, std_norm,
+                    mean_quant, perc50_quant, perc95_quant, std_quant,
+                    mean_invoke, perc50_invoke, perc95_invoke, std_invoke,
+                    mean_dequant, perc50_dequant, perc95_dequant, std_dequant,
+                    mean_extract, perc50_extract, perc95_extract, std_extract,
+                    mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast,
+                    mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency,
+                    mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast,
+                    extract_codebook_index_list, extract_codebook_index_fast_list,
                     output_csv, codebook_index_filepath):
 
     print('\n*** save_results_v3')
-    
+
     fieldnames = [
         'active_cell', 'input_dim', 'num_layers', 'hidden_units_list', 'output_dim',
         'model_h_size_int8_kb', 'model_file_size_int8_kb', 'model_file_size_int8_mb',
-        'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 
-        'avg_normalize_input_us', 'avg_quantize_input_us', 'avg_interpreter_invoke_us', 'avg_dequantize_output_us', 
-        'avg_extract_codebook_index_us', 'avg_extract_codebook_index_fast_us',
-        'tot_latency_us', 'extract_codebook_index_list[0:5]', 'extract_codebook_index_fast_list[0:5]'
+        'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 'env_name',
+
+        # normalize_input
+        'mean_norm', 'perc50_norm', 'perc95_norm', 'std_norm',
+        # quantize_input
+        'mean_quant', 'perc50_quant', 'perc95_quant', 'std_quant',
+        # interpreter_invoke
+        'mean_invoke', 'perc50_invoke', 'perc95_invoke', 'std_invoke',
+        # dequantize_output
+        'mean_dequant', 'perc50_dequant', 'perc95_dequant', 'std_dequant',
+        # extract_codebook_index
+        'mean_extract', 'perc50_extract', 'perc95_extract', 'std_extract',
+        # extract_codebook_index_fast
+        'mean_extract_fast', 'perc50_extract_fast', 'perc95_extract_fast', 'std_extract_fast',
+        # total latency
+        'mean_tot_latency', 'perc50_tot_latency', 'perc95_tot_latency', 'std_tot_latency',
+        'mean_tot_latency_fast', 'perc50_tot_latency_fast', 'perc95_tot_latency_fast', 'std_tot_latency_fast',
+
+        # subset di risultati
+        'extract_codebook_index_list[0:5]', 'extract_codebook_index_fast_list[0:5]'
     ]
-    
+
     write_header = not os.path.exists(output_csv)
 
     with open(output_csv, 'a', newline='') as f:
@@ -722,32 +744,75 @@ def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units
             'model_h_size_int8_kb':    model_h_size_int8_kb,
             'model_file_size_int8_kb': model_file_size_int8_kb,
             'model_file_size_int8_mb': model_file_size_int8_mb,
-            'RAM_KB':       RAM_KB, 
-            'Flash_MB':     Flash_MB, 
-            'CLK_FREQ_MHZ': CLK_FREQ_MHZ, 
-            'RAM_HW_KB':    RAM_HW_KB, 
+            'RAM_KB':       RAM_KB,
+            'Flash_MB':     Flash_MB,
+            'CLK_FREQ_MHZ': CLK_FREQ_MHZ,
+            'RAM_HW_KB':    RAM_HW_KB,
             'Flash_HW_MB':  Flash_HW_MB,
-            'avg_normalize_input_us':             round(avg_normalize_input_us,             3),
-            'avg_quantize_input_us':              round(avg_quantize_input_us,              3),
-            'avg_interpreter_invoke_us':          round(avg_interpreter_invoke_us,          3),
-            'avg_dequantize_output_us':           round(avg_dequantize_output_us,           3),
-            'avg_extract_codebook_index_us':      round(avg_extract_codebook_index_us,      3),
-            'avg_extract_codebook_index_fast_us': round(avg_extract_codebook_index_fast_us, 3),
-            'tot_latency_us':                     round(tot_latency_us,                     3),
-            'extract_codebook_index_list[0:5]':      extract_codebook_index_list[0:5],
-            'extract_codebook_index_fast_list[0:5]': extract_codebook_index_fast_list[0:5]
+            'env_name': env_name,
+
+            # normalize_input
+            'mean_norm': round(mean_norm, 3),
+            'perc50_norm': round(perc50_norm, 3),
+            'perc95_norm': round(perc95_norm, 3),
+            'std_norm': round(std_norm, 3),
+
+            # quantize_input
+            'mean_quant': round(mean_quant, 3),
+            'perc50_quant': round(perc50_quant, 3),
+            'perc95_quant': round(perc95_quant, 3),
+            'std_quant': round(std_quant, 3),
+
+            # interpreter_invoke
+            'mean_invoke': round(mean_invoke, 3),
+            'perc50_invoke': round(perc50_invoke, 3),
+            'perc95_invoke': round(perc95_invoke, 3),
+            'std_invoke': round(std_invoke, 3),
+
+            # dequantize_output
+            'mean_dequant': round(mean_dequant, 3),
+            'perc50_dequant': round(perc50_dequant, 3),
+            'perc95_dequant': round(perc95_dequant, 3),
+            'std_dequant': round(std_dequant, 3),
+
+            # extract_codebook_index
+            'mean_extract': round(mean_extract, 3),
+            'perc50_extract': round(perc50_extract, 3),
+            'perc95_extract': round(perc95_extract, 3),
+            'std_extract': round(std_extract, 3),
+
+            # extract_codebook_index_fast
+            'mean_extract_fast': round(mean_extract_fast, 3),
+            'perc50_extract_fast': round(perc50_extract_fast, 3),
+            'perc95_extract_fast': round(perc95_extract_fast, 3),
+            'std_extract_fast': round(std_extract_fast, 3),
+
+            # total latency
+            'mean_tot_latency': round(mean_tot_latency, 3),
+            'perc50_tot_latency': round(perc50_tot_latency, 3),
+            'perc95_tot_latency': round(perc95_tot_latency, 3),
+            'std_tot_latency': round(std_tot_latency, 3),
+
+            'mean_tot_latency_fast': round(mean_tot_latency_fast, 3),
+            'perc50_tot_latency_fast': round(perc50_tot_latency_fast, 3),
+            'perc95_tot_latency_fast': round(perc95_tot_latency_fast, 3),
+            'std_tot_latency_fast': round(std_tot_latency_fast, 3),
+
+            # subset
+            'extract_codebook_index_list[0:5]': extract_codebook_index_list[0:5],
+            'extract_codebook_index_fast_list[0:5]': extract_codebook_index_fast_list[0:5],
         }
 
         writer.writerow(row)
         print(json.dumps(row, indent=4))
 
     with open(codebook_index_filepath, 'w') as f:
-        # trasforma ogni elemento in una stringa
         for codebook in extract_codebook_index_list:
             f.write(str(codebook) + "\n")
 
+
 # ----- Run di una singola configurazione -----
-def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath):
+def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath, WARMUP_THRESHOLD):
     #print('\n*** run_experiment')
 
     # Crea modello
@@ -776,16 +841,22 @@ def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden
     # Lancia compilazione e upload firmware in maniera bloccante
     compilation_logfile = os.path.join(mcu_folder, 'compilation_'+model_type_load+'.txt')
 
-    if debug2 == 0:
-        print(f"\n*** Lancio pio run... Segui gli avanzamenti qui: {compilation_logfile}")
-        #with open(compilation_logfile, "w", encoding="utf-8") as logfile:
-        #    subprocess.run(
-        #        #["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder],
-        #        ["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder, "--target", "upload"],
-        #        stdout=logfile,
-        #        stderr=subprocess.STDOUT,
-        #        check=False
-        #    )
+    i = 1
+    #while i <= 4:
+    while i <= 2:
+        # prima provi con modello in ram
+        # poi provi con modello in flash
+        if i == 1:
+            env_name = mcu_type+'-o3'
+        elif i == 2:
+            #env_name = mcu_type+'-o3-unrollnorm'
+            env_name = mcu_type+'-o3-modelinram'
+        #elif i == 3:
+        #    env_name = mcu_type+'-o3-modelinram'
+        #elif i == 4:
+        #    env_name = mcu_type+'-o3-unrollnorm-modelinram'
+
+        print(f"\n*** Lancio pio run {i})... Segui gli avanzamenti qui: {compilation_logfile}")
         with open(compilation_logfile, "w", encoding="utf-8") as logfile:
             process = subprocess.Popen(
                 #["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder],
@@ -796,58 +867,89 @@ def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden
                 #["pio", "run", "--environment", mcu_type+'-o3-unrollallforced', "--project-dir", mcu_folder, "--target", "upload"],
                 #["pio", "run", "--environment", mcu_type+'-o3-unrollallforced-selected', "--project-dir", mcu_folder, "--target", "upload"],
                 #["pio", "run", "--environment", mcu_type+'-o3-unroll-selected', "--project-dir", mcu_folder, "--target", "upload"],
-                #["pio", "run", "--environment", mcu_type+'-o3-unroll-norm-espnn', "--project-dir", mcu_folder, "--target", "upload"],
-                ["pio", "run", "--environment", mcu_type+'-o3-unroll-norm', "--project-dir", mcu_folder, "--target", "upload"],
+                #["pio", "run", "--environment", mcu_type+'-o3-unrollnorm-espnn', "--project-dir", mcu_folder, "--target", "upload"],
+                #["pio", "run", "--environment", mcu_type+'-o3-unrollnorm', "--project-dir", mcu_folder, "--target", "upload"],
+                ["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
-                text=True
+                text=True,
+                bufsize=1  # line-buffered
             )
 
             for line in process.stdout:
                 print(line, end="")       # scrive a terminale
                 logfile.write(line)       # scrive sul file
-
+                
             process.wait()
 
-    # Lancia il parser per recuperare RAM e ROM da compilation output
-    # La Flash include non solo il modello perciò sarà maggiore di model_size_int8_mb
-    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, Error = parse_compilation_logfile(compilation_logfile)
+        # Lancia il parser per recuperare RAM e ROM da compilation output
+        # La Flash include non solo il modello perciò sarà maggiore di model_size_int8_mb
+        RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, Error1 = parse_compilation_logfile(compilation_logfile)
 
-    if Error == 0:
-        # Lancia serial feeded and logger per calcolare la latenza
-        avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, \
-        avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, \
-        tot_latency_us, extract_codebook_index_list, extract_codebook_index_fast_list  = serial_feeder_and_logger.main()
-    else:
-        avg_normalize_input_us = 0
-        avg_quantize_input_us = 0
-        avg_interpreter_invoke_us = 0
-        avg_dequantize_output_us = 0
-        avg_extract_codebook_index_us = 0
-        avg_extract_codebook_index_fast_us = 0
-        tot_latency_us = 0
-        extract_codebook_index_list = [0, 0, 0, 0, 0]
-        extract_codebook_index_fast_list = [0, 0, 0, 0, 0]
-        
-    #print(RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB,avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, tot_latency_us, extract_codebook_index_list[0:5], extract_codebook_index_fast_list[0:5])
+        if Error1 == 0:
+            # Lancia serial feeded and logger per calcolare la latenza
+            mean_norm, perc50_norm, perc95_norm, std_norm, \
+            mean_quant, perc50_quant, perc95_quant, std_quant, \
+            mean_invoke, perc50_invoke, perc95_invoke, std_invoke, \
+            mean_dequant, perc50_dequant, perc95_dequant, std_dequant, \
+            mean_extract, perc50_extract, perc95_extract, std_extract, \
+            mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, \
+            mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
+            mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
+            extract_codebook_index_list, extract_codebook_index_fast_list, Error2 = serial_feeder_and_logger.main(WARMUP_THRESHOLD)
 
-    # Appendi risultati nel file output_csv
-    save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
-                    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
-                    RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, 
-                    avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, 
-                    avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, 
-                    tot_latency_us, extract_codebook_index_list, extract_codebook_index_fast_list,
-                    output_csv, codebook_index_filepath)
+            if Error2 == 1 and i == 1:
+                print("*** ATTENZIONE: Error2 == 1 and i == 1")
+                break
+            elif Error2 == 1 and i == 2:
+                print("*** ATTENZIONE: Error2 == 1 and i == 2")
+                break
+            elif Error2 == 1 and i == 3: # if error
+                print("*** ATTENZIONE: Error2 == 1 and i == 3")
+                break
+            elif Error2 == 1 and i == 4: # if error
+                print("*** ATTENZIONE: Error2 == 1 and i == 4")
+                break
+            elif Error2 == 0:
+                i += 1
+
+        else:
+            ( mean_norm, perc50_norm, perc95_norm, std_norm, 
+            mean_quant, perc50_quant, perc95_quant, std_quant, 
+            mean_invoke, perc50_invoke, perc95_invoke, std_invoke, 
+            mean_dequant, perc50_dequant, perc95_dequant, std_dequant, 
+            mean_extract, perc50_extract, perc95_extract, std_extract, 
+            mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, 
+            mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, 
+            mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast) = (0) * 32
+            extract_codebook_index_list = [0, 0, 0, 0, 0]
+            extract_codebook_index_fast_list = [0, 0, 0, 0, 0]   
+
+        if Error2 == 0:
+            # Appendi risultati nel file output_csv
+            save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
+                            model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
+                            RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name, 
+                            mean_norm, perc50_norm, perc95_norm, std_norm, 
+                            mean_quant, perc50_quant, perc95_quant, std_quant, 
+                            mean_invoke, perc50_invoke, perc95_invoke, std_invoke, 
+                            mean_dequant, perc50_dequant, perc95_dequant, std_dequant, 
+                            mean_extract, perc50_extract, perc95_extract, std_extract, 
+                            mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, 
+                            mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, 
+                            mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, 
+                            extract_codebook_index_list, extract_codebook_index_fast_list,
+                            output_csv, codebook_index_filepath)
 
 # %%
 
 # --- ESEMPIO USO --- #
 if __name__ == "__main__":
 
-    debug = 3 # 0 = loop; 1 = modello di Taha
+    debug = 0 # 0 = loop; 1 = modello di Taha
     debug2 = 0
     dummy = 'dummy_'
+    WARMUP_THRESHOLD = 5 # TODO: METTERE 10 IN PRODUCTION
 
     subcarriers = 64 # costante?
 
@@ -943,4 +1045,4 @@ if __name__ == "__main__":
                 hidden_units_list = [input_dim, 4*input_dim, 4*input_dim]     # Numero di neuroni per layer
             
                 print(f"\n--> Profiling: act_cell={active_cell}, in={input_dim}, out={output_dim}, layers={num_layers}, hidden_units={hidden_units_list}")
-                run_experiment(dummy, active_cell,input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath)
+                run_experiment(dummy, active_cell,input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath, WARMUP_THRESHOLD)
