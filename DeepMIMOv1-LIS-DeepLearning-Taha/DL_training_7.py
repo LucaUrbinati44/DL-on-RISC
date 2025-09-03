@@ -4,21 +4,16 @@ np.set_printoptions(threshold=np.inf)
 
 import csv
 import os
-import time
-import io
 import json
-from contextlib import redirect_stdout
 import random
-from statistics import mean, stdev
 import re
 import h5py
-from tensorflow.keras.saving import load_model
 from ai_edge_litert.interpreter import Interpreter
 from tensorflow.lite.python import schema_py_generated as schema_fb
 
 import subprocess
 
-import serial_feeder_and_logger
+import serial_feeder_and_logger, DL_training_4_v3_test
 
 print("TensorFlow version:", tf.__version__)
 
@@ -29,19 +24,63 @@ np.random.seed(seed)
 random.seed(seed)
 tf.random.set_seed(seed)
 
-# Assegna i valori degli argomenti alle variabili
-M_bar=8
+# Definizione dei parametri
+
+debug = 2            # 0: production
+dummy = 'dummy_'
+
+if dummy == 'dummy_':
+    warmup_samples = 5
+else:
+    warmup_samples = 100
+
+K_DL = 64 # subcarriers, costante (per ora)
 Ur_rows = [1000, 1200]
+#My_ar = [32, 64]
+#Mz_ar = [32, 64]
 My_ar = [32]
 Mz_ar = [32]
+#My_ar = [64]
+#Mz_ar = [64]
+
 My = My_ar[0]
 Mz = Mz_ar[0]
-max_epochs_load = 60
-Training_Size = [10000]
+
+#Training_Size = [2, 10000, 14000, 18000, 22000, 26000, 30000]
+#Training_Size = [10000, 30000]
+#Training_Size = [10000]
+#Training_Size = [30000]
+#Training_Size = [2000, 4000, 6000, 8000]
+#Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000]
+#Training_Size = [8000, 10000, 14000, 18000, 22000, 26000, 30000]
+#Training_Size = [10000, 30000]
+Training_Size = [30000]
+
 Training_Size_dd = Training_Size[0]
 
-end_folder = '_seed' + str(seed) + '_grid' + str(Ur_rows[1]) + '_M' + str(My) + str(Mz) + '_Mbar' + str(M_bar)
-end_folder_Training_Size_dd = end_folder + '_' + str(Training_Size_dd)
+# training
+#max_epochs_load = 0
+#load_model_flag = 0
+#train_model_flag = 1
+
+# loading and training
+#max_epochs_load = 20
+#max_epochs_load = 40 # only for My_ar = [64]
+#max_epochs_load = 60 # only for My_ar = [64]
+#max_epochs_load = 80 # only for My_ar = [64]
+#load_model_flag = 1
+#train_model_flag = 1
+
+# loading
+#max_epochs_load = 20
+#max_epochs_load = 40
+max_epochs_load = 60 #
+#max_epochs_load = 80 # only for My_ar = [64]
+#max_epochs_load = 100 # only for My_ar = [64]
+load_model_flag = 1
+train_model_flag = 0
+predict_loaded_model_flag = 1
+convert_model_flag = 1
 
 base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
 
@@ -102,8 +141,8 @@ for folder in folders:
     #    print(f"La cartella esiste già: {folder}")
 
 # ----- Costruzione del modello MLP parametrico -----
-def build_mlp(input_dim, output_dim, num_layers, hidden_units_list):
-    model = tf.keras.Sequential([tf.keras.Input(shape=(input_dim,), name='input')])
+def build_mlp(input_features, output_dim, num_layers, hidden_units_list):
+    model = tf.keras.Sequential([tf.keras.Input(shape=(input_features,), name='input')])
     for i in range(num_layers):
         model.add(tf.keras.layers.Dense(hidden_units_list[i], activation='relu', name=f'hidden_{i}'))
     model.add(tf.keras.layers.Dense(output_dim, activation=None, name='output'))
@@ -125,7 +164,7 @@ def convert_to_tflite_int8(model, x_sample, model_path_tflite):
     with open(model_path_tflite, 'wb') as f:
         f.write(tflite_quant_model)
 
-def get_model_path_tflite(mcu_profiling_folder, dummy):
+def get_model_path_tflite(mcu_profiling_folder, dummy, end_folder_Training_Size_dd):
     print('\n*** get_model_path_tflite')
     end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
     model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
@@ -145,11 +184,10 @@ def mse_custom(y_true, y_pred):
     return loss
 
 # ----- Export test data for inference -----
-def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, mean_array_filepath, variance_array_filepath, size='small'):
+def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, xtest_npy_filename, mean_array_filepath, variance_array_filepath, size='small'):
     print('\n*** export_test_data')
 
     # Recover npy test set
-    xtest_npy_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + '.npy'
     xtest = np.load(xtest_npy_filename)
     print(xtest.shape)
     
@@ -317,7 +355,7 @@ def export_to_c(model_type_load, model_path_tflite, save_dir="./", simple=True):
         elif len(hidden_units_list) == 3:
             hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1]) + "_" + str(hidden_units_list[2])
 
-        model_name = model_type_load + f"_in{input_dim}_out{output_dim}_nl{num_layers}_hul{hul}"
+        model_name = model_type_load + f"_in{input_features}_out{output_dim}_nl{num_layers}_hul{hul}"
     else:
         model_name = 'mlp'
         
@@ -453,7 +491,7 @@ def get_model_info_precise(model, model_path_tflite, save_dir='./'):
     return round(model_h_size_int8_kb, 2), round(model_file_size_int8_kb, 2), round(model_file_size_int8_mb, 2), 
 
 
-def change_config_file_1(file_path, input_dim, output_dim):
+def change_config_file_1(file_path, input_features, output_dim):
 
     print('\n*** change_config_file_1')
 
@@ -469,14 +507,14 @@ def change_config_file_1(file_path, input_dim, output_dim):
     # r = raw string, cioè le backslash \ non vengono interpretate da Python.
     # f = f-string, puoi mettere variabili dentro {}.
     # \1 è un altro modo per riferirsi al primo gruppo catturato.
-    content = pattern_input.sub(rf"\g<1>{input_dim}", content)
+    content = pattern_input.sub(rf"\g<1>{input_features}", content)
     content = pattern_output.sub(rf"\g<1>{output_dim}", content)
 
     # salva file
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
 
-def change_lib_file_1(folder_path, input_dim, output_dim):
+def change_lib_file_1(folder_path, input_features, output_dim):
 
     print('\n*** change_lib_file_1')
 
@@ -497,7 +535,7 @@ def change_lib_file_1(folder_path, input_dim, output_dim):
             content = f.read()
 
         if i < 2:
-            variable = input_dim
+            variable = input_features
         else:
             variable = output_dim
 
@@ -621,7 +659,7 @@ def parse_compilation_logfile(file_path):
 def save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, output_csv):
     print('\n*** save_results')
     fieldnames = [
-        'input_dim', 'num_layers', 'hidden_units_list', 'output_dim',
+        'input_features', 'num_layers', 'hidden_units_list', 'output_dim',
         'device_type', 'model_size_float32_kb', 'model_size_float32_mb', 'model_size_int8_kb', 'model_size_int8_mb', 'mac_ops',
         'ram_mean_kb', 'rom_mean_kb', 'lat_mean_ms', 'lat_std_ms', 'ops_s'
     ]
@@ -636,7 +674,7 @@ def save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, mo
             ops_s = int((macs*2)/(metrics['lat_mean_ms']/1000)) # operations per seconds
 
             row = {
-                'input_dim': input_dim,
+                'input_features': input_features,
                 'num_layers': num_layers,
                 'hidden_units_list': hidden_units_list,
                 'output_dim': output_dim,
@@ -653,13 +691,13 @@ def save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, mo
 
 
 # ----- Salva risultati del profiling su file -----
-def save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
+def save_results_v2(M_bar, input_features, output_dim, num_layers, hidden_units_list,
                     model_size_int8_kb, model_size_int8_mb, model_file_size_int8_mb, ram_total_kb, macs, output_csv):
 
     #print('\n*** save_results')
     
     fieldnames = [
-        'active_cell', 'input_dim', 'num_layers', 'hidden_units_list', 'output_dim',
+        'M_bar', 'input_features', 'num_layers', 'hidden_units_list', 'output_dim',
         'model_size_int8_kb', 'model_size_int8_mb', 'model_file_size_int8_mb', 'ram_total_kb', 'mac_ops'
     ]
     
@@ -671,8 +709,8 @@ def save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units
             writer.writeheader()
 
         row = {
-            'active_cell': active_cell,
-            'input_dim': input_dim,
+            'M_bar': M_bar,
+            'input_features': input_features,
             'num_layers': num_layers,
             'hidden_units_list': hidden_units_list,
             'output_dim': output_dim,
@@ -686,8 +724,10 @@ def save_results_v2(active_cell, input_dim, output_dim, num_layers, hidden_units
         writer.writerow(row)
 
 
+
 # ----- Salva risultati del profiling su file -----
-def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
+def save_results_v3(end_folder_Training_Size_dd, K_DL, max_epochs_load,
+                    input_features, num_layers, hidden_units_list, output_dim,
                     model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
                     RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
                     mean_norm, perc50_norm, perc95_norm, std_norm,
@@ -699,12 +739,16 @@ def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units
                     mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency,
                     mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast,
                     extract_codebook_index_list, extract_codebook_index_fast_list,
-                    output_csv, codebook_index_filepath):
+                    output_csv, codebook_index_filepath,
+                    Rate_OPT_py_load_val, Rate_DL_py_load_val,
+                    Rate_OPT_py_load_test, Rate_DL_py_load_test,
+                    Rate_DL_py_load_test_tflite, Rate_DL_py_load_test_tflite_mcu):
 
     print('\n*** save_results_v3')
 
     fieldnames = [
-        'active_cell', 'input_dim', 'num_layers', 'hidden_units_list', 'output_dim',
+        'end_folder_Training_Size_dd', 'K_DL', 'max_epochs_load', 
+        'input_features', 'num_layers', 'hidden_units_list', 'output_dim',
         'model_h_size_int8_kb', 'model_file_size_int8_kb', 'model_file_size_int8_mb',
         'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 'env_name',
 
@@ -726,6 +770,10 @@ def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units
 
         # subset di risultati
         'extract_codebook_index_list[0:5]', 'extract_codebook_index_fast_list[0:5]'
+
+        'Rate_OPT_py_load_val', 'Rate_DL_py_load_val',
+        'Rate_OPT_py_load_test', 'Rate_DL_py_load_test',
+        'Rate_DL_py_load_test_tflite', 'Rate_DL_py_load_test_tflite_mcu'
     ]
 
     write_header = not os.path.exists(output_csv)
@@ -736,8 +784,8 @@ def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units
             writer.writeheader()
 
         row = {
-            'active_cell':       active_cell,
-            'input_dim':         input_dim,
+            'M_bar':       M_bar,
+            'input_features':    input_features,
             'num_layers':        num_layers,
             'hidden_units_list': hidden_units_list,
             'output_dim':        output_dim,
@@ -801,6 +849,13 @@ def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units
             # subset
             'extract_codebook_index_list[0:5]': extract_codebook_index_list[0:5],
             'extract_codebook_index_fast_list[0:5]': extract_codebook_index_fast_list[0:5],
+
+            'Rate_OPT_py_load_val': round(Rate_OPT_py_load_val, 3),
+            'Rate_DL_py_load_val': round(Rate_DL_py_load_val, 3),
+            'Rate_OPT_py_load_test': round(Rate_OPT_py_load_test, 3),
+            'Rate_DL_py_load_test': round(Rate_DL_py_load_test, 3),
+            'Rate_DL_py_load_test_tflite': round(Rate_DL_py_load_test_tflite, 3),
+            'Rate_DL_py_load_test_tflite_mcu': round(Rate_DL_py_load_test_tflite_mcu, 3)
         }
 
         writer.writerow(row)
@@ -812,28 +867,43 @@ def save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units
 
 
 # ----- Run di una singola configurazione -----
-def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath, WARMUP_THRESHOLD):
+def run_experiment(dummy, 
+                   M_bar, input_features, output_dim, num_layers, hidden_units_list, 
+                   x_sample, output_csv, 
+                   mean_array_filepath, variance_array_filepath, warmup_samples, xtest_npy_filename,
+                   end_folder, end_folder_Training_Size_dd):
     #print('\n*** run_experiment')
 
-    # Crea modello
-    model = build_mlp(input_dim, output_dim, num_layers, hidden_units_list)
-    model.compile(optimizer='adam', loss='mse')
-    #model.summary()
-
     # Crea o recupera nome del modello tflite
-    end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite, codebook_index_filepath = get_model_path_tflite(mcu_profiling_folder, dummy)
-
-    # Converti modello keras in tflite int8
-    convert_to_tflite_int8(model, x_sample, model_path_tflite)
+    end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite, codebook_index_filepath = get_model_path_tflite(mcu_profiling_folder, dummy, end_folder_Training_Size_dd)
+    
+    # Allena o carica modello pre-allenato
+    if dummy == 'dummy_':
+        model_py = build_mlp(input_features, output_dim, num_layers, hidden_units_list)
+        model_py.compile(optimizer='adam', loss='mse')
+        
+        # Converti modello keras in tflite int8
+        convert_to_tflite_int8(model_py, x_sample, model_path_tflite)
+    else:
+        model_py, \
+        Rate_OPT_py_load_val, Rate_DL_py_load_val, \
+        Rate_OPT_py_load_test, Rate_DL_py_load_test, \
+        Rate_DL_py_load_test_tflite, \
+        YValidation_un_test = DL_training_4_v3_test.main(
+                                        My, Mz, load_model_flag, max_epochs_load, 
+                                        train_model_flag, predict_loaded_model_flag,
+                                        convert_model_flag, Training_Size_dd, 
+                                        input_features, output_dim, num_layers, hidden_units_list,
+                                        end_folder, end_folder_Training_Size_dd, end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite)       
 
     # Esporta il modello in formato header file per TFLM
     export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder, simple=True)
     
-    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb = get_model_info_precise(model, model_path_tflite, save_dir=mcu_lib_model_folder)
+    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb = get_model_info_precise(model_py, model_path_tflite, save_dir=mcu_lib_model_folder)
 
     if dummy == '':
         # Esporta dati di test di ingresso e uscita
-        export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, mean_array_filepath, variance_array_filepath, size='small')
+        export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, xtest_npy_filename, mean_array_filepath, variance_array_filepath, size='small')
         #export_test_data(size='full')
     
     change_config_file_2(mcu_include_config, mean_array_filepath, variance_array_filepath)
@@ -896,7 +966,8 @@ def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden
             mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, \
             mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
             mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
-            extract_codebook_index_list, extract_codebook_index_fast_list, Error2 = serial_feeder_and_logger.main(WARMUP_THRESHOLD)
+            extract_codebook_index_list, extract_codebook_index_fast_list, \
+            Rate_DL_py_load_test_tflite_mcu, Error2 = serial_feeder_and_logger.main(warmup_samples, YValidation_un_test, xtest_npy_filename)
 
             if Error2 == 1 and i == 1:
                 print("*** ATTENZIONE: Error2 == 1 and i == 1")
@@ -951,7 +1022,8 @@ def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden
 
         if Error2 == 0:
             # Appendi risultati nel file output_csv
-            save_results_v3(active_cell, input_dim, output_dim, num_layers, hidden_units_list,
+            save_results_v3(end_folder_Training_Size_dd, K_DL, max_epochs_load,
+                            input_features, num_layers, hidden_units_list, output_dim,
                             model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
                             RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name, 
                             mean_norm, perc50_norm, perc95_norm, std_norm, 
@@ -963,47 +1035,43 @@ def run_experiment(dummy, active_cell, input_dim, output_dim, num_layers, hidden
                             mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, 
                             mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, 
                             extract_codebook_index_list, extract_codebook_index_fast_list,
-                            output_csv, codebook_index_filepath)
+                            output_csv, codebook_index_filepath,
+                            Rate_OPT_py_load_val, Rate_DL_py_load_val,
+                            Rate_OPT_py_load_test, Rate_DL_py_load_test,
+                            Rate_DL_py_load_test_tflite, Rate_DL_py_load_test_tflite_mcu)
 
 # %%
 
 # --- ESEMPIO USO --- #
 if __name__ == "__main__":
 
-    debug = 1 # 0 = loop; 1 = modello di Taha
-    debug2 = 0
-    dummy = 'dummy_'
-    WARMUP_THRESHOLD = 5 # TODO: METTERE 10 IN PRODUCTION
+    if dummy == 'dummy_':
+        warmup_samples = 5
+    else:
+        warmup_samples = 100
 
-    subcarriers = 64 # costante?
-
-    # DEFINISCI TU LO SPAZIO DI RICERCA QUI:
-    # Teniamo inalterati:
-    # - subcarriers
-    # - proporzioni tra i neuroni nei vari layer
+    # SPAZIO DI RICERCA 
+    # 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
     if debug == 0:
-        #input_dims = [1, 1024]            # Numero di feature in ingresso
-        # 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
-        active_cells = [1,2,4,8,12,16]
-        output_dims = [1024, 512, 256, 128, 64]     # Numero di neuroni di uscita
-        num_layers_list = [0,1,2,3]       # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
+        active_cells = [1,4,8,12,28]
+        output_dims = [My*Mz]         # Numero di neuroni di uscita (32x32 = 1024)
+        num_layers_list = [0,1,2,3]   # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
+        R = [32, 8, 1]
     elif debug == 1:
-        active_cells = [1]
-        output_dims = [512, 256, 128, 64]     # Numero di neuroni di uscita
-        num_layers_list = [0,1,2,3]       # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
+        active_cells = [8]
+        output_dims = [My*Mz]
+        num_layers_list = [0,1,2,3]
+        R = [32, 8, 1]
     elif debug == 2:
-        active_cells = [1]
+        active_cells = [8]
+        output_dims = [My*Mz]
+        num_layers_list = [0]
+        R = [1]
+    else: # modello di Taha
+        #input_featuress = [1024]
+        active_cells = [8]
         output_dims = [1024]
         num_layers_list = [3]
-    else:    
-        # modello di Taha
-        #input_dims = [1024]
-        #active_cells = [8]
-        #output_dims = [1024]
-        #num_layers_list = [3]
-        active_cells = [1]
-        output_dims = [64]
-        num_layers_list = [0]
 
     mcu_type = 'esp32-s2-saola-tflm'
     mcu_folder = pio_projects_folder + mcu_type
@@ -1011,7 +1079,6 @@ if __name__ == "__main__":
     #mcu_include_config = os.path.join(mcu_folder, 'lib/lib-luca/config.cc') 
     mcu_lib_libluca_folder = os.path.join(mcu_folder, 'lib/lib-luca/') 
     mcu_lib_model_folder = os.path.join(mcu_folder, 'lib/model/') 
-    output_csv = mcu_profiling_folder + 'profiling_grid_results.csv'
 
     if not os.path.exists(mcu_folder):  # Controlla se la cartella esiste
         os.makedirs(mcu_folder, exist_ok=True)  # Crea la cartella se non esiste
@@ -1028,45 +1095,57 @@ if __name__ == "__main__":
                   '-Ilib/tflite-micro/tensorflow/lite/schema" ')
         print(f"\nProgetto pio creato: {mcu_folder}")
 
-    for active_cell in active_cells:
-        
-        input_dim = active_cell * subcarriers * 2 #    8 celle attive x 64 subcarriers x 2 (real/img) = 1024
+    for M_bar in active_cells:
 
+        end_folder = '_seed' + str(seed) + '_grid' + str(Ur_rows[1]) + '_M' + str(My) + str(Mz) + '_Mbar' + str(M_bar)
+        end_folder_Training_Size_dd = end_folder + '_' + str(Training_Size_dd)
+        output_csv = mcu_profiling_folder + 'profiling' + dummy + end_folder_Training_Size_dd + '_' + mcu_type + '.csv'
+        
+        input_features = M_bar * K_DL * 2 #    8 celle attive x 64 subcarriers x 2 (real/img) = 1024
+
+        xtest_npy_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + '.npy'
+        #xtestnorm_npy_filename = mcu_profiling_folder_test_data_normalized + 'test_set_normalized' + end_folder_Training_Size_dd + '.npy'
         mean_array_filepath = mcu_profiling_folder_scaler + dummy + 'mean' + end_folder_Training_Size_dd + '.npy'            
         variance_array_filepath = mcu_profiling_folder_scaler + dummy + 'variance' + end_folder_Training_Size_dd + '.npy'
 
-        # Sample fake data for quantization
-        x_sample = np.random.rand(10, input_dim).astype(np.float32)
-        # Sample mean and variance for normalization
-        mean_array = np.random.rand(1, input_dim).astype(np.float32)
-        variance_array = np.random.rand(1, input_dim).astype(np.float32)
+        if dummy == 'dummy_':
+            # Sample fake data for quantization
+            x_sample = np.random.rand(10, input_features).astype(np.float32)
+            # Sample mean and variance for normalization
+            mean_array = np.random.rand(1, input_features).astype(np.float32)
+            variance_array = np.random.rand(1, input_features).astype(np.float32)
 
-        data_csv = mcu_profiling_folder_test_data + dummy + 'data.npy'
-        #with open(data_csv, 'w') as f:
-        #    for sample in x_sample:
-        #        f.write(" ".join(map(str, sample)) + "\n")
-        np.save(data_csv, x_sample)
+            data_csv = mcu_profiling_folder_test_data + dummy + 'data.npy'
+            #with open(data_csv, 'w') as f:
+            #    for sample in x_sample:
+            #        f.write(" ".join(map(str, sample)) + "\n")
+            np.save(data_csv, x_sample)
 
-        #with open(mean_array_filepath, 'w') as f:
-        #    for sample in mean_array:
-        #        f.write(", ".join(map(str, sample)) + "\n")
-        np.save(mean_array_filepath, mean_array)
-                
-        #with open(variance_array_filepath, 'w') as f:
-        #    for sample in variance_array:
-        #        f.write(", ".join(map(str, sample)) + "\n")
-        np.save(variance_array_filepath, variance_array)    
-        
+            #with open(mean_array_filepath, 'w') as f:
+            #    for sample in mean_array:
+            #        f.write(", ".join(map(str, sample)) + "\n")
+            np.save(mean_array_filepath, mean_array)
+                    
+            #with open(variance_array_filepath, 'w') as f:
+            #    for sample in variance_array:
+            #        f.write(", ".join(map(str, sample)) + "\n")
+            np.save(variance_array_filepath, variance_array)    
+
         print(f"\n--> Dati creati: {data_csv}")
+
 
         for output_dim in output_dims:
 
-            change_config_file_1(mcu_include_config, input_dim, output_dim)
-            change_lib_file_1(mcu_lib_libluca_folder, input_dim, output_dim)
+            change_config_file_1(mcu_include_config, input_features, output_dim)
+            change_lib_file_1(mcu_lib_libluca_folder, input_features, output_dim)
             
             for num_layers in num_layers_list:
                 
-                hidden_units_list = [input_dim, 4*input_dim, 4*input_dim]     # Numero di neuroni per layer
+                hidden_units_list = [input_features/R, 4*input_features/R, 4*input_features/R]     # Numero di neuroni per layer
             
-                print(f"\n--> Profiling: act_cell={active_cell}, in={input_dim}, out={output_dim}, layers={num_layers}, hidden_units={hidden_units_list}")
-                run_experiment(dummy, active_cell,input_dim, output_dim, num_layers, hidden_units_list, x_sample, output_csv, mean_array_filepath, variance_array_filepath, WARMUP_THRESHOLD)
+                print(f"\n--> Profiling: act_cell={M_bar}, in={input_features}, out={output_dim}, layers={num_layers}, hidden_units={hidden_units_list}")
+                run_experiment(dummy, 
+                               M_bar, input_features, output_dim, num_layers, hidden_units_list, 
+                               x_sample, output_csv, 
+                               mean_array_filepath, variance_array_filepath, warmup_samples, xtest_npy_filename,
+                               end_folder, end_folder_Training_Size_dd)
