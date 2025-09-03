@@ -5,32 +5,32 @@ function [Rate_OPT,Rate_DL,MaxR_OPT,MaxR_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_row
 disp(['---> DL Beamforming for Training_Size ', num2str(Training_Size_dd)]);
 
 global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat_py;
-global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
+global seed DeepMIMO_dataset_folder end_folder_M_bar DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
 
-filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', end_folder_M_bar, '.mat');
+filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', end_folder_M_bar, '.mat');
+filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', end_folder_M_bar, '.mat');
 
-filename_XTrain=strcat(DL_dataset_folder, 'XTrain', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_YTrain=strcat(DL_dataset_folder, 'YTrain', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_XValidation=strcat(DL_dataset_folder, 'XValidation', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_YValidation=strcat(DL_dataset_folder, 'YValidation', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_XTrain=strcat(DL_dataset_folder, 'XTrain', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_YTrain=strcat(DL_dataset_folder, 'YTrain', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_XValidation=strcat(DL_dataset_folder, 'XValidation', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_YValidation=strcat(DL_dataset_folder, 'YValidation', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
 
-filename_traininfo=strcat(network_folder, 'traininfo', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_trainedNet=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_trainedNet_tf=strcat(network_folder, 'trainedNet', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd));
-filename_trainedNet_scaler=strcat(network_folder, 'trainedNet_scaler', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-%filename_YPredicted=strcat(network_folder, 'YPredicted', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_YPredicted_mat=strcat(network_folder_py, 'YPredicted_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_Rate_DL=strcat(network_folder, 'Rate_DL', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_Rate_OPT=strcat(network_folder, 'Rate_OPT', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_Rate_DL_mat=strcat(network_folder_py, 'Rate_DL_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_Rate_OPT_mat=strcat(network_folder_py, 'Rate_OPT_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_traininfo=strcat(network_folder, 'traininfo', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_trainedNet=strcat(network_folder, 'trainedNet', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_trainedNet_tf=strcat(network_folder, 'trainedNet', end_folder_M_bar, '_', num2str(Training_Size_dd));
+filename_trainedNet_scaler=strcat(network_folder, 'trainedNet_scaler', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+%filename_YPredicted=strcat(network_folder, 'YPredicted', end_folder_M_bar, '.mat');
+filename_YPredicted_mat=strcat(network_folder_py, 'YPredicted_mat', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_Rate_DL=strcat(network_folder, 'Rate_DL', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_Rate_OPT=strcat(network_folder, 'Rate_OPT', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_Rate_DL_mat=strcat(network_folder_py, 'Rate_DL_mat', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_Rate_OPT_mat=strcat(network_folder_py, 'Rate_OPT_mat', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
 
-filename_MaxR_DL=strcat(network_folder, 'MaxR_DL', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_MaxR_OPT=strcat(network_folder, 'MaxR_OPT', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_MaxR_DL_mat=strcat(network_folder_py, 'MaxR_DL_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
-filename_MaxR_OPT_mat=strcat(network_folder_py, 'MaxR_OPT_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '_', num2str(Training_Size_dd), '.mat');
+filename_MaxR_DL=strcat(network_folder, 'MaxR_DL', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_MaxR_OPT=strcat(network_folder, 'MaxR_OPT', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_MaxR_DL_mat=strcat(network_folder_py, 'MaxR_DL_mat', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
+filename_MaxR_OPT_mat=strcat(network_folder_py, 'MaxR_OPT_mat', end_folder_M_bar, '_', num2str(Training_Size_dd), '.mat');
 
 if load_Rates == 1
     if load_mat_py == 1

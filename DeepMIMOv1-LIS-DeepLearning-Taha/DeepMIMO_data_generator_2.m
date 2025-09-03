@@ -5,13 +5,13 @@ function [Ur_rows_grid]=DeepMIMO_data_generator_2(Mx,My,Mz,D_Lambda,BW,K,K_DL,L,
 disp('---> DeepMIMO Dataset Generation');
 
 global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
-global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
+global seed DeepMIMO_dataset_folder end_folder DL_dataset_folder network_folder figure_folder;
 
-filename_Ht=strcat(DeepMIMO_dataset_folder, 'Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz), '.mat');
-filename_params_Ht=strcat(DeepMIMO_dataset_folder, 'params_Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz), '.mat');
-filename_Hr=strcat(DeepMIMO_dataset_folder, 'Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
-filename_params_Hr=strcat(DeepMIMO_dataset_folder, 'params_Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
-filename_Delta_H_max=strcat(DeepMIMO_dataset_folder, 'Delta_H_max', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '.mat');
+filename_Ht=strcat(DeepMIMO_dataset_folder, 'Ht', end_folder, '.mat');
+filename_params_Ht=strcat(DeepMIMO_dataset_folder, 'params_Ht', end_folder, '.mat');
+filename_Hr=strcat(DeepMIMO_dataset_folder, 'Hr', end_folder);
+filename_params_Hr=strcat(DeepMIMO_dataset_folder, 'params_Hr', end_folder);
+filename_Delta_H_max=strcat(DeepMIMO_dataset_folder, 'Delta_H_max', end_folder, '.mat');
 
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
 params.num_ant_x= Mx;             % Number of the UPA antenna array on the x-axis 
@@ -54,9 +54,11 @@ else
         disp('Done');
         toc
 
-        save(filename_Ht,'DeepMIMO_dataset','-v7.3'); % save(filename, variables, options), 
-        save(filename_params_Ht,'params','-v7.3');
-        % -v7.3 è utilizzato per salvare file MAT che possono contenere variabili di grandi dimensioni e supporta la compressione.
+        if save_mat_files == 1
+            save(filename_Ht,'DeepMIMO_dataset','-v7.3'); % save(filename, variables, options), 
+            save(filename_params_Ht,'params','-v7.3');
+            % -v7.3 è utilizzato per salvare file MAT che possono contenere variabili di grandi dimensioni e supporta la compressione.
+        end
     end
     
     % .channel restituisce la matrice di canale tra l'active base station {1}, che in realtà è la RIS
@@ -90,8 +92,10 @@ else
             disp('Done');
             toc
 
-            save(filename_Hrpp,'DeepMIMO_dataset','-v7.3');
-            save(filename_params_Hrpp,'params','-v7.3');
+            if save_mat_files == 1
+                save(filename_Hrpp,'DeepMIMO_dataset','-v7.3');
+                save(filename_params_Hrpp,'params','-v7.3');
+            end
         end
 
         % Per ogni griglia verticale, lavora su ogni utente contenuto all'interno

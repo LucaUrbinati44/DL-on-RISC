@@ -6,7 +6,7 @@ base_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Ta
 output_folder = [base_folder, 'Output Matlab/'];
 output_folder_py = [base_folder, 'Output_Python/'];
 
-global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py network_folder_out_RateDLpy network_folder_out_RateDLpy_TFLite;
+global seed DeepMIMO_dataset_folder end_folder end_folder_M_bar DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py network_folder_out_RateDLpy network_folder_out_RateDLpy_TFLite;
 
 seed=0;
 rng(seed, "twister") % Added for code replicability
@@ -48,15 +48,16 @@ cd(base_folder);
 % Luca variables to control the flow
 global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat_py;
 
+% all 1s in production
 load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
 load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
-load_DL_dataset  = 1; % load output from DL_data_generator_3.m
-load_Rates       = 1; % load output from DL_training_4.m
+load_DL_dataset  = 0; % load output from DL_data_generator_3.m
+load_Rates       = 0; % load output from DL_training_4.m
 training         = 0; % 1 for training the network, 0 from loaoding it from file
-save_mat_files   = 0;
+save_mat_files   = 1;
 
 load_mat_py      = 4; 
-% 4: load py-generated test tflite files
+% 4: load py-generated test tflite files (production)
 % 3: load py-generated test files
 % 2: load py-generated files
 % 1: load mat-python-mat files
@@ -74,7 +75,7 @@ plot_test_only = 0;
 plot_threshold = 0;
 threshold      = 3; % [bps/Hz], only if plot_threshold == 1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
-plot_figD = 1; % Richiede di impostare My_ar=[32 64]; Mz_ar=[32 64];
+plot_figD = 0; % Richiede di impostare My_ar=[32 64]; Mz_ar=[32 64];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Settings condivise tra i vari plot
 plot_mode = 2; % 1: matlab, 2: python
@@ -114,6 +115,7 @@ kbeams=1;   %select the top kbeams, get their feedback and find the max actual a
 Pt=5; % transmit power (dB)
 L=1; % number of channel paths
 
+% TO CHANGE FOR DESIGN-SPACE EXPLORATION
 M_bar=8; % number of active elements
 
 D_Lambda = 0.5; % Antenna spacing relative to the wavelength
@@ -193,6 +195,9 @@ for rr = 1:1:numel(My_ar)
     Mx = 1;  % number of LIS reflecting elements across the x axis
     My=My_ar(rr);
     Mz=Mz_ar(rr);
+    
+    end_folder = strcat('_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My), ' ', ''), strrep(num2str(Mz), ' ', ''));
+    end_folder_M_bar = strcat(end_folder, '_Mbar', num2str(M_bar));
 
     %% DeepMIMO Dataset Generation
 
@@ -207,12 +212,13 @@ for rr = 1:1:numel(My_ar)
     %Validation_Ind = RandP_all2[-(Validation_Size+Test_Size):-Test_Size] % python
     %Validation_Ind_6200 = RandP_all(end-(Test_Size+Test_Size)+1:end);
 
+    continue
+    
     %% DL Beamforming
 
     for dd=1:1:numel(Training_Size)
 
         Training_Size_dd = Training_Size(dd);
-        end_folder = strcat('_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My), ' ', ''), strrep(num2str(Mz), ' ', ''), '_Mbar', num2str(M_bar));    
 
         if Training_Size_dd >= 10000 || Training_Size_dd == 2
             [Rate_OPT,Rate_DL,MaxR_OPT,MaxR_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);

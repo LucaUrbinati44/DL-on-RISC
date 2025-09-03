@@ -5,25 +5,25 @@ function [RandP_all,Validation_Ind]=DL_data_generator_3(Mx,My,Mz,M_bar,D_Lambda,
 disp('---> Deep Learning Dataset Generation');
 
 global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
-global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder figure_folder;
+global seed DeepMIMO_dataset_folder end_folder end_folder_M_bar DL_dataset_folder network_folder figure_folder;
 
-filename_Ht=strcat(DeepMIMO_dataset_folder, 'Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz), '.mat');
-filename_params_Ht=strcat(DeepMIMO_dataset_folder, 'params_Ht', '_seed', '_grid', num2str(Ur_rows(2)), num2str(seed), '_M', num2str(My), num2str(Mz), '.mat');
-filename_Hr=strcat(DeepMIMO_dataset_folder, 'Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
-filename_params_Hr=strcat(DeepMIMO_dataset_folder, 'params_Hr', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz));
-filename_Delta_H_max=strcat(DeepMIMO_dataset_folder, 'Delta_H_max', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '.mat');
-filename_User_Location=strcat(DeepMIMO_dataset_folder, 'User_Location', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-%filename_params=strcat(DeepMIMO_dataset_folder, 'params', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_Ht=strcat(DeepMIMO_dataset_folder, 'Ht', '_seed', '_grid', num2str(seed), num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '.mat');
+filename_params_Ht=strcat(DeepMIMO_dataset_folder, 'params_Ht', end_folder, '.mat');
+filename_Hr=strcat(DeepMIMO_dataset_folder, 'Hr', end_folder);
+filename_params_Hr=strcat(DeepMIMO_dataset_folder, 'params_Hr', end_folder);
+filename_Delta_H_max=strcat(DeepMIMO_dataset_folder, 'Delta_H_max', end_folder, '.mat');
+filename_User_Location=strcat(DeepMIMO_dataset_folder, 'User_Location', end_folder_M_bar, '.mat');
+%filename_params=strcat(DeepMIMO_dataset_folder, 'params', end_folder_M_bar, '.mat');
 
-filename_RandP_all=strcat(DL_dataset_folder, 'RandP_all', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_input=strcat(DL_dataset_folder, 'DL_input', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output=strcat(DL_dataset_folder, 'DL_output', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_un=strcat(DL_dataset_folder, 'DL_output_un', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_RandP_all=strcat(DL_dataset_folder, 'RandP_all', end_folder_M_bar, '.mat');
+filename_DL_input=strcat(DL_dataset_folder, 'DL_input', end_folder_M_bar, '.mat');
+filename_DL_output=strcat(DL_dataset_folder, 'DL_output', end_folder_M_bar, '.mat');
+filename_DL_output_un=strcat(DL_dataset_folder, 'DL_output_un', end_folder_M_bar, '.mat');
 
-filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
-filename_DL_output_un_complete_reshaped=strcat(DL_dataset_folder, 'DL_output_un_complete_reshaped', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '.mat');
+filename_DL_input_reshaped=strcat(DL_dataset_folder, 'DL_input_reshaped', end_folder_M_bar, '.mat');
+filename_DL_output_reshaped=strcat(DL_dataset_folder, 'DL_output_reshaped', end_folder_M_bar, '.mat');
+filename_DL_output_un_reshaped=strcat(DL_dataset_folder, 'DL_output_un_reshaped', end_folder_M_bar, '.mat');
+filename_DL_output_un_complete_reshaped=strcat(DL_dataset_folder, 'DL_output_un_complete_reshaped', end_folder_M_bar, '.mat');
 
 % Note: The axes of the antennas match the axes of the ray-tracing scenario
 M = Mx.*My.*Mz; % Total number of LIS reflecting elements 
