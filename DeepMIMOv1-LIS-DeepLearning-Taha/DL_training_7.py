@@ -26,8 +26,9 @@ tf.random.set_seed(seed)
 
 # Definizione dei parametri
 
-debug = 2            # 0: production
-dummy = 'dummy_'
+debug = 2            # 0: production mode,  2: dummy mode
+#dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
+dummy = ''
 
 if dummy == 'dummy_':
     warmup_samples = 5
@@ -59,28 +60,46 @@ Training_Size = [30000]
 Training_Size_dd = Training_Size[0]
 
 # training
-#max_epochs_load = 0
-#load_model_flag = 0
-#train_model_flag = 1
+max_epochs = 20
+#max_epochs = 40
+#max_epochs = 60
+max_epochs_load = 0
+load_model_flag = 0
+train_model_flag = 1
+predict_loaded_model_flag = 0
+convert_model_flag = 0
+profiling_flag = 0
 
-# loading and training
+# loading and training (for continuing training)
+#max_epochs = 20
 #max_epochs_load = 20
 #max_epochs_load = 40 # only for My_ar = [64]
 #max_epochs_load = 60 # only for My_ar = [64]
 #max_epochs_load = 80 # only for My_ar = [64]
 #load_model_flag = 1
 #train_model_flag = 1
+#predict_loaded_model_flag = 0
+#convert_model_flag = 0
+#profiling_flag = 0
 
-# loading
-#max_epochs_load = 20
-#max_epochs_load = 40
-max_epochs_load = 60 #
-#max_epochs_load = 80 # only for My_ar = [64]
-#max_epochs_load = 100 # only for My_ar = [64]
-load_model_flag = 1
-train_model_flag = 0
-predict_loaded_model_flag = 1
-convert_model_flag = 1
+# loading (for inference and profiling)
+#max_epochs = 0 # dummy value
+##max_epochs_load = 20
+##max_epochs_load = 40
+#max_epochs_load = 60 #
+##max_epochs_load = 80 # only for My_ar = [64]
+##max_epochs_load = 100 # only for My_ar = [64]
+#load_model_flag = 1
+#train_model_flag = 0
+#predict_loaded_model_flag = 1
+#convert_model_flag = 1
+#profiling_flag = 0
+
+
+test_set_size = 'small' # 'full' in prodcution
+##test_set_size = 'full'
+save_files_flag_master = 1
+save_files_flag_master_once = 0
 
 base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
 
@@ -91,22 +110,13 @@ network_folder_in = input_folder + 'Neural Network/'
 
 output_folder = base_folder + 'Output_Python/'
 network_folder_out = output_folder + 'Neural_Network/'
-network_folder_out_YPredicted = output_folder + 'Neural_Network/YPredicted/'
 network_folder_out_RateDLpy = output_folder + 'Neural_Network/RateDLpy/'
 network_folder_out_RateDLpy_TFLite = output_folder + 'Neural_Network/RateDLpy_TFLite/'
-saved_models_keras = network_folder_out + 'saved_models_keras/'
-saved_models_onnx = network_folder_out + 'saved_models_onnx/'
-saved_models_tfsaved = network_folder_out + 'saved_models_tfsaved/'
-saved_models_tfsaved2 = network_folder_out + 'saved_models_tfsaved2/'
-saved_models_tflite = network_folder_out + 'saved_models_tflite/'
-figure_folder = output_folder + 'Figures/'
-profiling_estimation_folder = output_folder + 'Profiling_Search_Estimation/'
 mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
-mcu_profiling_folder_output = mcu_profiling_folder + 'output_data/'
 mcu_profiling_folder_model = mcu_profiling_folder + 'model/'
 mcu_profiling_folder_scaler = mcu_profiling_folder + 'scaler/'
-mcu_profiling_folder_test_data_normalized = mcu_profiling_folder + 'test_data_normalized/'
 mcu_profiling_folder_test_data = mcu_profiling_folder + 'test_data/'
+mcu_profiling_folder_outputdata = mcu_profiling_folder + 'output_data/'
 #pio_projects_folder = '/mnt/c/Users/Work/Documents/PlatformIO/Projects/'
 pio_projects_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/'
 header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
@@ -114,22 +124,13 @@ header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
 folders = [
     output_folder,
     network_folder_out,
-    network_folder_out_YPredicted,
     network_folder_out_RateDLpy,
     network_folder_out_RateDLpy_TFLite,
-    saved_models_keras,
-    saved_models_onnx,
-    saved_models_tfsaved,
-    saved_models_tfsaved2,
-    saved_models_tflite,
-    figure_folder,
-    profiling_estimation_folder,
     mcu_profiling_folder,
     mcu_profiling_folder_test_data,
-    mcu_profiling_folder_test_data_normalized,
-    mcu_profiling_folder_output,
     mcu_profiling_folder_model,
     mcu_profiling_folder_scaler,
+    mcu_profiling_folder_outputdata,
     pio_projects_folder
 ]
 
@@ -164,13 +165,23 @@ def convert_to_tflite_int8(model, x_sample, model_path_tflite):
     with open(model_path_tflite, 'wb') as f:
         f.write(tflite_quant_model)
 
-def get_model_path_tflite(mcu_profiling_folder, dummy, end_folder_Training_Size_dd):
+def get_model_path_tflite(dummy, end_folder_Training_Size_dd):
     print('\n*** get_model_path_tflite')
+
+    if len(hidden_units_list) == 1:
+        hul = str(hidden_units_list[0])
+    elif len(hidden_units_list) == 2:
+        hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1])
+    elif len(hidden_units_list) == 3:
+        hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1]) + "_" + str(hidden_units_list[2])
+
+    model_name_suffix = f"_in{input_features}_out{output_dim}_nl{num_layers}_hul{hul}"
+    
     end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
-    model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
-    model_path_tflite = mcu_profiling_folder_model + model_type_load + '_quant.tflite'
-    codebook_index_filepath = mcu_profiling_folder_output + 'output_codebook_int8_' + model_type_load + '.txt'
-    return end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite, codebook_index_filepath
+    model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load + model_name_suffix
+    model_path_tflite = mcu_profiling_folder_model + model_type_load + '_quant.tflite'    
+    
+    return model_name_suffix, end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite
 
 def mse_custom(y_true, y_pred):
     # Calcola l'errore quadratico tra vero e predetto
@@ -183,181 +194,11 @@ def mse_custom(y_true, y_pred):
     loss = 0.5 * tf.reduce_mean(sum_squared_error)  # scalar
     return loss
 
-# ----- Export test data for inference -----
-def export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, xtest_npy_filename, mean_array_filepath, variance_array_filepath, size='small'):
-    print('\n*** export_test_data')
-
-    # Recover npy test set
-    xtest = np.load(xtest_npy_filename)
-    print(xtest.shape)
-    
-    # Choose the number of test samples
-    if size == 'small':
-        xtest_size = 10
-    else:
-        xtest_size = xtest.shape[0]
-
-    print(xtest[:xtest_size,:].shape)
-
-    # Convert the test set into a csv file
-    #xtest_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + size + '.csv'
-    #with open(xtest_filename, 'w') as f:
-    #    # map(str, sample): trasforma ogni elemento del vettore sample in una stringa.
-    #    # ' '.join(...): concatena tutte queste stringhe, separandole con uno spazio.
-    #    for sample in xtest[:xtest_size,:]:
-    #        f.write(" ".join(map(str, sample)) + "\n")
-
-    # Load scalers
-    #mean_array_filepath = mcu_profiling_folder_scaler + 'mean' + end_folder_Training_Size_dd + '.npy'
-    #with open(mean_array_filepath, 'r') as f:
-    #    mean_array = f.read()
-    mean_array = np.load(mean_array_filepath)
-            
-    #variance_array_filepath = mcu_profiling_folder_scaler + 'variance' + end_folder_Training_Size_dd + '.npy'
-    #with open(variance_array_filepath, 'w') as f:
-    #    variance_array = f.read()
-    variance_array = np.load(variance_array_filepath)
-
-    # Load the tflite model
-    with open(model_path_tflite, 'rb') as f:
-        tflite_quant_model = f.read()
-    print('TFLite model loaded')
-
-    tflite_model = schema_fb.Model.GetRootAsModel(tflite_quant_model, 0)
-
-    # Gets metadata from the model file.
-    for i in range(tflite_model.MetadataLength()):
-        meta = tflite_model.Metadata(i)
-        if meta.Name().decode("utf-8") == "min_runtime_version":
-            buffer_index = meta.Buffer()
-            metadata = tflite_model.Buffers(buffer_index)
-            min_runtime_version_bytes = metadata.DataAsNumpy().tobytes()
-            print(min_runtime_version_bytes)
-
-    # inference using tflite model with xtest
-    #Loading and running a LiteRT model involves the following steps:
-    #1) Loading the model into memory.
-    #2) Building an Interpreter based on an existing model.
-    # Load the LiteRT model and allocate tensors.
-    interpreter = Interpreter(model_content=tflite_quant_model)
-    interpreter.allocate_tensors()
-    details = interpreter.get_tensor_details()
-
-    # Stampa l'elenco degli operatori
-    for op in interpreter._get_ops_details():
-        print(op['op_name'])
-
-    #3) Setting input tensor values.
-    # Get input and output tensors.
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-    #input_dtype = input_details[0]['dtype'] #int8
-    #output_dtype = input_details[0]['dtype']
-    #print('input_dtype:', input_dtype) # [   1 1024]
-    #print('output_dtype:', output_dtype)
-    #input_shape = input_details[0]['shape']
-    #output_shape = output_details[0]['shape']
-    #print('input_shape:', input_shape)
-    #print('output_shape:', output_shape)
-
-    input_scale, input_zero_point = input_details[0]['quantization']
-    print(f'input_scale: {input_scale:.6f}')
-    print(f'input_zero_point: {input_zero_point:.6f}')
-    output_scale, output_zero_point = output_details[0]['quantization']
-    print(f'output_scale: {output_scale:.6f}')
-    print(f'output_zero_point: {output_zero_point:.6f}')
-        
-    input_float = xtest[:xtest_size,:]
-    #print('input_float.shape:', input_float.shape) # (3100, 1024)
-    #print('np.max(input_float):', np.max(input_float))
-    #print('np.min(input_float):', np.min(input_float))
-
-    num_samples = input_float.shape[0]
-    output_float = []
-
-    for i in range(num_samples):
-    #for i in range(3):
-        #print('i:', i)
-
-        sample = input_float[i]  # shape: (1024,)
-        #print('sample.shape:', sample.shape)
-        print('\nfloat_input:', ' '.join([f"{x:.6f}" for x in sample]))
-        sample = np.expand_dims(sample, axis=0)  # shape: (1, 1024)
-
-        sample_normalized = np.array((sample - mean_array) / np.sqrt(variance_array), dtype=np.float32)
-
-        input_int8 = np.round(sample_normalized / input_scale + input_zero_point).astype(np.int8)
-        print('\nquantized_input:', ' '.join([f"{x}" for x in input_int8.flatten()]))
-        #print('input_int8.shape:', input_int8.shape)
-        #print('np.max(input_int8):', np.max(input_int8))
-        #print('np.min(input_int8):', np.min(input_int8))
-
-        #4) Invoking inferences.
-        # Test the model on input data.
-        #input_float = np.array(np.random.random_sample(input_shape), dtype=np.float32) # random input data
-
-        interpreter.set_tensor(input_details[0]['index'], input_int8)
-        interpreter.invoke()
-
-        #5) Outputting tensor values
-        # The function `get_tensor()` returns a copy of the tensor data.
-        # Use `tensor()` in order to get a pointer to the tensor.
-        output_int8 = interpreter.get_tensor(output_details[0]['index'])
-        #print('output_int8.shape:', output_int8.shape)
-        #print('np.max(output_int8):', np.max(output_int8))
-        #print('np.min(output_int8):', np.min(output_int8))
-        output_deq = (output_int8.astype(np.float32) - output_zero_point) * output_scale
-        print('\nquantized_output:', ' '.join([f"{x}" for x in output_int8.flatten()]))
-        print('\ndequantized_output:', ' '.join([f"{x:.6f}" for x in output_deq[0]]))
-        #print('output_deq.shape:', output_deq.shape)
-        #print('np.max(output_deq):', np.max(output_deq))
-        #print('np.min(output_deq):', np.min(output_deq))
-        output_float.append(output_deq[0])  # output_deq.shape: (1, 1024) -> prendi [0]
-        
-        print(f"\ncodebook_index {i+1}: {np.argmax(output_deq[0])}\n")
-
-    YPredicted = np.stack(output_float, axis=0)  # shape: (3100, 1024)
-    #print(f'YPredicted.shape: {YPredicted.shape}')
-
-    Indmax_DL_py = np.argmax(YPredicted, axis=1)
-    #print(f'Indmax_DL_py.shape: {Indmax_DL_py.shape}')
-    # Questi devono essere numeri interi
-    print(f'np.min(Indmax_DL_py): {np.min(Indmax_DL_py)}')
-    print(f'np.max(Indmax_DL_py): {np.max(Indmax_DL_py)}')
-    print(Indmax_DL_py[0:5])
-
-    # save int8 inference results as golden output on a .data file for TFLM comparison
-    Indmax_DL_py_renode_filename_int8 = mcu_profiling_folder_output + 'output_golden_codebook_int8_' + size + '.csv'
-    with open(Indmax_DL_py_renode_filename_int8, 'w') as f:
-        for sample in Indmax_DL_py[:xtest_size]:
-            f.write(str(sample) + '\n')
-
-    # save float32 inference results as golden output on a .data file for TFLM comparisong
-    filename_Indmax_DL_py = network_folder_out_RateDLpy + 'Indmax_DL_py' + '_test' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
-    with h5py.File(filename_Indmax_DL_py, 'r') as f:
-        Indmax_DL_py = np.array(f['Indmax_DL_py'][:], dtype=np.float32)
-        print(f"\nIndmax_DL_py loaded")
-    Indmax_DL_py_renode_filename_float32 = mcu_profiling_folder_output + 'output_golden_codebook_float32_' + size + '.csv'
-    with open(Indmax_DL_py_renode_filename_float32, 'w') as f:
-        for sample in Indmax_DL_py[:xtest_size]:
-            f.write(str(int(sample)) + '\n')
-
-
 # ----- Export TF-Lite INT8 model to C for TFLM -----
-def export_to_c(model_type_load, model_path_tflite, save_dir="./", simple=True):
+def export_to_c(model_type_load, model_path_tflite, save_dir="./"):
     print('\n*** export_to_c')
 
-    if simple == False:
-        if len(hidden_units_list) == 1:
-            hul = str(hidden_units_list[0])
-        elif len(hidden_units_list) == 2:
-            hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1])
-        elif len(hidden_units_list) == 3:
-            hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1]) + "_" + str(hidden_units_list[2])
-
-        model_name = model_type_load + f"_in{input_features}_out{output_dim}_nl{num_layers}_hul{hul}"
-    else:
-        model_name = 'mlp'
+    model_name = 'mlp'
         
     header_path = os.path.join(save_dir, f"{model_name}_model_data.h")
     source_path = os.path.join(save_dir, f"{model_name}_model_data.cc")
@@ -655,78 +496,9 @@ def parse_compilation_logfile(file_path):
 
     return round(RAM_KB,2), round(Flash_MB,2), round(CLK_FREQ_MHZ,2), round(RAM_HW_KB,2), round(Flash_HW_MB,2), Error
 
-# ----- Salva risultati del profiling su file -----
-def save_results(summary, macs, model_size_float32_kb, model_size_float32_mb, model_size_int8_kb, model_size_int8_mb, output_csv):
-    print('\n*** save_results')
-    fieldnames = [
-        'input_features', 'num_layers', 'hidden_units_list', 'output_dim',
-        'device_type', 'model_size_float32_kb', 'model_size_float32_mb', 'model_size_int8_kb', 'model_size_int8_mb', 'mac_ops',
-        'ram_mean_kb', 'rom_mean_kb', 'lat_mean_ms', 'lat_std_ms', 'ops_s'
-    ]
-    write_header = not os.path.exists(output_csv)
-
-    with open(output_csv, 'a', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        if write_header:
-            writer.writeheader()
-        for device_type, metrics in summary.items():
-            
-            ops_s = int((macs*2)/(metrics['lat_mean_ms']/1000)) # operations per seconds
-
-            row = {
-                'input_features': input_features,
-                'num_layers': num_layers,
-                'hidden_units_list': hidden_units_list,
-                'output_dim': output_dim,
-                'device_type': device_type,
-                'model_size_float32_kb': model_size_float32_kb,
-                'model_size_float32_mb': model_size_float32_mb,
-                'model_size_int8_kb': model_size_int8_kb,
-                'model_size_int8_mb': model_size_int8_mb,
-                'mac_ops': macs,
-                **metrics,
-                'ops_s': ops_s
-            }
-            writer.writerow(row)
-
 
 # ----- Salva risultati del profiling su file -----
-def save_results_v2(M_bar, input_features, output_dim, num_layers, hidden_units_list,
-                    model_size_int8_kb, model_size_int8_mb, model_file_size_int8_mb, ram_total_kb, macs, output_csv):
-
-    #print('\n*** save_results')
-    
-    fieldnames = [
-        'M_bar', 'input_features', 'num_layers', 'hidden_units_list', 'output_dim',
-        'model_size_int8_kb', 'model_size_int8_mb', 'model_file_size_int8_mb', 'ram_total_kb', 'mac_ops'
-    ]
-    
-    write_header = not os.path.exists(output_csv)
-
-    with open(output_csv, 'a', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        if write_header:
-            writer.writeheader()
-
-        row = {
-            'M_bar': M_bar,
-            'input_features': input_features,
-            'num_layers': num_layers,
-            'hidden_units_list': hidden_units_list,
-            'output_dim': output_dim,
-            'model_size_int8_kb': model_size_int8_kb,
-            'model_size_int8_mb': model_size_int8_mb,
-            'model_file_size_int8_mb': model_file_size_int8_mb,
-            'ram_total_kb': ram_total_kb,
-            'mac_ops': macs
-        }
-
-        writer.writerow(row)
-
-
-
-# ----- Salva risultati del profiling su file -----
-def save_results_v3(end_folder_Training_Size_dd, K_DL, max_epochs_load,
+def save_results_v3(dummy, end_folder_Training_Size_dd_max_epochs_load, K_DL,
                     input_features, num_layers, hidden_units_list, output_dim,
                     model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
                     RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
@@ -738,12 +510,12 @@ def save_results_v3(end_folder_Training_Size_dd, K_DL, max_epochs_load,
                     mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast,
                     mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency,
                     mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast,
-                    extract_codebook_index_list, extract_codebook_index_fast_list,
-                    output_csv, codebook_index_filepath,
                     Rate_OPT_py_load_val, Rate_DL_py_load_val,
                     Rate_OPT_py_load_test, Rate_DL_py_load_test,
-                    Rate_DL_py_load_test_tflite, Rate_DL_py_load_test_tflite_mcu):
-
+                    Rate_DL_py_load_test_tflite, Rate_DL_py_load_test_tflite_mcu,
+                    Indmax_OPT_py_load_test, Indmax_DL_py_load_test, 
+                    Indmax_DL_py_load_test_tflite, Indmax_DL_py_load_test_tflite_mcu):
+    
     print('\n*** save_results_v3')
 
     fieldnames = [
@@ -769,12 +541,29 @@ def save_results_v3(end_folder_Training_Size_dd, K_DL, max_epochs_load,
         'mean_tot_latency_fast', 'perc50_tot_latency_fast', 'perc95_tot_latency_fast', 'std_tot_latency_fast',
 
         # subset di risultati
-        'extract_codebook_index_list[0:5]', 'extract_codebook_index_fast_list[0:5]'
-
         'Rate_OPT_py_load_val', 'Rate_DL_py_load_val',
         'Rate_OPT_py_load_test', 'Rate_DL_py_load_test',
-        'Rate_DL_py_load_test_tflite', 'Rate_DL_py_load_test_tflite_mcu'
+        'Rate_DL_py_load_test_tflite', 'Rate_DL_py_load_test_tflite_mcu',
+        
+        'Indmax_OPT_py_load_test[0:5]', 'Indmax_DL_py_load_test[0:5]', 
+        'Indmax_DL_py_load_test_tflite[0:5]', 'Indmax_DL_py_load_test_tflite_mcu[0:5]'
     ]
+
+    output_csv = mcu_profiling_folder + 'profiling' + dummy + end_folder_Training_Size_dd_max_epochs_load + '_' + mcu_type + '.csv'
+
+    if dummy == '':
+        filename_Indmax_OPT_py_load_test = mcu_profiling_folder_outputdata + 'Indmax_OPT_py_load_test' + end_folder_Training_Size_dd_max_epochs_load + '.txt'
+        filename_Indmax_DL_py_load_test = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test' + end_folder_Training_Size_dd_max_epochs_load + '.txt'
+        filename_Indmax_DL_py_load_test_tflite = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test_tflite' + end_folder_Training_Size_dd_max_epochs_load + '.txt'
+        filename_Indmax_DL_py_load_test_tflite_mcu = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test_tflite_mcu' + end_folder_Training_Size_dd_max_epochs_load + '.txt'
+
+        codebook_lists = [Indmax_OPT_py_load_test, Indmax_DL_py_load_test, Indmax_DL_py_load_test_tflite, Indmax_DL_py_load_test_tflite_mcu]
+        filenames = [filename_Indmax_OPT_py_load_test, filename_Indmax_DL_py_load_test, filename_Indmax_DL_py_load_test_tflite, filename_Indmax_DL_py_load_test_tflite_mcu]
+
+        for filename, codebook_list in zip(filenames, codebook_lists):
+            with open(filename, 'w') as f:
+                for codebook in codebook_list:
+                    f.write(str(codebook) + "\n")
 
     write_header = not os.path.exists(output_csv)
 
@@ -784,7 +573,8 @@ def save_results_v3(end_folder_Training_Size_dd, K_DL, max_epochs_load,
             writer.writeheader()
 
         row = {
-            'M_bar':       M_bar,
+            'end_folder_Training_Size_dd_max_epochs_load': end_folder_Training_Size_dd_max_epochs_load, 
+            'K_DL': K_DL, 
             'input_features':    input_features,
             'num_layers':        num_layers,
             'hidden_units_list': hidden_units_list,
@@ -846,36 +636,33 @@ def save_results_v3(end_folder_Training_Size_dd, K_DL, max_epochs_load,
             'perc95_tot_latency_fast': round(perc95_tot_latency_fast, 3),
             'std_tot_latency_fast': round(std_tot_latency_fast, 3),
 
-            # subset
-            'extract_codebook_index_list[0:5]': extract_codebook_index_list[0:5],
-            'extract_codebook_index_fast_list[0:5]': extract_codebook_index_fast_list[0:5],
-
             'Rate_OPT_py_load_val': round(Rate_OPT_py_load_val, 3),
             'Rate_DL_py_load_val': round(Rate_DL_py_load_val, 3),
             'Rate_OPT_py_load_test': round(Rate_OPT_py_load_test, 3),
             'Rate_DL_py_load_test': round(Rate_DL_py_load_test, 3),
             'Rate_DL_py_load_test_tflite': round(Rate_DL_py_load_test_tflite, 3),
-            'Rate_DL_py_load_test_tflite_mcu': round(Rate_DL_py_load_test_tflite_mcu, 3)
+            'Rate_DL_py_load_test_tflite_mcu': round(Rate_DL_py_load_test_tflite_mcu, 3),
+            
+            # subset
+            'Indmax_OPT_py_load_test[0:5]': Indmax_OPT_py_load_test[0:5], 
+            'Indmax_DL_py_load_test[0:5]': Indmax_DL_py_load_test[0:5], 
+            'Indmax_DL_py_load_test_tflite[0:5]': Indmax_DL_py_load_test_tflite[0:5], 
+            'Indmax_DL_py_load_test_tflite_mcu[0:5]': Indmax_DL_py_load_test_tflite_mcu[0:5]
         }
 
         writer.writerow(row)
         print(json.dumps(row, indent=4))
 
-    with open(codebook_index_filepath, 'w') as f:
-        for codebook in extract_codebook_index_list:
-            f.write(str(codebook) + "\n")
-
 
 # ----- Run di una singola configurazione -----
-def run_experiment(dummy, 
-                   M_bar, input_features, output_dim, num_layers, hidden_units_list, 
-                   x_sample, output_csv, 
+def run_experiment(dummy, data_csv, x_sample, 
+                   input_features, output_dim, num_layers, hidden_units_list, 
                    mean_array_filepath, variance_array_filepath, warmup_samples, xtest_npy_filename,
                    end_folder, end_folder_Training_Size_dd):
     #print('\n*** run_experiment')
 
     # Crea o recupera nome del modello tflite
-    end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite, codebook_index_filepath = get_model_path_tflite(mcu_profiling_folder, dummy, end_folder_Training_Size_dd)
+    model_name_suffix, end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite = get_model_path_tflite(dummy, end_folder_Training_Size_dd)
     
     # Allena o carica modello pre-allenato
     if dummy == 'dummy_':
@@ -884,161 +671,176 @@ def run_experiment(dummy,
         
         # Converti modello keras in tflite int8
         convert_to_tflite_int8(model_py, x_sample, model_path_tflite)
+
+        Rate_OPT_py_load_val = 0
+        Rate_DL_py_load_val = 0
+        Rate_OPT_py_load_test = 0
+        Rate_DL_py_load_test = 0
+        Rate_DL_py_load_test_tflite = 0
+        Indmax_OPT_py_load_test = [0, 0, 0, 0, 0]
+        Indmax_DL_py_load_test = [0, 0, 0, 0, 0]
+        Indmax_DL_py_load_test_tflite = [0, 0, 0, 0, 0]
+        YValidation_un_test = 0
+
     else:
         model_py, \
-        Rate_OPT_py_load_val, Rate_DL_py_load_val, \
+        Rate_OPT_py_load_val,  Rate_DL_py_load_val, \
         Rate_OPT_py_load_test, Rate_DL_py_load_test, \
         Rate_DL_py_load_test_tflite, \
+        Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
+        Indmax_DL_py_load_test_tflite, \
         YValidation_un_test = DL_training_4_v3_test.main(
-                                        My, Mz, load_model_flag, max_epochs_load, 
+                                        My, Mz, load_model_flag, max_epochs, max_epochs_load, 
                                         train_model_flag, predict_loaded_model_flag,
-                                        convert_model_flag, Training_Size_dd, 
+                                        convert_model_flag, Training_Size_dd,
                                         input_features, output_dim, num_layers, hidden_units_list,
-                                        end_folder, end_folder_Training_Size_dd, end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite)       
+                                        mean_array_filepath, variance_array_filepath, test_set_size,
+                                        end_folder, end_folder_Training_Size_dd, 
+                                        model_name_suffix, end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite,
+                                        save_files_flag_master, save_files_flag_master_once)       
 
-    # Esporta il modello in formato header file per TFLM
-    export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder, simple=True)
-    
-    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb = get_model_info_precise(model_py, model_path_tflite, save_dir=mcu_lib_model_folder)
+    if profiling_flag == 1:
+        # Esporta il modello in formato header file per TFLM
+        export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder)
+        
+        model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb = get_model_info_precise(model_py, model_path_tflite, save_dir=mcu_lib_model_folder)
+        
+        change_config_file_2(mcu_include_config, mean_array_filepath, variance_array_filepath)
 
-    if dummy == '':
-        # Esporta dati di test di ingresso e uscita
-        export_test_data(model_path_tflite, end_folder_Training_Size_dd_max_epochs_load, xtest_npy_filename, mean_array_filepath, variance_array_filepath, size='small')
-        #export_test_data(size='full')
-    
-    change_config_file_2(mcu_include_config, mean_array_filepath, variance_array_filepath)
+        # Lancia compilazione e upload firmware in maniera bloccante
+        compilation_logfile = os.path.join(mcu_folder, 'compilation_'+model_type_load+'.txt')
 
-    # Lancia compilazione e upload firmware in maniera bloccante
-    compilation_logfile = os.path.join(mcu_folder, 'compilation_'+model_type_load+'.txt')
+        i = 1
+        #while i <= 4:
+        while i <= 2:
+            # prima provi con modello in ram
+            # poi provi con modello in flash
+            if i == 1:
+                env_name = mcu_type+'-o3'
+            elif i == 2:
+                #env_name = mcu_type+'-o3-unrollnorm'
+                env_name = mcu_type+'-o3-modelinram'
+            #elif i == 3:
+            #    env_name = mcu_type+'-o3-modelinram'
+            #elif i == 4:
+            #    env_name = mcu_type+'-o3-unrollnorm-modelinram'
 
-    i = 1
-    #while i <= 4:
-    while i <= 2:
-        # prima provi con modello in ram
-        # poi provi con modello in flash
-        if i == 1:
-            env_name = mcu_type+'-o3'
-        elif i == 2:
-            #env_name = mcu_type+'-o3-unrollnorm'
-            env_name = mcu_type+'-o3-modelinram'
-        #elif i == 3:
-        #    env_name = mcu_type+'-o3-modelinram'
-        #elif i == 4:
-        #    env_name = mcu_type+'-o3-unrollnorm-modelinram'
+            print(f"\n*** Lancio pio run {i})... Segui gli avanzamenti qui: {compilation_logfile}")
+            with open(compilation_logfile, "w", encoding="utf-8") as logfile:
+                process = subprocess.Popen(
+                    #["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder],
+                    #["pio", "run", "--environment", mcu_type+'', "--project-dir", mcu_folder, "--target", "upload"],
+                    #["pio", "run", "--environment", mcu_type+'-o0', "--project-dir", mcu_folder, "--target", "upload"],
+                    #["pio", "run", "--environment", mcu_type+'-o3', "--project-dir", mcu_folder, "--target", "upload"],
+                    #["pio", "run", "--environment", mcu_type+'-o3-unrollallauto', "--project-dir", mcu_folder, "--target", "upload"],
+                    #["pio", "run", "--environment", mcu_type+'-o3-unrollallforced', "--project-dir", mcu_folder, "--target", "upload"],
+                    #["pio", "run", "--environment", mcu_type+'-o3-unrollallforced-selected', "--project-dir", mcu_folder, "--target", "upload"],
+                    #["pio", "run", "--environment", mcu_type+'-o3-unroll-selected', "--project-dir", mcu_folder, "--target", "upload"],
+                    #["pio", "run", "--environment", mcu_type+'-o3-unrollnorm-espnn', "--project-dir", mcu_folder, "--target", "upload"],
+                    #["pio", "run", "--environment", mcu_type+'-o3-unrollnorm', "--project-dir", mcu_folder, "--target", "upload"],
+                    ["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1  # line-buffered
+                )
 
-        print(f"\n*** Lancio pio run {i})... Segui gli avanzamenti qui: {compilation_logfile}")
-        with open(compilation_logfile, "w", encoding="utf-8") as logfile:
-            process = subprocess.Popen(
-                #["pio", "run", "--environment", mcu_type, "--project-dir", mcu_folder],
-                #["pio", "run", "--environment", mcu_type+'', "--project-dir", mcu_folder, "--target", "upload"],
-                #["pio", "run", "--environment", mcu_type+'-o0', "--project-dir", mcu_folder, "--target", "upload"],
-                #["pio", "run", "--environment", mcu_type+'-o3', "--project-dir", mcu_folder, "--target", "upload"],
-                #["pio", "run", "--environment", mcu_type+'-o3-unrollallauto', "--project-dir", mcu_folder, "--target", "upload"],
-                #["pio", "run", "--environment", mcu_type+'-o3-unrollallforced', "--project-dir", mcu_folder, "--target", "upload"],
-                #["pio", "run", "--environment", mcu_type+'-o3-unrollallforced-selected', "--project-dir", mcu_folder, "--target", "upload"],
-                #["pio", "run", "--environment", mcu_type+'-o3-unroll-selected', "--project-dir", mcu_folder, "--target", "upload"],
-                #["pio", "run", "--environment", mcu_type+'-o3-unrollnorm-espnn', "--project-dir", mcu_folder, "--target", "upload"],
-                #["pio", "run", "--environment", mcu_type+'-o3-unrollnorm', "--project-dir", mcu_folder, "--target", "upload"],
-                ["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1  # line-buffered
-            )
+                for line in process.stdout:
+                    print(line, end="")       # scrive a terminale
+                    logfile.write(line)       # scrive sul file
+                    
+                process.wait()
 
-            for line in process.stdout:
-                print(line, end="")       # scrive a terminale
-                logfile.write(line)       # scrive sul file
-                
-            process.wait()
+            # Lancia il parser per recuperare RAM e ROM da compilation output
+            # La Flash include non solo il modello perciò sarà maggiore di model_size_int8_mb
+            RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, Error1 = parse_compilation_logfile(compilation_logfile)
 
-        # Lancia il parser per recuperare RAM e ROM da compilation output
-        # La Flash include non solo il modello perciò sarà maggiore di model_size_int8_mb
-        RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, Error1 = parse_compilation_logfile(compilation_logfile)
+            if Error1 == 0:
+                # Lancia serial feeded and logger per calcolare la latenza
+                mean_norm, perc50_norm, perc95_norm, std_norm, \
+                mean_quant, perc50_quant, perc95_quant, std_quant, \
+                mean_invoke, perc50_invoke, perc95_invoke, std_invoke, \
+                mean_dequant, perc50_dequant, perc95_dequant, std_dequant, \
+                mean_extract, perc50_extract, perc95_extract, std_extract, \
+                mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, \
+                mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
+                mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
+                Indmax_DL_py_load_test_tflite_mcu, Rate_DL_py_load_test_tflite_mcu, Error2 = serial_feeder_and_logger.main(dummy,
+                                                                                                                           data_csv, 
+                                                                                                                           warmup_samples, 
+                                                                                                                           YValidation_un_test, 
+                                                                                                                           xtest_npy_filename, 
+                                                                                                                           end_folder_Training_Size_dd_max_epochs_load)
+        
+                if Error2 == 1 and i == 1:
+                    print("*** ATTENZIONE: Error2 == 1 and i == 1")
+                    break
+                elif Error2 == 1 and i == 2:
+                    print("*** ATTENZIONE: Error2 == 1 and i == 2")
+                    break
+                elif Error2 == 1 and i == 3: # if error
+                    print("*** ATTENZIONE: Error2 == 1 and i == 3")
+                    break
+                elif Error2 == 1 and i == 4: # if error
+                    print("*** ATTENZIONE: Error2 == 1 and i == 4")
+                    break
+                elif Error2 == 0:
+                    i += 1
 
-        if Error1 == 0:
-            # Lancia serial feeded and logger per calcolare la latenza
-            mean_norm, perc50_norm, perc95_norm, std_norm, \
-            mean_quant, perc50_quant, perc95_quant, std_quant, \
-            mean_invoke, perc50_invoke, perc95_invoke, std_invoke, \
-            mean_dequant, perc50_dequant, perc95_dequant, std_dequant, \
-            mean_extract, perc50_extract, perc95_extract, std_extract, \
-            mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, \
-            mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
-            mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
-            extract_codebook_index_list, extract_codebook_index_fast_list, \
-            Rate_DL_py_load_test_tflite_mcu, Error2 = serial_feeder_and_logger.main(warmup_samples, YValidation_un_test, xtest_npy_filename)
+            else:
+                mean_norm = 0
+                perc50_norm = 0
+                perc95_norm = 0
+                std_norm = 0                                            
+                mean_quant = 0
+                perc50_quant = 0
+                perc95_quant = 0
+                std_quant = 0                                      
+                mean_invoke = 0
+                perc50_invoke = 0
+                perc95_invoke = 0
+                std_invoke = 0                                     
+                mean_dequant = 0
+                perc50_dequant = 0
+                perc95_dequant = 0
+                std_dequant = 0                                  
+                mean_extract=0
+                perc50_extract = 0
+                perc95_extract = 0
+                std_extract = 0                                  
+                mean_extract_fast = 0
+                perc50_extract_fast = 0
+                perc95_extract_fast = 0
+                std_extract_fast = 0             
+                mean_tot_latency = 0
+                perc50_tot_latency = 0
+                perc95_tot_latency = 0
+                std_tot_latency = 0
+                mean_tot_latency_fast = 0
+                perc50_tot_latency_fast = 0
+                perc95_tot_latency_fast = 0
+                std_tot_latency_fast = 0
+                Indmax_DL_py_load_test_tflite_mcu = [0, 0, 0, 0, 0]   
 
-            if Error2 == 1 and i == 1:
-                print("*** ATTENZIONE: Error2 == 1 and i == 1")
-                break
-            elif Error2 == 1 and i == 2:
-                print("*** ATTENZIONE: Error2 == 1 and i == 2")
-                break
-            elif Error2 == 1 and i == 3: # if error
-                print("*** ATTENZIONE: Error2 == 1 and i == 3")
-                break
-            elif Error2 == 1 and i == 4: # if error
-                print("*** ATTENZIONE: Error2 == 1 and i == 4")
-                break
-            elif Error2 == 0:
-                i += 1
-
-        else:
-            mean_norm = 0
-            perc50_norm = 0
-            perc95_norm = 0
-            std_norm = 0                                            
-            mean_quant = 0
-            perc50_quant = 0
-            perc95_quant = 0
-            std_quant = 0                                      
-            mean_invoke = 0
-            perc50_invoke = 0
-            perc95_invoke = 0
-            std_invoke = 0                                     
-            mean_dequant = 0
-            perc50_dequant = 0
-            perc95_dequant = 0
-            std_dequant = 0                                  
-            mean_extract=0
-            perc50_extract = 0
-            perc95_extract = 0
-            std_extract = 0                                  
-            mean_extract_fast = 0
-            perc50_extract_fast = 0
-            perc95_extract_fast = 0
-            std_extract_fast = 0             
-            mean_tot_latency = 0
-            perc50_tot_latency = 0
-            perc95_tot_latency = 0
-            std_tot_latency = 0
-            mean_tot_latency_fast = 0
-            perc50_tot_latency_fast = 0
-            perc95_tot_latency_fast = 0
-            std_tot_latency_fast = 0
-            extract_codebook_index_list = [0, 0, 0, 0, 0]
-            extract_codebook_index_fast_list = [0, 0, 0, 0, 0]   
-
-        if Error2 == 0:
-            # Appendi risultati nel file output_csv
-            save_results_v3(end_folder_Training_Size_dd, K_DL, max_epochs_load,
-                            input_features, num_layers, hidden_units_list, output_dim,
-                            model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
-                            RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name, 
-                            mean_norm, perc50_norm, perc95_norm, std_norm, 
-                            mean_quant, perc50_quant, perc95_quant, std_quant, 
-                            mean_invoke, perc50_invoke, perc95_invoke, std_invoke, 
-                            mean_dequant, perc50_dequant, perc95_dequant, std_dequant, 
-                            mean_extract, perc50_extract, perc95_extract, std_extract, 
-                            mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, 
-                            mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, 
-                            mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, 
-                            extract_codebook_index_list, extract_codebook_index_fast_list,
-                            output_csv, codebook_index_filepath,
-                            Rate_OPT_py_load_val, Rate_DL_py_load_val,
-                            Rate_OPT_py_load_test, Rate_DL_py_load_test,
-                            Rate_DL_py_load_test_tflite, Rate_DL_py_load_test_tflite_mcu)
+            if Error2 == 0:
+                # Appendi risultati nel file output_csv
+                save_results_v3(dummy, end_folder_Training_Size_dd_max_epochs_load, K_DL,
+                                input_features, num_layers, hidden_units_list, output_dim,
+                                model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
+                                RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name, 
+                                mean_norm, perc50_norm, perc95_norm, std_norm, 
+                                mean_quant, perc50_quant, perc95_quant, std_quant, 
+                                mean_invoke, perc50_invoke, perc95_invoke, std_invoke, 
+                                mean_dequant, perc50_dequant, perc95_dequant, std_dequant, 
+                                mean_extract, perc50_extract, perc95_extract, std_extract, 
+                                mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, 
+                                mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, 
+                                mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast,
+                                Rate_OPT_py_load_val, Rate_DL_py_load_val,
+                                Rate_OPT_py_load_test, Rate_DL_py_load_test,
+                                Rate_DL_py_load_test_tflite, Rate_DL_py_load_test_tflite_mcu,
+                                Indmax_OPT_py_load_test, Indmax_DL_py_load_test, 
+                                Indmax_DL_py_load_test_tflite, Indmax_DL_py_load_test_tflite_mcu)
 
 # %%
 
@@ -1056,17 +858,17 @@ if __name__ == "__main__":
         active_cells = [1,4,8,12,28]
         output_dims = [My*Mz]         # Numero di neuroni di uscita (32x32 = 1024)
         num_layers_list = [0,1,2,3]   # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
-        R = [32, 8, 1]
+        R_list = [32, 8, 1]
     elif debug == 1:
         active_cells = [8]
         output_dims = [My*Mz]
         num_layers_list = [0,1,2,3]
-        R = [32, 8, 1]
+        R_list = [32, 8, 1]
     elif debug == 2:
         active_cells = [8]
         output_dims = [My*Mz]
         num_layers_list = [0]
-        R = [1]
+        R_list = [1]
     else: # modello di Taha
         #input_featuress = [1024]
         active_cells = [8]
@@ -1099,16 +901,16 @@ if __name__ == "__main__":
 
         end_folder = '_seed' + str(seed) + '_grid' + str(Ur_rows[1]) + '_M' + str(My) + str(Mz) + '_Mbar' + str(M_bar)
         end_folder_Training_Size_dd = end_folder + '_' + str(Training_Size_dd)
-        output_csv = mcu_profiling_folder + 'profiling' + dummy + end_folder_Training_Size_dd + '_' + mcu_type + '.csv'
-        
+                
         input_features = M_bar * K_DL * 2 #    8 celle attive x 64 subcarriers x 2 (real/img) = 1024
 
-        xtest_npy_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + '.npy'
-        #xtestnorm_npy_filename = mcu_profiling_folder_test_data_normalized + 'test_set_normalized' + end_folder_Training_Size_dd + '.npy'
         mean_array_filepath = mcu_profiling_folder_scaler + dummy + 'mean' + end_folder_Training_Size_dd + '.npy'            
         variance_array_filepath = mcu_profiling_folder_scaler + dummy + 'variance' + end_folder_Training_Size_dd + '.npy'
 
         if dummy == 'dummy_':
+
+            print(f"\n*** Dummy mode")
+
             # Sample fake data for quantization
             x_sample = np.random.rand(10, input_features).astype(np.float32)
             # Sample mean and variance for normalization
@@ -1131,21 +933,27 @@ if __name__ == "__main__":
             #        f.write(", ".join(map(str, sample)) + "\n")
             np.save(variance_array_filepath, variance_array)    
 
-        print(f"\n--> Dati creati: {data_csv}")
+            xtest_npy_filename = ''
+        else:
+            print(f"\n*** Normal mode")
 
+            x_sample = 0
+            data_csv = 0
+            xtest_npy_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + '.npy'
 
         for output_dim in output_dims:
 
             change_config_file_1(mcu_include_config, input_features, output_dim)
             change_lib_file_1(mcu_lib_libluca_folder, input_features, output_dim)
             
-            for num_layers in num_layers_list:
+            for R in R_list:
                 
-                hidden_units_list = [input_features/R, 4*input_features/R, 4*input_features/R]     # Numero di neuroni per layer
-            
-                print(f"\n--> Profiling: act_cell={M_bar}, in={input_features}, out={output_dim}, layers={num_layers}, hidden_units={hidden_units_list}")
-                run_experiment(dummy, 
-                               M_bar, input_features, output_dim, num_layers, hidden_units_list, 
-                               x_sample, output_csv, 
-                               mean_array_filepath, variance_array_filepath, warmup_samples, xtest_npy_filename,
-                               end_folder, end_folder_Training_Size_dd)
+                for num_layers in num_layers_list:
+                
+                    hidden_units_list = [int(input_features/R), int(4*input_features/R), int(4*input_features/R)]     # Numero di neuroni per layer
+                
+                    print(f"\n--> Profiling: act_cell={M_bar}, in={input_features}, out={output_dim}, layers={num_layers}, hidden_units={hidden_units_list}")
+                    run_experiment(dummy, data_csv, x_sample,
+                                   input_features, output_dim, num_layers, hidden_units_list, 
+                                   mean_array_filepath, variance_array_filepath, warmup_samples, xtest_npy_filename,
+                                   end_folder, end_folder_Training_Size_dd)

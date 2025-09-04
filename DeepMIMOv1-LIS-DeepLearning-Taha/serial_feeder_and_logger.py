@@ -1,11 +1,11 @@
+import os
 import serial
 #import time
 #import csv
 from datetime import datetime
 import re
 import numpy as np
-
-dummy = 'dummy_'
+import h5py
 
 # Parametri
 SERIAL_PORT = '/dev/ttyUSB0'
@@ -17,6 +17,20 @@ output_folder = base_folder + 'Output_Python/'
 mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
 mcu_profiling_folder_input = mcu_profiling_folder + 'test_data/'
 delimiter = ' '
+network_folder_out_RateDLpy_TFLite_mcu = output_folder + 'Neural_Network/RateDLpy_TFLite_mcu/'
+
+folders = [
+    base_folder,
+    output_folder,
+    mcu_profiling_folder,
+    mcu_profiling_folder_input,
+    network_folder_out_RateDLpy_TFLite_mcu
+]
+
+for folder in folders:
+    if not os.path.exists(folder):  # Controlla se la cartella esiste
+        os.makedirs(folder, exist_ok=True)  # Crea la cartella se non esiste
+        print(f"\nCartella creata: {folder}")
 
 # File di log con timestamp
 timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -43,34 +57,29 @@ def get_rate_from_codebook(codebook_index_list, YValidation_un_test):
     return Rate_DL_py
 
 
-def main(warmup_samples, YValidation_un_test, xtest_npy_filename):
+def main(dummy, data_csv, warmup_samples, YValidation_un_test, xtest_npy_filename, end_folder_Training_Size_dd_max_epochs_load):
     # Liste per accumulare i tempi
     normalize_input_list = []
     quantize_input_list = []
     interpreter_invoke_list = []
     dequantize_output_list = []
-    extract_codebook_index_list = []
     extract_codebook_index_time_list = []
-    extract_codebook_index_fast_list = []
+    Indmax_DL_py_load_test_tflite_mcu = []
     extract_codebook_index_fast_time_list = []
     tot_latency_list = []
     tot_latency_fast_list = []
     Error = 0
 
     if dummy == 'dummy_':
-        data_csv = mcu_profiling_folder_input + dummy + 'data.npy'
         x_sample = np.load(data_csv)
     else:
         x_sample = np.load(xtest_npy_filename)
 
-    #with open(data_csv, newline='') as f, \
     with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as ser, \
         open(LOG_FILE, 'w') as log:
 
-        #datafile = csv.reader(f, delimiter=delimiter)
         print("Avviato logger + feeder su", SERIAL_PORT)
 
-        #for datarow in datafile:
         for idx, sample in enumerate(x_sample):
 
             while True:
@@ -107,13 +116,13 @@ def main(warmup_samples, YValidation_un_test, xtest_npy_filename):
                 match = re.match(r"extract_codebook_index \[\#\] \[us\]: (\d+) (\d+)", line)
                 if match:
                     if idx > warmup_samples:
-                        extract_codebook_index_list.append(int(match.group(1)))
+                        #extract_codebook_index_list.append(int(match.group(1)))
                         extract_codebook_index_time_list.append(int(match.group(2)))
                 
                 match = re.match(r"extract_codebook_index_fast \[\#\] \[us\]: (\d+) (\d+)", line)
                 if match:
                     if idx > warmup_samples:
-                        extract_codebook_index_fast_list.append(int(match.group(1)))
+                        Indmax_DL_py_load_test_tflite_mcu.append(int(match.group(1)))
                         extract_codebook_index_fast_time_list.append(int(match.group(2)))
 
                         # Quando si arriva all'ultima print da rilevare
@@ -159,7 +168,21 @@ def main(warmup_samples, YValidation_un_test, xtest_npy_filename):
         mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency                     = compute_stats(tot_latency_list)
         mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast = compute_stats(tot_latency_fast_list)
 
-        Rate_DL_py_load_test_tflite_mcu = get_rate_from_codebook(extract_codebook_index_list, YValidation_un_test)
+        if dummy == '':
+            filename_Indmax_DL_py = network_folder_out_RateDLpy_TFLite_mcu + 'Indmax_DL_py_test' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+            with h5py.File(filename_Indmax_DL_py, 'w') as f:
+                f.create_dataset('Indmax_DL_py_load_test_tflite_mcu', data=Indmax_DL_py_load_test_tflite_mcu)
+                print(f"\nIndmax_DL_py_load_test_tflite_mcu saved in {filename_Indmax_DL_py}")
+            
+            Rate_DL_py_load_test_tflite_mcu = get_rate_from_codebook(Indmax_DL_py_load_test_tflite_mcu, YValidation_un_test)
+
+            filename_Rate_DL_py = network_folder_out_RateDLpy_TFLite_mcu + 'Rate_DL_py_test' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+            with h5py.File(filename_Rate_DL_py, 'w') as f:
+                f.create_dataset('Rate_DL_py_load_test_tflite_mcu', data=Rate_DL_py_load_test_tflite_mcu)
+                print(f"\nRate_DL_py_load_test_tflite_mcu saved in {filename_Rate_DL_py}")
+        else:
+            Rate_DL_py_load_test_tflite_mcu = -1
+                
     else:
         mean_norm = 0
         perc50_norm = 0
@@ -196,7 +219,7 @@ def main(warmup_samples, YValidation_un_test, xtest_npy_filename):
         Rate_DL_py_load_test_tflite_mcu = 0
 
     # Ritorno delle medie e lista extract_codebook_index
-    #return avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, tot_latency_us, tot_latency_fast_us, extract_codebook_index_list, extract_codebook_index_fast_list, Error
+    #return avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, tot_latency_us, tot_latency_fast_us, extract_codebook_index_list, Indmax_DL_py_load_test_tflite_mcu, Error
     return mean_norm, perc50_norm, perc95_norm, std_norm, \
            mean_quant, perc50_quant, perc95_quant, std_quant, \
            mean_invoke, perc50_invoke, perc95_invoke, std_invoke, \
@@ -205,5 +228,5 @@ def main(warmup_samples, YValidation_un_test, xtest_npy_filename):
            mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, \
            mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
            mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
-           extract_codebook_index_list, extract_codebook_index_fast_list, Rate_DL_py_load_test_tflite_mcu, Error
+           Indmax_DL_py_load_test_tflite_mcu, Rate_DL_py_load_test_tflite_mcu, Error
     

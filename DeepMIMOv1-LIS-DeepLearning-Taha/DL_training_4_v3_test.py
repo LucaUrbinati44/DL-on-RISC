@@ -21,7 +21,7 @@ from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.callbacks import TensorBoard
 # Load the LiteRT model and allocate tensors.
-from ai_edge_litert.interpreter import Interpreter
+from ai_edge_litert.interpreter import Interpreter # LiteRT (Lite Runtime) successore del runtime tflite_runtime
 
 import h5py
 import time
@@ -51,7 +51,16 @@ tf.config.optimizer.set_jit(False)  # XLA off
 
 # %% Define functions
 
-def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test, save_files=1):
+def model_predict(xdataset, Y_dataset, 
+                  xval, Y_val, 
+                  xtest, Y_test, 
+                  YValidation_un_val, YValidation_un_test, 
+                  model_py, 
+                  network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load,
+                  mean_array_filepath, variance_array_filepath, test_set_size, 
+                  test, save_files=1):
+
+    print(f"\n### model_predict {t}")
 
     if test == 4: # entire dataset prediction (for figC)
         t = '_tflite'
@@ -59,7 +68,13 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
         y = Y_dataset
     elif test == 3:
         t = '_test_tflite'
-        x = xtest
+        #x = xtest
+        # Choose the number of test samples
+        if test_set_size == 'small':
+            xtest_size = 10
+        else:
+            xtest_size = xtest.shape[0]
+        x = xtest[:xtest_size,:]
         y = Y_test
         YValidation_un = YValidation_un_test
     elif test == 2: # entire dataset prediction (for figC)
@@ -99,12 +114,38 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
     if test == 0 or test == 1 or test == 2:
         YPredicted = model_py.predict(x, verbose=1, batch_size=128)
     else:
+        ## Gets metadata from the model file.
+        # Load scalers
+        #mean_array_filepath = mcu_profiling_folder_scaler + 'mean' + end_folder_Training_Size_dd + '.npy'
+        #with open(mean_array_filepath, 'r') as f:
+        #    mean_array = f.read()
+        mean_array = np.load(mean_array_filepath)
+                
+        #variance_array_filepath = mcu_profiling_folder_scaler + 'variance' + end_folder_Training_Size_dd + '.npy'
+        #with open(variance_array_filepath, 'w') as f:
+        #    variance_array = f.read()
+        variance_array = np.load(variance_array_filepath)
+
+        #tflite_model = schema_fb.Model.GetRootAsModel(tflite_quant_model, 0)
+        #for i in range(tflite_model.MetadataLength()):
+        #    meta = tflite_model.Metadata(i)
+        #    if meta.Name().decode("utf-8") == "min_runtime_version":
+        #        buffer_index = meta.Buffer()
+        #        metadata = tflite_model.Buffers(buffer_index)
+        #        min_runtime_version_bytes = metadata.DataAsNumpy().tobytes()
+        #        print(min_runtime_version_bytes)
+
         #Loading and running a LiteRT model involves the following steps:
         #1) Loading the model into memory.
         #2) Building an Interpreter based on an existing model.
         # Load the LiteRT model and allocate tensors.
         interpreter = Interpreter(model_content=model_py)
         interpreter.allocate_tensors()
+        details = interpreter.get_tensor_details()
+        
+        # Stampa l'elenco degli operatori
+        for op in interpreter._get_ops_details():
+            print(op['op_name'])
 
         #3) Setting input tensor values.
         # Get input and output tensors.
@@ -122,6 +163,7 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
         input_scale, input_zero_point = input_details[0]['quantization']
         #print('input_scale:', input_scale)
         #print('input_zero_point:', input_zero_point)
+        
         input_float = x
         #print('input_float.shape:', input_float.shape) # (3100, 1024)
         #print('np.max(input_float):', np.max(input_float))
@@ -136,8 +178,13 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
 
             sample = input_float[i]  # shape: (1024,)
             #print('sample.shape:', sample.shape)
+            print('\nfloat_input:', ' '.join([f"{x:.6f}" for x in sample[0:5]]))
             sample = np.expand_dims(sample, axis=0)  # shape: (1, 1024)
+
+            sample_normalized = np.array((sample - mean_array) / np.sqrt(variance_array), dtype=np.float32)
+            
             input_int8 = np.round(sample / input_scale + input_zero_point).astype(np.int8)
+            print('quantized_input:', ' '.join([f"{x}" for x in input_int8.flatten()[0:5]]))
             #print('input_int8.shape:', input_int8.shape)
             #print('np.max(input_int8):', np.max(input_int8))
             #print('np.min(input_int8):', np.min(input_int8))
@@ -157,27 +204,31 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
             #print('np.max(output_int8):', np.max(output_int8))
             #print('np.min(output_int8):', np.min(output_int8))
             output_scale, output_zero_point = output_details[0]['quantization']
-            #print('output_scale:', output_scale)
-            #print('output_zero_point:', output_zero_point)
+            #print(f'output_scale: {output_scale:.6f}')
+            #print(f'output_zero_point: {output_zero_point:.6f}')
             output_deq = (output_int8.astype(np.float32) - output_zero_point) * output_scale
-            #print('output_deq.shape:', output_deq.shape)
+            print('quantized_output:', ' '.join([f"{x}" for x in output_int8.flatten()[0:5]]))
+            print('dequantized_output:', ' '.join([f"{x:.6f}" for x in output_deq[0][0:5]]))            #print('output_deq.shape:', output_deq.shape)
             #print('np.max(output_deq):', np.max(output_deq))
             #print('np.min(output_deq):', np.min(output_deq))
             output_float.append(output_deq[0])  # output_deq.shape: (1, 1024) -> prendi [0]
+            
+            #print(f"\ncodebook_index {i+1}: {np.argmax(output_deq[0])}\n")
 
         YPredicted = np.stack(output_float, axis=0)  # shape: (3100, 1024)
 
-    print(f'x.shape: {x.shape}')  # (3100, 1024)
-    print(f'YPredicted.shape: {YPredicted.shape}')
+    #print(f'x.shape: {x.shape}')  # (3100, 1024)
+    #print(f'YPredicted.shape: {YPredicted.shape}')
     #print('np.max(YPredicted):', np.max(YPredicted))
     #print('np.min(YPredicted):', np.min(YPredicted))
 
     Indmax_DL_py = np.argmax(YPredicted, axis=1)
-    print(f'Indmax_DL_py.shape: {Indmax_DL_py.shape}')
+    #print(f'Indmax_DL_py.shape: {Indmax_DL_py.shape}')
     # Questi devono essere numeri interi
     print(f'np.min(Indmax_DL_py): {np.min(Indmax_DL_py)}')
     print(f'np.max(Indmax_DL_py): {np.max(Indmax_DL_py)}')
-    print(Indmax_DL_py[0:5])
+    print(f'max - min = {np.max(Indmax_DL_py) - np.min(Indmax_DL_py)}')
+    print(f'Indmax_DL_py[0:5]: {Indmax_DL_py[0:5]}')
 
     if test == 0 or test == 1 or test == 3:
         #validation_accuracy = 0
@@ -209,33 +260,33 @@ def model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_u
     # Scrittura in formato HDF5 (compatibile MATLAB v7.3)
     if save_files == 1:
 
-        if 0 == 1: # TODO: temporaneamente non voglio salvarli perchè già salvati in precedenza
-            with h5py.File(filename_Indmax_OPT_py, 'w') as f:
-                f.create_dataset('Indmax_OPT_py', data=Indmax_OPT_py)
-                print(f"\nIndmax_OPT_py saved in {filename_Indmax_OPT_py}")
+        #if 0 == 1: # TODO: temporaneamente non voglio salvarli perchè già salvati in precedenza
+        with h5py.File(filename_Indmax_OPT_py, 'w') as f:
+            f.create_dataset('Indmax_OPT_py', data=Indmax_OPT_py)
+            print(f"\n-->Indmax_OPT_py saved in {filename_Indmax_OPT_py}")
 
-            with h5py.File(filename_MaxR_OPT_py, 'w') as f:
-                f.create_dataset('MaxR_OPT_py', data=MaxR_OPT_py)
-                print(f"\nMaxR_OPT_py saved in {filename_MaxR_OPT_py}")
+        with h5py.File(filename_MaxR_OPT_py, 'w') as f:
+            f.create_dataset('MaxR_OPT_py', data=MaxR_OPT_py)
+            print(f"---->MaxR_OPT_py saved in {filename_MaxR_OPT_py}")
 
-            with h5py.File(filename_Rate_OPT_py, 'w') as f:
-                f.create_dataset('Rate_OPT_py', data=Rate_OPT_py)
-                print(f"\nRate_OPT_py saved in {filename_Rate_OPT_py}")
-
+        with h5py.File(filename_Rate_OPT_py, 'w') as f:
+            f.create_dataset('Rate_OPT_py', data=Rate_OPT_py)
+            print(f"------>Rate_OPT_py saved in {filename_Rate_OPT_py}")
+        
+        #if test == 3:
         with h5py.File(filename_Indmax_DL_py, 'w') as f:
             f.create_dataset('Indmax_DL_py', data=Indmax_DL_py)
-            print(f"\nIndmax_DL_py saved in {filename_Indmax_DL_py}")
-        
-        if test == 3:
-            with h5py.File(filename_MaxR_DL_py, 'w') as f:
-                f.create_dataset('MaxR_DL_py', data=MaxR_DL_py)
-                print(f"\nMaxR_DL_py saved in {filename_MaxR_DL_py}")
+            print(f"-------->Indmax_DL_py saved in {filename_Indmax_DL_py}")
 
-            with h5py.File(filename_Rate_DL_py, 'w') as f:
-                f.create_dataset('Rate_DL_py', data=Rate_DL_py)
-                print(f"\nRate_DL_py saved in {filename_Rate_DL_py}")
+        with h5py.File(filename_MaxR_DL_py, 'w') as f:
+            f.create_dataset('MaxR_DL_py', data=MaxR_DL_py)
+            print(f"--------->MaxR_DL_py saved in {filename_MaxR_DL_py}")
+
+        with h5py.File(filename_Rate_DL_py, 'w') as f:
+            f.create_dataset('Rate_DL_py', data=Rate_DL_py)
+            print(f"------------>Rate_DL_py saved in {filename_Rate_DL_py}")
         
-    return Rate_OPT_py, Rate_DL_py
+    return Indmax_OPT_py, Indmax_DL_py, Rate_OPT_py, Rate_DL_py
 
 def mse_keras(y_true, y_pred): # Not working
     squared_error = tf.square(y_true - y_pred)  # shape: (batch_size, output_dim)=6200,1024
@@ -275,15 +326,10 @@ network_folder_in = input_folder + 'Neural Network/'
 
 output_folder = base_folder + 'Output_Python/'
 network_folder_out = output_folder + 'Neural_Network/'
-network_folder_out_YPredicted = output_folder + 'Neural_Network/YPredicted/'
 network_folder_out_RateDLpy = output_folder + 'Neural_Network/RateDLpy/'
 network_folder_out_RateDLpy_TFLite = output_folder + 'Neural_Network/RateDLpy_TFLite/'
 saved_models_keras = network_folder_out + 'saved_models_keras/'
-saved_models_onnx = network_folder_out + 'saved_models_onnx/'
-saved_models_tfsaved = network_folder_out + 'saved_models_tfsaved/'
-saved_models_tfsaved2 = network_folder_out + 'saved_models_tfsaved2/'
 saved_models_tflite = network_folder_out + 'saved_models_tflite/'
-saved_models_edgeimpulse = network_folder_out + 'saved_models_edgeimpulse/'
 figure_folder = output_folder + 'Figures/'
 mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
 mcu_profiling_folder_model = mcu_profiling_folder + 'model/'
@@ -294,15 +340,10 @@ mcu_profiling_folder_test_data = mcu_profiling_folder + 'test_data/'
 folders = [
     output_folder,
     network_folder_out,
-    network_folder_out_YPredicted,
     network_folder_out_RateDLpy,
     network_folder_out_RateDLpy_TFLite,
     saved_models_keras,
-    saved_models_onnx,
-    saved_models_tfsaved,
-    saved_models_tfsaved2,
     saved_models_tflite,
-    saved_models_edgeimpulse,
     figure_folder,
     mcu_profiling_folder,
     mcu_profiling_folder_model,
@@ -326,12 +367,16 @@ def build_mlp(input_features, output_dim, num_layers, hidden_units_list):
     model.add(tf.keras.layers.Dense(output_dim, activation=None, name='output'))
     return model
 
-def main(My, Mz, load_model_flag, max_epochs_load, 
+def main(My, Mz, load_model_flag, max_epochs, max_epochs_load, 
         train_model_flag, predict_loaded_model_flag,
         convert_model_flag, Training_Size_dd, 
         input_features, output_dim, num_layers, hidden_units_list,
-        end_folder, end_folder_Training_Size_dd, end_folder_Training_Size_dd_max_epochs_load, 
-        model_type_load, model_path_tflite):
+        mean_array_filepath, variance_array_filepath, test_set_size,
+        end_folder, end_folder_Training_Size_dd, 
+        model_name_suffix, end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite,
+        save_files_flag_master, save_files_flag_master_once):
+
+        print("### DL_training_4_v3_test")
 
         # %%
         print(f"\nRIS: {My}x{Mz}")
@@ -479,12 +524,14 @@ def main(My, Mz, load_model_flag, max_epochs_load,
         xtestmean_npy_filename = mcu_profiling_folder_scaler + 'mean' + end_folder_Training_Size_dd + '.npy'
         xtestvar_npy_filename = mcu_profiling_folder_scaler + 'variance' + end_folder_Training_Size_dd + '.npy'
 
-        if save_files_flag == 1:
-            print("Save test data to npy")
+        if save_files_flag_master_once == 1:
+
+            print(f"### Save test data to: {xtest_npy_filename} \nand to: {xtestnorm_npy_filename}")
             np.save(xtest_npy_filename, X_test)
             np.save(xtestnorm_npy_filename, X_test_normalized)
 
-            print("Save scaler to npy")
+            print(f"### Save mean into: {xtestmean_npy_filename}")
+            print(f"### Save variance into: {xtestvar_npy_filename}")
             np.save(xtestmean_npy_filename, mean_array)
             np.save(xtestvar_npy_filename, variance_array)
 
@@ -509,32 +556,34 @@ def main(My, Mz, load_model_flag, max_epochs_load,
         # %%
         ## DL Model Training and Prediction
 
-        if load_model_flag == 1:
-            max_epochs_new = max_epochs_load + max_epochs
-            factor = 0.5
-            patience = 3
-            min_delta = 0.025
-        else:
-            max_epochs_new = max_epochs
-            factor = 0.5
-            patience = 3
-            min_delta = 0.05
+        if train_model_flag == 1:
+            if load_model_flag == 1:
+                max_epochs_new = max_epochs_load + max_epochs
+                factor = 0.5
+                patience = 3
+                min_delta = 0.025
+            else:
+                max_epochs_new = max_epochs
+                factor = 0.5
+                patience = 3
+                min_delta = 0.05
 
         # %%
         ################################ Load Model ################################
         if load_model_flag == 1:
 
-            end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
-            model_type_load = 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load
+            #end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
+            #model_type_load = 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load + model_name_suffix
 
             model_path_keras = saved_models_keras + model_type_load + '.keras'
             model_py = load_model(model_path_keras, custom_objects={'mse_custom': mse_custom})
             model_py.summary()
-            print(f"\nModel {model_path_keras} loaded")
+            print(f"\nLoad model: {model_path_keras}")
 
             model_path_tflite = saved_models_tflite + model_type_load + '_quant.tflite'
         
             if convert_model_flag == 1:
+                print('\n### convert_model')
 
                 #### V4 ####
                 def representative_dataset():
@@ -545,6 +594,7 @@ def main(My, Mz, load_model_flag, max_epochs_load,
                         yield [data.astype(np.float32)]                        
 
                 # Enforce full integer quantization for all ops including the input and output
+                converter = tf.lite.TFLiteConverter.from_keras_model(model_py)
                 converter.optimizations = [tf.lite.Optimize.DEFAULT]
                 converter.representative_dataset = representative_dataset
                 converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
@@ -573,21 +623,58 @@ def main(My, Mz, load_model_flag, max_epochs_load,
             Rate_DL_py_load_test_tflite = 0
 
             if predict_loaded_model_flag == 1:
-                save_files_flag = 0
+                print("\n### predict_loaded_model")
+
+                save_files_flag = save_files_flag_master
+
+                #save_files_flag = 0
                 test = 0 # Predict with val set
-                Rate_OPT_py_load_val, Rate_DL_py_load_val   = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
-                save_files_flag = 1
+                _, _, Rate_OPT_py_load_val, Rate_DL_py_load_val   = model_predict(xdataset, Y_dataset, 
+                                                                            xval, Y_val, 
+                                                                            xtest, Y_test,
+                                                                            YValidation_un_val, YValidation_un_test, 
+                                                                            model_py, 
+                                                                            network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, 
+                                                                            mean_array_filepath, variance_array_filepath, test_set_size, 
+                                                                            test=test, save_files=save_files_flag)
+                #save_files_flag = 1
                 test = 1 # Predict with test set
-                Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
-                save_files_flag = 0
-                test = 2 # Predict with all dataset
-                #Rate_OPT_py_load, Rate_DL_py_load = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
-                save_files_flag = 0
+                Indmax_OPT_py_load_test, Indmax_DL_py_load_test, Rate_OPT_py_load_test, Rate_DL_py_load_test = model_predict(xdataset, Y_dataset, 
+                                                                            xval, Y_val, 
+                                                                            xtest, Y_test, 
+                                                                            YValidation_un_val, YValidation_un_test, 
+                                                                            model_py, 
+                                                                            network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, 
+                                                                            mean_array_filepath, variance_array_filepath, test_set_size, 
+                                                                            test=test, save_files=save_files_flag)
+                #save_files_flag = 0
+                #test = 2 # Predict with all dataset
+                #_, _, Rate_OPT_py_load, Rate_DL_py_load = model_predict(xdataset, Y_dataset, 
+                #                                                  xval, Y_val, 
+                #                                                  xtest, Y_test, 
+                #                                                  YValidation_un_val, YValidation_un_test, 
+                #                                                  model_py, 
+                #                                                  network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, 
+                #                                                  test=test, save_files=save_files_flag)
+                #save_files_flag = 0
                 test = 3 # Predict with TF-Lite Model
-                Rate_OPT_py_load_test_tflite, Rate_DL_py_load_test_tflite = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, tflite_quant_model, network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
-                save_files_flag = 1
+                _, Indmax_DL_py_load_test_tflite, _, Rate_DL_py_load_test_tflite = model_predict(xdataset, Y_dataset, 
+                                                                                          xval, Y_val, 
+                                                                                          xtest, Y_test, 
+                                                                                          YValidation_un_val, YValidation_un_test, 
+                                                                                          tflite_quant_model, 
+                                                                                          network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load,
+                                                                                          mean_array_filepath, variance_array_filepath, test_set_size,
+                                                                                          test=test, save_files=save_files_flag)
+                #save_files_flag = 1
                 test = 4 # Predict with TF-Lite Model with all dataset
-                #Rate_OPT_py_load_tflite, Rate_DL_py_load_tflite = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, tflite_quant_model, network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load, test=test, save_files=save_files_flag)
+                #_, _, Rate_OPT_py_load_tflite, Rate_DL_py_load_tflite = model_predict(xdataset, Y_dataset, 
+                #                                                                xval, Y_val, 
+                #                                                                xtest, Y_test, 
+                #                                                                YValidation_un_val, YValidation_un_test, 
+                #                                                                tflite_quant_model, 
+                #                                                                network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load, 
+                #                                                                test=test, save_files=save_files_flag)
             
             learning_rate = model_py.optimizer.learning_rate.numpy()
             print(f"Learning rate loaded model: {learning_rate}")
@@ -595,6 +682,7 @@ def main(My, Mz, load_model_flag, max_epochs_load,
         # %%
         ################################ Train Model ################################
         if train_model_flag == 1 and load_model_flag == 0:
+            print("\n### define model architecture")
 
             log_dir = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/tensorboard_logs_test/"
             tensorboard_command = [
@@ -629,23 +717,23 @@ def main(My, Mz, load_model_flag, max_epochs_load,
                 print(f"\nTensorBoard avviato in background.")
 
             # Define the neural network architecture
-            model_py = Sequential([
-                Input(shape=(X_train.shape[1],), name='input'),
-
-                Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully1_'),
-                ReLU(name='relu1'),
-                Dropout(0.5, name='dropout1'),
-
-                Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully2_'),
-                ReLU(name='relu2'),
-                Dropout(0.5, name='dropout2'),
-
-                Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully3_'),
-                ReLU(name='relu3'),
-                Dropout(0.5, name='dropout3'),
-
-                Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully4_'),
-            ])
+            #model_py = Sequential([
+            #    Input(shape=(X_train.shape[1],), name='input'),
+            #
+            #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully1_'),
+            #    ReLU(name='relu1'),
+            #    Dropout(0.5, name='dropout1'),
+            #
+            #    Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully2_'),
+            #    ReLU(name='relu2'),
+            #    Dropout(0.5, name='dropout2'),
+            #
+            #    Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully3_'),
+            #    ReLU(name='relu3'),
+            #    Dropout(0.5, name='dropout3'),
+            #
+            #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully4_'),
+            #])
 
             model_py = build_mlp(input_features, output_dim, num_layers, hidden_units_list)
 
@@ -659,10 +747,12 @@ def main(My, Mz, load_model_flag, max_epochs_load,
             model_py.summary()
 
         if train_model_flag == 1:
+            print("\n### train_model")
 
             # For the output filenames
             end_folder_Training_Size_dd_max_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs_new)
-            model_type = 'model_py_test' + end_folder_Training_Size_dd_max_epochs
+            #TODO suffix
+            model_type_save = 'model_py_test' + end_folder_Training_Size_dd_max_epochs + model_name_suffix
             #model_type_tb = 'model_py_test' + end_folder_Training_Size_dd # TODO ACTIVATE
 
             #filename_Rate_OPT_py = network_folder_out_RateDLpy + 'Rate_OPT_py_test' + end_folder_Training_Size_dd_max_epochs + '.mat'
@@ -672,7 +762,7 @@ def main(My, Mz, load_model_flag, max_epochs_load,
 
             mini_batch_size = 500
             
-            tensorboard_logs = log_dir + model_type
+            tensorboard_logs = log_dir + model_type_save
             #tensorboard_logs = log_dir + model_type_tb # TODO ACTIVATE
             tensorboard_callback = TensorBoard(log_dir=tensorboard_logs, histogram_freq=1)
 
@@ -724,7 +814,7 @@ def main(My, Mz, load_model_flag, max_epochs_load,
             # - The model's weights
             # - The model's optimizer's state (if any)
             # model.save() is an alias for keras.saving.save_model()
-            model_py.save(saved_models_keras + model_type + '.keras')  # The file needs to end with the .keras extension
+            model_py.save(saved_models_keras + model_type_save + '.keras')  # The file needs to end with the .keras extension
             print(f"\nModel saved in {saved_models_keras}")
 
             #np.save(os.path.join(output_folder, 'history.npy'), history.history)
@@ -733,12 +823,34 @@ def main(My, Mz, load_model_flag, max_epochs_load,
 
             # %%
             ## DL Model Prediction
+            print("\n### predict_trained_model")
             test = 0
-            Rate_OPT_py_val, Rate_DL_py_val  = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
+            Rate_OPT_py_val, Rate_DL_py_val  = model_predict(xdataset, Y_dataset, 
+                                                             xval, Y_val, 
+                                                             xtest, Y_test, 
+                                                             YValidation_un_val, YValidation_un_test, 
+                                                             model_py, 
+                                                             network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, 
+                                                             mean_array_filepath, variance_array_filepath, test_set_size, 
+                                                             test=test)
             test = 1
-            Rate_OPT_py_test, Rate_DL_py_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
+            Rate_OPT_py_test, Rate_DL_py_test = model_predict(xdataset, Y_dataset, 
+                                                              xval, Y_val, 
+                                                              xtest, Y_test, 
+                                                              YValidation_un_val, YValidation_un_test, 
+                                                              model_py, 
+                                                              network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, 
+                                                              mean_array_filepath, variance_array_filepath, test_set_size, 
+                                                              test=test)
             test = 2
-            Rate_OPT_py_test, Rate_DL_py_test = model_predict(xdataset, Y_dataset, xval, Y_val, xtest, Y_test, YValidation_un_val, YValidation_un_test, model_py, network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, test=test)
+            Rate_OPT_py_test, Rate_DL_py_test = model_predict(xdataset, Y_dataset, 
+                                                              xval, Y_val,
+                                                              xtest, Y_test, 
+                                                              YValidation_un_val, YValidation_un_test, 
+                                                              model_py, 
+                                                              network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, 
+                                                              mean_array_filepath, variance_array_filepath, test_set_size, 
+                                                              test=test)
 
         if Training_Size_dd >= 10000 or Training_Size_dd == 2:
             
@@ -782,4 +894,10 @@ def main(My, Mz, load_model_flag, max_epochs_load,
 
         tf.keras.backend.clear_session()
 
-        return model_py, Rate_OPT_py_load_val, Rate_DL_py_load_val, Rate_OPT_py_load_test, Rate_DL_py_load_test, Rate_DL_py_load_test_tflite, YValidation_un_test
+        return model_py, \
+               Rate_OPT_py_load_val,    Rate_DL_py_load_val, \
+               Rate_OPT_py_load_test,   Rate_DL_py_load_test, \
+               Rate_DL_py_load_test_tflite, \
+               Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
+               Indmax_DL_py_load_test_tflite, \
+               YValidation_un_test
