@@ -59,15 +59,35 @@ Training_Size = [30000]
 
 Training_Size_dd = Training_Size[0]
 
+init_learning_rate = 0.1
+factor = 0.5
+
+# default Taha
+#patience_list   = [3]
+#min_delta_list  = [0.05]
+#max_epochs_list = [20]
+
+#patience_list   = [3]
+#min_delta_list  = [0.05]
+#max_epochs_list = [20]
+
+patience_list   = [     5,       5,     5,    5 ]
+min_delta_list  = [  0.0025, 0.005,  0.01, 0.05 ]
+max_epochs_list = [    60,     60,    60,   60 ]
+
+#patience_list   = [10]
+#min_delta_list  = [0.00625]
+#max_epochs_list = [20]
+
 # training
-max_epochs = 20
+#max_epochs = 20
 #max_epochs = 40
 #max_epochs = 60
 max_epochs_load = 0
 load_model_flag = 0
 train_model_flag = 1
 predict_loaded_model_flag = 0
-convert_model_flag = 0
+convert_model_flag = 1
 profiling_flag = 0
 
 # loading and training (for continuing training)
@@ -98,7 +118,7 @@ profiling_flag = 0
 
 test_set_size = 'small' # 'full' in prodcution
 ##test_set_size = 'full'
-save_files_flag_master = 1
+save_files_flag_master = 0 # 0: debug, 1: production
 save_files_flag_master_once = 0
 
 base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
@@ -165,7 +185,7 @@ def convert_to_tflite_int8(model, x_sample, model_path_tflite):
     with open(model_path_tflite, 'wb') as f:
         f.write(tflite_quant_model)
 
-def get_model_path_tflite(dummy, end_folder_Training_Size_dd):
+def get_model_path_tflite(dummy, end_folder_Training_Size_dd, max_epochs_new):
     print('\n*** get_model_path_tflite')
 
     if len(hidden_units_list) == 1:
@@ -177,11 +197,12 @@ def get_model_path_tflite(dummy, end_folder_Training_Size_dd):
 
     model_name_suffix = f"_in{input_features}_out{output_dim}_nl{num_layers}_hul{hul}"
     
-    end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
-    model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load + model_name_suffix
+    end_folder_Training_Size_dd_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs_new)
+
+    model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_epochs + model_name_suffix
     model_path_tflite = mcu_profiling_folder_model + model_type_load + '_quant.tflite'    
     
-    return model_name_suffix, end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite
+    return model_name_suffix, end_folder_Training_Size_dd_epochs, model_type_load, model_path_tflite
 
 def mse_custom(y_true, y_pred):
     # Calcola l'errore quadratico tra vero e predetto
@@ -498,7 +519,7 @@ def parse_compilation_logfile(file_path):
 
 
 # ----- Salva risultati del profiling su file -----
-def save_results_v3(dummy, end_folder_Training_Size_dd_max_epochs_load, K_DL,
+def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
                     input_features, num_layers, hidden_units_list, output_dim,
                     model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
                     RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
@@ -519,7 +540,7 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_max_epochs_load, K_DL,
     print('\n*** save_results_v3')
 
     fieldnames = [
-        'end_folder_Training_Size_dd', 'K_DL', 'max_epochs_load', 
+        'end_folder_Training_Size_dd', 'K_DL', 
         'input_features', 'num_layers', 'hidden_units_list', 'output_dim',
         'model_h_size_int8_kb', 'model_file_size_int8_kb', 'model_file_size_int8_mb',
         'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 'env_name',
@@ -549,13 +570,13 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_max_epochs_load, K_DL,
         'Indmax_DL_py_load_test_tflite[0:5]', 'Indmax_DL_py_load_test_tflite_mcu[0:5]'
     ]
 
-    output_csv = mcu_profiling_folder + 'profiling' + dummy + end_folder_Training_Size_dd_max_epochs_load + '_' + mcu_type + '.csv'
+    output_csv = mcu_profiling_folder + 'profiling' + dummy + end_folder_Training_Size_dd_epochs + '_' + mcu_type + '.csv'
 
     if dummy == '':
-        filename_Indmax_OPT_py_load_test = mcu_profiling_folder_outputdata + 'Indmax_OPT_py_load_test' + end_folder_Training_Size_dd_max_epochs_load + '.txt'
-        filename_Indmax_DL_py_load_test = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test' + end_folder_Training_Size_dd_max_epochs_load + '.txt'
-        filename_Indmax_DL_py_load_test_tflite = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test_tflite' + end_folder_Training_Size_dd_max_epochs_load + '.txt'
-        filename_Indmax_DL_py_load_test_tflite_mcu = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test_tflite_mcu' + end_folder_Training_Size_dd_max_epochs_load + '.txt'
+        filename_Indmax_OPT_py_load_test = mcu_profiling_folder_outputdata + 'Indmax_OPT_py_load_test' + end_folder_Training_Size_dd_epochs + '.txt'
+        filename_Indmax_DL_py_load_test = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test' + end_folder_Training_Size_dd_epochs + '.txt'
+        filename_Indmax_DL_py_load_test_tflite = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test_tflite' + end_folder_Training_Size_dd_epochs + '.txt'
+        filename_Indmax_DL_py_load_test_tflite_mcu = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test_tflite_mcu' + end_folder_Training_Size_dd_epochs + '.txt'
 
         codebook_lists = [Indmax_OPT_py_load_test, Indmax_DL_py_load_test, Indmax_DL_py_load_test_tflite, Indmax_DL_py_load_test_tflite_mcu]
         filenames = [filename_Indmax_OPT_py_load_test, filename_Indmax_DL_py_load_test, filename_Indmax_DL_py_load_test_tflite, filename_Indmax_DL_py_load_test_tflite_mcu]
@@ -573,7 +594,7 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_max_epochs_load, K_DL,
             writer.writeheader()
 
         row = {
-            'end_folder_Training_Size_dd_max_epochs_load': end_folder_Training_Size_dd_max_epochs_load, 
+            'end_folder_Training_Size_dd_epochs': end_folder_Training_Size_dd_epochs, 
             'K_DL': K_DL, 
             'input_features':    input_features,
             'num_layers':        num_layers,
@@ -657,12 +678,13 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_max_epochs_load, K_DL,
 # ----- Run di una singola configurazione -----
 def run_experiment(dummy, data_csv, x_sample, 
                    input_features, output_dim, num_layers, hidden_units_list, 
+                   patience, min_delta, max_epochs_new, max_epochs_load,
                    mean_array_filepath, variance_array_filepath, warmup_samples, xtest_npy_filename,
                    end_folder, end_folder_Training_Size_dd):
     #print('\n*** run_experiment')
 
     # Crea o recupera nome del modello tflite
-    model_name_suffix, end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite = get_model_path_tflite(dummy, end_folder_Training_Size_dd)
+    model_name_suffix, end_folder_Training_Size_dd_epochs, model_type_load, model_path_tflite = get_model_path_tflite(dummy, end_folder_Training_Size_dd, max_epochs_new)
     
     # Allena o carica modello pre-allenato
     if dummy == 'dummy_':
@@ -683,21 +705,36 @@ def run_experiment(dummy, data_csv, x_sample,
         YValidation_un_test = 0
 
     else:
-        model_py, \
-        Rate_OPT_py_load_val,  Rate_DL_py_load_val, \
-        Rate_OPT_py_load_test, Rate_DL_py_load_test, \
-        Rate_DL_py_load_test_tflite, \
-        Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
-        Indmax_DL_py_load_test_tflite, \
-        YValidation_un_test = DL_training_4_v3_test.main(
-                                        My, Mz, load_model_flag, max_epochs, max_epochs_load, 
+
+        if train_model_flag == 1 and load_model_flag == 0:
+            DL_training_4_v3_test.main(
+                                        My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                                         train_model_flag, predict_loaded_model_flag,
                                         convert_model_flag, Training_Size_dd,
                                         input_features, output_dim, num_layers, hidden_units_list,
+                                        init_learning_rate, factor, patience, min_delta,
                                         mean_array_filepath, variance_array_filepath, test_set_size,
                                         end_folder, end_folder_Training_Size_dd, 
-                                        model_name_suffix, end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite,
-                                        save_files_flag_master, save_files_flag_master_once)       
+                                        model_name_suffix, end_folder_Training_Size_dd_epochs, model_type_load, model_path_tflite,
+                                        save_files_flag_master, save_files_flag_master_once)     
+        elif train_model_flag == 0 and load_model_flag == 1:
+            model_py, \
+            Rate_OPT_py_load_val,  Rate_DL_py_load_val, \
+            Rate_OPT_py_load_test, Rate_DL_py_load_test, \
+            Rate_DL_py_load_test_tflite, \
+            Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
+            Indmax_DL_py_load_test_tflite, \
+            YValidation_un_test = DL_training_4_v3_test.main(
+                                            My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
+                                            train_model_flag, predict_loaded_model_flag,
+                                            convert_model_flag, Training_Size_dd,
+                                            input_features, output_dim, num_layers, hidden_units_list,
+                                            init_learning_rate, factor, patience, min_delta,
+                                            mean_array_filepath, variance_array_filepath, test_set_size,
+                                            end_folder, end_folder_Training_Size_dd, 
+                                            model_name_suffix, end_folder_Training_Size_dd_epochs, model_type_load, model_path_tflite,
+                                            save_files_flag_master, save_files_flag_master_once)     
+            
 
     if profiling_flag == 1:
         # Esporta il modello in formato header file per TFLM
@@ -770,7 +807,7 @@ def run_experiment(dummy, data_csv, x_sample,
                                                                                                                            warmup_samples, 
                                                                                                                            YValidation_un_test, 
                                                                                                                            xtest_npy_filename, 
-                                                                                                                           end_folder_Training_Size_dd_max_epochs_load)
+                                                                                                                           end_folder_Training_Size_dd_epochs)
         
                 if Error2 == 1 and i == 1:
                     print("*** ATTENZIONE: Error2 == 1 and i == 1")
@@ -824,7 +861,7 @@ def run_experiment(dummy, data_csv, x_sample,
 
             if Error2 == 0:
                 # Appendi risultati nel file output_csv
-                save_results_v3(dummy, end_folder_Training_Size_dd_max_epochs_load, K_DL,
+                save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
                                 input_features, num_layers, hidden_units_list, output_dim,
                                 model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
                                 RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name, 
@@ -951,9 +988,26 @@ if __name__ == "__main__":
                 for num_layers in num_layers_list:
                 
                     hidden_units_list = [int(input_features/R), int(4*input_features/R), int(4*input_features/R)]     # Numero di neuroni per layer
+
+                    #patience = 3 * 4/(1+num_layers)
+                    patience = patience_list[num_layers]
+                    min_delta = min_delta_list[num_layers]
+                    max_epochs = max_epochs_list[num_layers]
+
+                    if train_model_flag == 1 and load_model_flag == 1:
+                        max_epochs_new = max_epochs_load + max_epochs
+                    elif train_model_flag == 1 and load_model_flag == 0:
+                        max_epochs_new = max_epochs
+                    elif train_model_flag == 0 and load_model_flag == 1:
+                        max_epochs_new = max_epochs_load
+                    else:
+                        print("error")
+                        os._exit()
                 
                     print(f"\n--> Profiling: act_cell={M_bar}, in={input_features}, out={output_dim}, layers={num_layers}, hidden_units={hidden_units_list}")
+                    print(f"layers={num_layers}: init_lr={init_learning_rate}, factor={factor}, patience={patience}, min_delta={min_delta}")
                     run_experiment(dummy, data_csv, x_sample,
                                    input_features, output_dim, num_layers, hidden_units_list, 
+                                   patience, min_delta, max_epochs_new, max_epochs_load,
                                    mean_array_filepath, variance_array_filepath, warmup_samples, xtest_npy_filename,
                                    end_folder, end_folder_Training_Size_dd)
