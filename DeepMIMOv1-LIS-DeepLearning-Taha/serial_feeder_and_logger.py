@@ -10,31 +10,8 @@ import h5py
 # Parametri
 SERIAL_PORT = '/dev/ttyUSB0'
 BAUD_RATE = 115200
-BOARD = 'esp32'
 
-base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
-output_folder = base_folder + 'Output_Python/'
-mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
-mcu_profiling_folder_input = mcu_profiling_folder + 'test_data/'
 delimiter = ' '
-network_folder_out_RateDLpy_TFLite_mcu = output_folder + 'Neural_Network/RateDLpy_TFLite_mcu/'
-
-folders = [
-    base_folder,
-    output_folder,
-    mcu_profiling_folder,
-    mcu_profiling_folder_input,
-    network_folder_out_RateDLpy_TFLite_mcu
-]
-
-for folder in folders:
-    if not os.path.exists(folder):  # Controlla se la cartella esiste
-        os.makedirs(folder, exist_ok=True)  # Crea la cartella se non esiste
-        print(f"\nCartella creata: {folder}")
-
-# File di log con timestamp
-timestamp_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-LOG_FILE = f"/mnt/c/Users/Work/Desktop/deepMIMO/RIS/logs/log_{BOARD}_{timestamp_str}.txt"
 
 next_command = "NEXT"        # Comando seriale che invia dati in seriale
 
@@ -57,7 +34,13 @@ def get_rate_from_codebook(codebook_index_list, YValidation_un_test):
     return Rate_DL_py
 
 
-def main(dummy, data_csv, warmup_samples, YValidation_un_test, xtest_npy_filename, end_folder_Training_Size_dd_max_epochs_load):
+def main(dummy,
+        data_csv, 
+        warmup_samples_for_statistics, 
+        YValidation_un_test, 
+        xtest_npy_filename, 
+        network_folder_out_RateDLpy_TFLite_mcu,
+        mcu_logfile):
     # Liste per accumulare i tempi
     normalize_input_list = []
     quantize_input_list = []
@@ -76,7 +59,7 @@ def main(dummy, data_csv, warmup_samples, YValidation_un_test, xtest_npy_filenam
         x_sample = np.load(xtest_npy_filename)
 
     with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as ser, \
-        open(LOG_FILE, 'w') as log:
+        open(mcu_logfile, 'w') as log:
 
         print("Avviato logger + feeder su", SERIAL_PORT)
 
@@ -96,12 +79,12 @@ def main(dummy, data_csv, warmup_samples, YValidation_un_test, xtest_npy_filenam
                 # Parsing dei tempi
                 match = re.match(r"normalize_input \[us\]: (\d+)", line)
                 if match:
-                    if idx > warmup_samples:
+                    if idx > warmup_samples_for_statistics:
                         normalize_input_list.append(int(match.group(1)))
                 
                 match = re.match(r"quantize_input \[us\]: (\d+)", line)
                 if match:
-                    if idx > warmup_samples:
+                    if idx > warmup_samples_for_statistics:
                         quantize_input_list.append(int(match.group(1)))
 
                 match = re.match(r"interpreter_invoke \[us\]: (\d+)", line)
@@ -110,18 +93,18 @@ def main(dummy, data_csv, warmup_samples, YValidation_un_test, xtest_npy_filenam
 
                 match = re.match(r"dequantize_output \[us\]: (\d+)", line)
                 if match:
-                    if idx > warmup_samples:
+                    if idx > warmup_samples_for_statistics:
                         dequantize_output_list.append(int(match.group(1)))
 
                 match = re.match(r"extract_codebook_index \[\#\] \[us\]: (\d+) (\d+)", line)
                 if match:
-                    if idx > warmup_samples:
+                    if idx > warmup_samples_for_statistics:
                         #extract_codebook_index_list.append(int(match.group(1)))
                         extract_codebook_index_time_list.append(int(match.group(2)))
                 
                 match = re.match(r"extract_codebook_index_fast \[\#\] \[us\]: (\d+) (\d+)", line)
                 if match:
-                    if idx > warmup_samples:
+                    if idx > warmup_samples_for_statistics:
                         Indmax_DL_py_load_test_tflite_mcu.append(int(match.group(1)))
                         extract_codebook_index_fast_time_list.append(int(match.group(2)))
 

@@ -7,11 +7,14 @@ import os
 import json
 import random
 import re
-import h5py
-from ai_edge_litert.interpreter import Interpreter
-from tensorflow.lite.python import schema_py_generated as schema_fb
+#import h5py
+#from ai_edge_litert.interpreter import Interpreter
+#from tensorflow.lite.python import schema_py_generated as schema_fb
 
+import psutil
 import subprocess
+import signal
+import datetime
 
 import serial_feeder_and_logger, DL_training_4_v3_test
 
@@ -26,14 +29,15 @@ tf.random.set_seed(seed)
 
 # Definizione dei parametri
 
-debug = 2            # 0: production mode,  2: dummy mode
+debug = 1            # 0: production mode,  2: dummy mode
+
 #dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
 dummy = ''
 
 if dummy == 'dummy_':
-    warmup_samples = 5
+    warmup_samples_for_statistics = 5
 else:
-    warmup_samples = 100
+    warmup_samples_for_statistics = 100
 
 K_DL = 64 # subcarriers, costante (per ora)
 Ur_rows = [1000, 1200]
@@ -59,30 +63,61 @@ Training_Size = [30000]
 
 Training_Size_dd = Training_Size[0]
 
-init_learning_rate = 0.1
-factor = 0.5
+# ------------------------------------------------------------------------------------------
+
+# SPAZIO DI RICERCA 
+# 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
+if debug == 0:
+    active_cells = [1,4,8,12,28]
+    output_dims = [My*Mz]         # Numero di neuroni di uscita (32x32 = 1024)
+    num_layers_list = [0,1,2,3]   # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
+    R_list = [32, 8, 1]
+elif debug == 1:
+    active_cells = [8]
+    output_dims = [My*Mz]
+    num_layers_list = [0,1,2,3]
+    R_list = [32, 8, 1]
+elif debug == 2:
+    active_cells = [8]
+    output_dims = [My*Mz]
+    num_layers_list = [0,1]
+    #num_layers_list = [2,3]
+    R_list = [32, 8, 1]
+else: # modello di Taha
+    #input_featuress = [1024]
+    active_cells = [8]
+    output_dims = [1024]
+    num_layers_list = [3]
+
+# TODO add other MCU types
+mcu_type = 'esp32-s2-saola-tflm'
+
+# ------------------------------------------------------------------------------------------
 
 # default Taha
 #patience_list   = [3]
 #min_delta_list  = [0.05]
 #max_epochs_list = [20]
 
-#patience_list   = [3]
-#min_delta_list  = [0.05]
-#max_epochs_list = [20]
+# CosineGuidedReduceOnPlateau
+#init_learning_rate = 0.1
+#min_learning_rate = 1e-5
+#patience_list = 2
+#min_delta_list = 0.001
+#max_epochs_list = 60
 
-patience_list   = [     5,       5,     5,    5 ]
-min_delta_list  = [  0.0025, 0.005,  0.01, 0.05 ]
-max_epochs_list = [    60,     60,    60,   60 ]
+# ReduceLROnPlateau
+init_learning_rate = 0.1
+min_learning_rate = 0.0001
+factor = 0.75
 
-#patience_list   = [10]
-#min_delta_list  = [0.00625]
-#max_epochs_list = [20]
+patience_list   = [      4,       4,      4,     4 ]
+min_delta_list  = [  0.001,   0.001,  0.001, 0.001 ]
+max_epochs_list = [    200,     200,    200,   200 ] # tanto c'è early stopping
+
+# ------------------------------------------------------------------------------------------
 
 # training
-#max_epochs = 20
-#max_epochs = 40
-#max_epochs = 60
 max_epochs_load = 0
 load_model_flag = 0
 train_model_flag = 1
@@ -115,11 +150,12 @@ profiling_flag = 0
 #convert_model_flag = 1
 #profiling_flag = 0
 
-
-test_set_size = 'small' # 'full' in prodcution
-##test_set_size = 'full'
-save_files_flag_master = 0 # 0: debug, 1: production
+#test_set_size = 'small' # 'full' in prodcution
+test_set_size = 'full'
+save_files_flag_master = 1 # 0: debug, 1: production
 save_files_flag_master_once = 0
+
+# ------------------------------------------------------------------------------------------
 
 base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
 
@@ -128,30 +164,54 @@ input_folder = base_folder + 'Output Matlab/'
 DL_dataset_folder = input_folder + 'DL Dataset/'
 network_folder_in = input_folder + 'Neural Network/'
 
+# Cambiare se si vuole rilanciare per aprire tensorboard
+datetime_str = datetime.datetime.now().strftime("experiment-%d-%m-%y-%H-%M")
+#datetime_str = datetime.datetime.now().strftime("experiment-09-09-25-15-56")
+# Lanciare da terminale:
+# tensorboard --logdir=/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/experiment-09-09-25-15-56
+
+mcu_logfile = f"/mnt/c/Users/Work/Desktop/deepMIMO/RIS/logs/log_{mcu_type}_{datetime_str}.txt"
+
 output_folder = base_folder + 'Output_Python/'
 network_folder_out = output_folder + 'Neural_Network/'
-network_folder_out_RateDLpy = output_folder + 'Neural_Network/RateDLpy/'
-network_folder_out_RateDLpy_TFLite = output_folder + 'Neural_Network/RateDLpy_TFLite/'
+figure_folder = output_folder + 'Figures/'
+
+datetime_dir = os.path.join(network_folder_out, datetime_str)
+network_folder_out_RateDLpy = os.path.join(datetime_dir, 'RateDLpy')
+network_folder_out_RateDLpy_TFLite = os.path.join(datetime_dir, 'RateDLpy_TFLite')
+network_folder_out_RateDLpy_TFLite_mcu = os.path.join(datetime_dir, 'RateDLpy_TFLite_mcu')
+saved_models_keras = os.path.join(datetime_dir, 'saved_models_keras')
+
 mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
 mcu_profiling_folder_model = mcu_profiling_folder + 'model/'
 mcu_profiling_folder_scaler = mcu_profiling_folder + 'scaler/'
 mcu_profiling_folder_test_data = mcu_profiling_folder + 'test_data/'
+mcu_profiling_folder_test_data_normalized = mcu_profiling_folder + 'test_data_normalized/'
 mcu_profiling_folder_outputdata = mcu_profiling_folder + 'output_data/'
 #pio_projects_folder = '/mnt/c/Users/Work/Documents/PlatformIO/Projects/'
 pio_projects_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/'
 header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
+tensorboard_dir =  os.path.join(datetime_dir, "tensorboard_logs_test")
+training_history_dir = os.path.join(datetime_dir, "training_history")
 
 folders = [
     output_folder,
     network_folder_out,
+    figure_folder,
+    datetime_dir,
     network_folder_out_RateDLpy,
     network_folder_out_RateDLpy_TFLite,
+    saved_models_keras,
     mcu_profiling_folder,
     mcu_profiling_folder_test_data,
+    mcu_profiling_folder_test_data_normalized,
     mcu_profiling_folder_model,
     mcu_profiling_folder_scaler,
     mcu_profiling_folder_outputdata,
-    pio_projects_folder
+    pio_projects_folder,
+    header_folder,
+    tensorboard_dir,
+    training_history_dir
 ]
 
 for folder in folders:
@@ -160,6 +220,41 @@ for folder in folders:
         print(f"\nCartella creata: {folder}")
     #else:
     #    print(f"La cartella esiste già: {folder}")
+
+
+# ----- Run TensorBoard ------
+def run_tensorboard():
+
+    tensorboard_command = [
+        "tensorboard",
+        f"--logdir={tensorboard_dir}",
+        "--port=6006",
+        "--host=localhost"
+    ]
+
+    # Funzione per trovare e terminare TensorBoard se è già in esecuzione
+    def terminate_tensorboard():
+        for process in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                if 'tensorboard' in process.info['name'] or \
+                (process.info['cmdline'] and 'tensorboard' in process.info['cmdline'][0]):
+                    print(f"\nTerminazione di TensorBoard con PID: {process.info['pid']}")
+                    os.kill(process.info['pid'], signal.SIGTERM)
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+
+    # Controlla se TensorBoard è già in esecuzione
+    try:
+        # Avvia TensorBoard in background
+        tensorboard_process = subprocess.Popen(tensorboard_command)
+        print(f"\nTensorBoard avviato in background.")
+    except:
+        print(f"\nfErrore nell'avvio di TensorBoard: {e}")
+        # Chiudi TensorBoard se è già in esecuzione
+        terminate_tensorboard()
+        # Avvia TensorBoard in background
+        tensorboard_process = subprocess.Popen(tensorboard_command)
+        print(f"\nTensorBoard avviato in background.")
 
 # ----- Costruzione del modello MLP parametrico -----
 def build_mlp(input_features, output_dim, num_layers, hidden_units_list):
@@ -180,29 +275,42 @@ def convert_to_tflite_int8(model, x_sample, model_path_tflite):
     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
     converter.inference_input_type = tf.int8
     converter.inference_output_type = tf.int8
-    tflite_quant_model = converter.convert()
+    tflite_int8_model = converter.convert()
 
     with open(model_path_tflite, 'wb') as f:
-        f.write(tflite_quant_model)
+        f.write(tflite_int8_model)
 
-def get_model_path_tflite(dummy, end_folder_Training_Size_dd, max_epochs_new):
-    print('\n*** get_model_path_tflite')
+def get_model_paths(dummy, end_folder_Training_Size_dd, max_epochs_new):
+    print('\n*** get_model_paths')
 
-    if len(hidden_units_list) == 1:
-        hul = str(hidden_units_list[0])
-    elif len(hidden_units_list) == 2:
-        hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1])
-    elif len(hidden_units_list) == 3:
-        hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1]) + "_" + str(hidden_units_list[2])
+    #if len(hidden_units_list) == 1:
+    #    hul = str(hidden_units_list[0])
+    #elif len(hidden_units_list) == 2:
+    #    hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1])
+    #elif len(hidden_units_list) == 3:
+    #    hul = str(hidden_units_list[0]) + "_" + str(hidden_units_list[1]) + "_" + str(hidden_units_list[2])
+    #
+    #model_name_suffix = f"_in{input_features}_out{output_dim}_nl{num_layers}_R{R}_hul{hul}_initlr{init_learning_rate}_minlr{min_learning_rate}_fact{factor}_pat{patience}_mindelta{min_delta}"
 
-    model_name_suffix = f"_in{input_features}_out{output_dim}_nl{num_layers}_hul{hul}"
+    if num_layers == 0:
+        hidden = '_'
+    elif num_layers == 1:
+        hidden = '_' + str(hidden_units_list[0]) + '_'
+    elif num_layers == 2:
+        hidden = '_' + str(hidden_units_list[0]) + '_' + str(hidden_units_list[1]) + '_'
+    elif num_layers == 3:
+        hidden = '_' + str(hidden_units_list[0]) + '_' + str(hidden_units_list[1]) + '_' + str(hidden_units_list[2]) + '_'
     
-    end_folder_Training_Size_dd_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs_new)
+    model_name_suffix = f"_initlr{init_learning_rate}_minlr{min_learning_rate}_fact{factor}_pat{patience}_mindelta{min_delta}_nl{num_layers}_R{R}_in{input_features}{hidden}out{output_dim}"
+    
+    end_folder_Training_Size_dd_epochs = end_folder_Training_Size_dd + '_ep' + str(max_epochs_new)
 
     model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_epochs + model_name_suffix
-    model_path_tflite = mcu_profiling_folder_model + model_type_load + '_quant.tflite'    
+    model_path_tflite = mcu_profiling_folder_model + model_type_load + '_int8.tflite'    
+
+    model_path_keras = os.path.join(saved_models_keras, model_type_load + '.keras')
     
-    return model_name_suffix, end_folder_Training_Size_dd_epochs, model_type_load, model_path_tflite
+    return end_folder_Training_Size_dd_epochs, model_name_suffix, model_type_load, model_path_tflite, model_path_keras
 
 def mse_custom(y_true, y_pred):
     # Calcola l'errore quadratico tra vero e predetto
@@ -520,11 +628,12 @@ def parse_compilation_logfile(file_path):
 
 # ----- Salva risultati del profiling su file -----
 def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
-                    input_features, num_layers, hidden_units_list, output_dim,
+                    input_features, output_dim, num_layers, R, hidden_units_list, 
+                    patience, min_delta, max_epochs_new, max_epochs_load,
                     model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
                     RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
                     mean_norm, perc50_norm, perc95_norm, std_norm,
-                    mean_quant, perc50_quant, perc95_quant, std_quant,
+                    mean_int8, perc50_int8, perc95_int8, std_int8,
                     mean_invoke, perc50_invoke, perc95_invoke, std_invoke,
                     mean_dequant, perc50_dequant, perc95_dequant, std_dequant,
                     mean_extract, perc50_extract, perc95_extract, std_extract,
@@ -541,14 +650,15 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
 
     fieldnames = [
         'end_folder_Training_Size_dd', 'K_DL', 
-        'input_features', 'num_layers', 'hidden_units_list', 'output_dim',
+        'input_features', 'output_dim', 'num_layers', 'R', 'hidden_units_list', 
+        'patience', 'min_delta', 'max_epochs_new', 'max_epochs_load',
         'model_h_size_int8_kb', 'model_file_size_int8_kb', 'model_file_size_int8_mb',
         'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 'env_name',
 
         # normalize_input
         'mean_norm', 'perc50_norm', 'perc95_norm', 'std_norm',
         # quantize_input
-        'mean_quant', 'perc50_quant', 'perc95_quant', 'std_quant',
+        'mean_int8', 'perc50_int8', 'perc95_int8', 'std_int8',
         # interpreter_invoke
         'mean_invoke', 'perc50_invoke', 'perc95_invoke', 'std_invoke',
         # dequantize_output
@@ -595,11 +705,16 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
 
         row = {
             'end_folder_Training_Size_dd_epochs': end_folder_Training_Size_dd_epochs, 
-            'K_DL': K_DL, 
+            'K_DL': K_DL,
             'input_features':    input_features,
-            'num_layers':        num_layers,
-            'hidden_units_list': hidden_units_list,
             'output_dim':        output_dim,
+            'num_layers':        num_layers,
+            'R':                 R,
+            'hidden_units_list': hidden_units_list,
+            'patience':          patience,
+            'min_delta':         min_delta,
+            'max_epochs_new':    max_epochs_new,
+            'max_epochs_load':   max_epochs_load,
             'model_h_size_int8_kb':    model_h_size_int8_kb,
             'model_file_size_int8_kb': model_file_size_int8_kb,
             'model_file_size_int8_mb': model_file_size_int8_mb,
@@ -608,7 +723,7 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
             'CLK_FREQ_MHZ': CLK_FREQ_MHZ,
             'RAM_HW_KB':    RAM_HW_KB,
             'Flash_HW_MB':  Flash_HW_MB,
-            'env_name': env_name,
+            'env_name':     env_name,
 
             # normalize_input
             'mean_norm': round(mean_norm, 3),
@@ -617,10 +732,10 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
             'std_norm': round(std_norm, 3),
 
             # quantize_input
-            'mean_quant': round(mean_quant, 3),
-            'perc50_quant': round(perc50_quant, 3),
-            'perc95_quant': round(perc95_quant, 3),
-            'std_quant': round(std_quant, 3),
+            'mean_int8': round(mean_int8, 3),
+            'perc50_int8': round(perc50_int8, 3),
+            'perc95_int8': round(perc95_int8, 3),
+            'std_int8': round(std_int8, 3),
 
             # interpreter_invoke
             'mean_invoke': round(mean_invoke, 3),
@@ -677,15 +792,24 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
 
 # ----- Run di una singola configurazione -----
 def run_experiment(dummy, data_csv, x_sample, 
-                   input_features, output_dim, num_layers, hidden_units_list, 
+                   input_features, output_dim, num_layers, R, hidden_units_list, 
                    patience, min_delta, max_epochs_new, max_epochs_load,
-                   mean_array_filepath, variance_array_filepath, warmup_samples, xtest_npy_filename,
+                   mean_array_filepath, variance_array_filepath, warmup_samples_for_statistics, xtest_npy_filename,
                    end_folder, end_folder_Training_Size_dd):
     #print('\n*** run_experiment')
 
+    # %%
     # Crea o recupera nome del modello tflite
-    model_name_suffix, end_folder_Training_Size_dd_epochs, model_type_load, model_path_tflite = get_model_path_tflite(dummy, end_folder_Training_Size_dd, max_epochs_new)
+    end_folder_Training_Size_dd_epochs, model_name_suffix, model_type_load, model_path_tflite, model_path_keras = get_model_paths(dummy, end_folder_Training_Size_dd, max_epochs_new)
+
+    if os.path.exists(model_path_keras): # Controlla se il file esiste
+        print(f"\nModello già allenato: {model_path_keras}")
+        return
     
+    tensorboard_logs = os.path.join(tensorboard_dir, 'tensorboard_logs_' + model_type_load)
+    training_history_json = os.path.join(training_history_dir, 'training_history_' + model_type_load + '.json')
+    
+    # %%
     # Allena o carica modello pre-allenato
     if dummy == 'dummy_':
         model_py = build_mlp(input_features, output_dim, num_layers, hidden_units_list)
@@ -712,10 +836,14 @@ def run_experiment(dummy, data_csv, x_sample,
                                         train_model_flag, predict_loaded_model_flag,
                                         convert_model_flag, Training_Size_dd,
                                         input_features, output_dim, num_layers, hidden_units_list,
-                                        init_learning_rate, factor, patience, min_delta,
+                                        init_learning_rate, min_learning_rate, factor, patience, min_delta,
                                         mean_array_filepath, variance_array_filepath, test_set_size,
                                         end_folder, end_folder_Training_Size_dd, 
-                                        model_name_suffix, end_folder_Training_Size_dd_epochs, model_type_load, model_path_tflite,
+                                        end_folder_Training_Size_dd_epochs, model_name_suffix, model_path_tflite, model_path_keras,
+                                        DL_dataset_folder, network_folder_in,
+                                        network_folder_out_RateDLpy, network_folder_out_RateDLpy_TFLite, 
+                                        mcu_profiling_folder_test_data, mcu_profiling_folder_test_data_normalized, mcu_profiling_folder_scaler, 
+                                        tensorboard_logs, training_history_json,
                                         save_files_flag_master, save_files_flag_master_once)     
         elif train_model_flag == 0 and load_model_flag == 1:
             model_py, \
@@ -729,13 +857,17 @@ def run_experiment(dummy, data_csv, x_sample,
                                             train_model_flag, predict_loaded_model_flag,
                                             convert_model_flag, Training_Size_dd,
                                             input_features, output_dim, num_layers, hidden_units_list,
-                                            init_learning_rate, factor, patience, min_delta,
+                                            init_learning_rate, min_learning_rate, factor, patience, min_delta,
                                             mean_array_filepath, variance_array_filepath, test_set_size,
                                             end_folder, end_folder_Training_Size_dd, 
-                                            model_name_suffix, end_folder_Training_Size_dd_epochs, model_type_load, model_path_tflite,
+                                            end_folder_Training_Size_dd_epochs, model_name_suffix, model_path_tflite, model_path_keras,
+                                            DL_dataset_folder, network_folder_in,
+                                            network_folder_out_RateDLpy, network_folder_out_RateDLpy_TFLite, 
+                                            mcu_profiling_folder_test_data, mcu_profiling_folder_test_data_normalized, mcu_profiling_folder_scaler, 
+                                            tensorboard_logs, training_history_json,
                                             save_files_flag_master, save_files_flag_master_once)     
             
-
+    # %%
     if profiling_flag == 1:
         # Esporta il modello in formato header file per TFLM
         export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder)
@@ -795,7 +927,7 @@ def run_experiment(dummy, data_csv, x_sample,
             if Error1 == 0:
                 # Lancia serial feeded and logger per calcolare la latenza
                 mean_norm, perc50_norm, perc95_norm, std_norm, \
-                mean_quant, perc50_quant, perc95_quant, std_quant, \
+                mean_int8, perc50_int8, perc95_int8, std_int8, \
                 mean_invoke, perc50_invoke, perc95_invoke, std_invoke, \
                 mean_dequant, perc50_dequant, perc95_dequant, std_dequant, \
                 mean_extract, perc50_extract, perc95_extract, std_extract, \
@@ -804,10 +936,11 @@ def run_experiment(dummy, data_csv, x_sample,
                 mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
                 Indmax_DL_py_load_test_tflite_mcu, Rate_DL_py_load_test_tflite_mcu, Error2 = serial_feeder_and_logger.main(dummy,
                                                                                                                            data_csv, 
-                                                                                                                           warmup_samples, 
+                                                                                                                           warmup_samples_for_statistics, 
                                                                                                                            YValidation_un_test, 
                                                                                                                            xtest_npy_filename, 
-                                                                                                                           end_folder_Training_Size_dd_epochs)
+                                                                                                                           network_folder_out_RateDLpy_TFLite_mcu,
+                                                                                                                           mcu_logfile)
         
                 if Error2 == 1 and i == 1:
                     print("*** ATTENZIONE: Error2 == 1 and i == 1")
@@ -829,10 +962,10 @@ def run_experiment(dummy, data_csv, x_sample,
                 perc50_norm = 0
                 perc95_norm = 0
                 std_norm = 0                                            
-                mean_quant = 0
-                perc50_quant = 0
-                perc95_quant = 0
-                std_quant = 0                                      
+                mean_int8 = 0
+                perc50_int8 = 0
+                perc95_int8 = 0
+                std_int8 = 0                                      
                 mean_invoke = 0
                 perc50_invoke = 0
                 perc95_invoke = 0
@@ -859,6 +992,7 @@ def run_experiment(dummy, data_csv, x_sample,
                 std_tot_latency_fast = 0
                 Indmax_DL_py_load_test_tflite_mcu = [0, 0, 0, 0, 0]   
 
+            # %%
             if Error2 == 0:
                 # Appendi risultati nel file output_csv
                 save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
@@ -866,7 +1000,7 @@ def run_experiment(dummy, data_csv, x_sample,
                                 model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb, 
                                 RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name, 
                                 mean_norm, perc50_norm, perc95_norm, std_norm, 
-                                mean_quant, perc50_quant, perc95_quant, std_quant, 
+                                mean_int8, perc50_int8, perc95_int8, std_int8, 
                                 mean_invoke, perc50_invoke, perc95_invoke, std_invoke, 
                                 mean_dequant, perc50_dequant, perc95_dequant, std_dequant, 
                                 mean_extract, perc50_extract, perc95_extract, std_extract, 
@@ -885,34 +1019,10 @@ def run_experiment(dummy, data_csv, x_sample,
 if __name__ == "__main__":
 
     if dummy == 'dummy_':
-        warmup_samples = 5
+        warmup_samples_for_statistics = 5
     else:
-        warmup_samples = 100
+        warmup_samples_for_statistics = 100
 
-    # SPAZIO DI RICERCA 
-    # 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
-    if debug == 0:
-        active_cells = [1,4,8,12,28]
-        output_dims = [My*Mz]         # Numero di neuroni di uscita (32x32 = 1024)
-        num_layers_list = [0,1,2,3]   # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
-        R_list = [32, 8, 1]
-    elif debug == 1:
-        active_cells = [8]
-        output_dims = [My*Mz]
-        num_layers_list = [0,1,2,3]
-        R_list = [32, 8, 1]
-    elif debug == 2:
-        active_cells = [8]
-        output_dims = [My*Mz]
-        num_layers_list = [0]
-        R_list = [1]
-    else: # modello di Taha
-        #input_featuress = [1024]
-        active_cells = [8]
-        output_dims = [1024]
-        num_layers_list = [3]
-
-    mcu_type = 'esp32-s2-saola-tflm'
     mcu_folder = pio_projects_folder + mcu_type
     mcu_include_config = os.path.join(mcu_folder, 'include/config.h') 
     #mcu_include_config = os.path.join(mcu_folder, 'lib/lib-luca/config.cc') 
@@ -934,6 +1044,9 @@ if __name__ == "__main__":
                   '-Ilib/tflite-micro/tensorflow/lite/schema" ')
         print(f"\nProgetto pio creato: {mcu_folder}")
 
+    run_tensorboard()
+
+    # %%
     for M_bar in active_cells:
 
         end_folder = '_seed' + str(seed) + '_grid' + str(Ur_rows[1]) + '_M' + str(My) + str(Mz) + '_Mbar' + str(M_bar)
@@ -983,10 +1096,17 @@ if __name__ == "__main__":
             change_config_file_1(mcu_include_config, input_features, output_dim)
             change_lib_file_1(mcu_lib_libluca_folder, input_features, output_dim)
             
+            once_zero_layers = 0 # serve per evitare che si iteri su R quando num_layers = 0
+
             for R in R_list:
                 
                 for num_layers in num_layers_list:
-                
+
+                    if num_layers == 0 and once_zero_layers == 1:
+                        continue
+                    else:
+                        once_zero_layers = 1
+
                     hidden_units_list = [int(input_features/R), int(4*input_features/R), int(4*input_features/R)]     # Numero di neuroni per layer
 
                     #patience = 3 * 4/(1+num_layers)
@@ -994,20 +1114,22 @@ if __name__ == "__main__":
                     min_delta = min_delta_list[num_layers]
                     max_epochs = max_epochs_list[num_layers]
 
-                    if train_model_flag == 1 and load_model_flag == 1:
-                        max_epochs_new = max_epochs_load + max_epochs
-                    elif train_model_flag == 1 and load_model_flag == 0:
-                        max_epochs_new = max_epochs
-                    elif train_model_flag == 0 and load_model_flag == 1:
-                        max_epochs_new = max_epochs_load
-                    else:
-                        print("error")
-                        os._exit()
-                
-                    print(f"\n--> Profiling: act_cell={M_bar}, in={input_features}, out={output_dim}, layers={num_layers}, hidden_units={hidden_units_list}")
-                    print(f"layers={num_layers}: init_lr={init_learning_rate}, factor={factor}, patience={patience}, min_delta={min_delta}")
+                    #if train_model_flag == 1 and load_model_flag == 1:
+                    #    max_epochs_new = max_epochs_load + max_epochs
+                    #elif train_model_flag == 1 and load_model_flag == 0:
+                    #    max_epochs_new = max_epochs
+                    #elif train_model_flag == 0 and load_model_flag == 1:
+                    #    max_epochs_new = max_epochs_load
+                    #else:
+                    #    print("error")
+                    #    os._exit()
+                    max_epochs_new = max_epochs
+
+                    # %%
+                    print(f"\n--> Profiling: act_cell={M_bar}, in={input_features}, out={output_dim}, layers={num_layers}, R={R}, hidden_units={hidden_units_list}")
+                    print(f"num_layers={num_layers}: init_lr={init_learning_rate}, min_lr={min_learning_rate}, factor={factor}, patience={patience}, min_delta={min_delta}")
                     run_experiment(dummy, data_csv, x_sample,
-                                   input_features, output_dim, num_layers, hidden_units_list, 
+                                   input_features, output_dim, num_layers, R, hidden_units_list, 
                                    patience, min_delta, max_epochs_new, max_epochs_load,
-                                   mean_array_filepath, variance_array_filepath, warmup_samples, xtest_npy_filename,
+                                   mean_array_filepath, variance_array_filepath, warmup_samples_for_statistics, xtest_npy_filename,
                                    end_folder, end_folder_Training_Size_dd)

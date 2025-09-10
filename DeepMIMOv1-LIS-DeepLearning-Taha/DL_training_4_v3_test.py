@@ -13,22 +13,21 @@ random.seed(seed)
 tf.random.set_seed(seed)
 
 #from tensorflow.keras.constraints import MinMaxNorm
-from tensorflow.keras.callbacks import ReduceLROnPlateau
+from tensorflow.keras.callbacks import ReduceLROnPlateau, TensorBoard, ModelCheckpoint, EarlyStopping #LearningRateScheduler
+#from tensorflow.keras.optimizers.schedules import CosineDecayRestarts, CosineDecay
 from tensorflow.keras.saving import load_model
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Input, Dense, Dropout, ReLU, Flatten
+from tensorflow.keras.layers import Input, Dense, Dropout, ReLU #, BatchNormalization
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.regularizers import l2
-from tensorflow.keras.callbacks import TensorBoard
 # Load the LiteRT model and allocate tensors.
 from ai_edge_litert.interpreter import Interpreter # LiteRT (Lite Runtime) successore del runtime tflite_runtime
 
 import h5py
 import time
-import subprocess
-import psutil
-import signal
-import datetime
+#import datetime
+import math
+import json
 
 
 
@@ -59,7 +58,7 @@ def model_predict(xdataset, Y_dataset,
                   xtest, Y_test, 
                   YValidation_un_val, YValidation_un_test, 
                   model_py, 
-                  network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load,
+                  network_folder_out_RateDLpy, end_folder_Training_Size_dd_epochs, model_name_suffix,
                   mean_array_filepath, variance_array_filepath, test_set_size, 
                   test, save_files=1):
 
@@ -99,13 +98,13 @@ def model_predict(xdataset, Y_dataset,
     print('x.shape:', x.shape)
     print('y.shape:', y.shape)
 
-    filename_Indmax_OPT_py = network_folder_out_RateDLpy + 'Indmax_OPT_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
-    filename_Indmax_DL_py = network_folder_out_RateDLpy + 'Indmax_DL_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    filename_Indmax_OPT_py = os.path.join(network_folder_out_RateDLpy, 'Indmax_OPT_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
+    filename_Indmax_DL_py = os.path.join(network_folder_out_RateDLpy, 'Indmax_DL_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
 
-    filename_MaxR_OPT_py = network_folder_out_RateDLpy + 'MaxR_OPT_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
-    filename_MaxR_DL_py = network_folder_out_RateDLpy + 'MaxR_DL_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
-    filename_Rate_OPT_py = network_folder_out_RateDLpy + 'Rate_OPT_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
-    filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py'+t + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+    filename_MaxR_OPT_py = os.path.join(network_folder_out_RateDLpy, 'MaxR_OPT_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
+    filename_MaxR_DL_py = os.path.join(network_folder_out_RateDLpy, 'MaxR_DL_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
+    filename_Rate_OPT_py = os.path.join(network_folder_out_RateDLpy, 'Rate_OPT_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
+    filename_Rate_DL_py = os.path.join(network_folder_out_RateDLpy, 'Rate_DL_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
 
     print(f"\nStart DL prediction {t}...")
 
@@ -130,7 +129,7 @@ def model_predict(xdataset, Y_dataset,
         #    variance_array = f.read()
         variance_array = np.load(variance_array_filepath)
 
-        #tflite_model = schema_fb.Model.GetRootAsModel(tflite_quant_model, 0)
+        #tflite_model = schema_fb.Model.GetRootAsModel(tflite_int8_model, 0)
         #for i in range(tflite_model.MetadataLength()):
         #    meta = tflite_model.Metadata(i)
         #    if meta.Name().decode("utf-8") == "min_runtime_version":
@@ -264,19 +263,20 @@ def model_predict(xdataset, Y_dataset,
     # Scrittura in formato HDF5 (compatibile MATLAB v7.3)
     if save_files == 1:
 
-        #if 0 == 1: # TODO: temporaneamente non voglio salvarli perchè già salvati in precedenza
-        with h5py.File(filename_Indmax_OPT_py, 'w') as f:
-            f.create_dataset('Indmax_OPT_py', data=Indmax_OPT_py)
-            print(f"\n-->Indmax_OPT_py saved in {filename_Indmax_OPT_py}")
+        #if 0 == 1: # Temporaneamente non voglio salvarli perchè già salvati in precedenza
+        if test != 3:
+            with h5py.File(filename_Indmax_OPT_py, 'w') as f:
+                f.create_dataset('Indmax_OPT_py', data=Indmax_OPT_py)
+                print(f"\n-->Indmax_OPT_py saved in {filename_Indmax_OPT_py}")
 
-        with h5py.File(filename_MaxR_OPT_py, 'w') as f:
-            f.create_dataset('MaxR_OPT_py', data=MaxR_OPT_py)
-            print(f"---->MaxR_OPT_py saved in {filename_MaxR_OPT_py}")
+            with h5py.File(filename_MaxR_OPT_py, 'w') as f:
+                f.create_dataset('MaxR_OPT_py', data=MaxR_OPT_py)
+                print(f"---->MaxR_OPT_py saved in {filename_MaxR_OPT_py}")
 
-        with h5py.File(filename_Rate_OPT_py, 'w') as f:
-            f.create_dataset('Rate_OPT_py', data=Rate_OPT_py)
-            print(f"------>Rate_OPT_py saved in {filename_Rate_OPT_py}")
-        
+            with h5py.File(filename_Rate_OPT_py, 'w') as f:
+                f.create_dataset('Rate_OPT_py', data=Rate_OPT_py)
+                print(f"------>Rate_OPT_py saved in {filename_Rate_OPT_py}")
+            
         #if test == 3:
         with h5py.File(filename_Indmax_DL_py, 'w') as f:
             f.create_dataset('Indmax_DL_py', data=Indmax_DL_py)
@@ -316,52 +316,85 @@ def mse_matlab(y_true, y_pred): # Not working
     loss = 0.5 * tf.reduce_mean(squared_error)
     return loss
 
+# %%
+
+K = tf.keras.backend
+
+class CosineGuidedReduceOnPlateau(tf.keras.callbacks.Callback):
+    def __init__(self, 
+                monitor='val_loss',
+                patience=5,
+                min_delta=1e-4,
+                cooldown=0,
+                lr_min_hard_clip=0.0,
+                lr_initial=1e-3,
+                decay_epochs=50,      # E: epoche per arrivare a min_lr
+                min_lr=1e-5,          # min_lr desiderato
+                mode='min',
+                verbose=1):
+        super().__init__()
+        self.monitor = monitor
+        self.patience = patience
+        self.min_delta = min_delta
+        self.cooldown = cooldown
+        self.cooldown_counter = 0
+        self.wait = 0
+        self.best = None
+        self.lr_min_hard_clip = float(lr_min_hard_clip)
+        self.lr_initial = float(lr_initial)
+        self.decay_epochs = int(decay_epochs)
+        self.min_lr = float(min_lr)
+        self.mode = mode
+        self.verbose = verbose
+
+    def on_train_begin(self, logs=None):
+        self.best = math.inf if self.mode == 'min' else -math.inf
+        self.wait = 0
+        self.cooldown_counter = 0
+
+    def _cosine_target_lr(self, epoch):
+        E = max(1, self.decay_epochs)
+        e = min(epoch, E)
+        alpha = self.min_lr / self.lr_initial
+        cosine = 0.5 * (1.0 + math.cos(math.pi * e / E))
+        lr = self.lr_initial * ((1 - alpha) * cosine + alpha)
+        return max(lr, self.lr_min_hard_clip)
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        current = logs.get(self.monitor)
+        if current is None:
+            return
+
+        # migliore?
+        improved = (current < self.best - self.min_delta) if self.mode == 'min' else (current > self.best + self.min_delta)
+        if improved:
+            self.best = current
+            self.wait = 0
+        else:
+            if self.cooldown_counter > 0:
+                self.cooldown_counter -= 1
+                self.wait = 0
+            else:
+                self.wait += 1
+                if self.wait > self.patience:
+                    opt = self.model.optimizer
+                    lr_cur = float(K.get_value(opt.learning_rate))
+                    lr_tgt = self._cosine_target_lr(epoch+1)  # target alla prossima epoca
+                    if lr_cur > lr_tgt + 1e-12:
+                        # Imposta LR direttamente al target coseno (riduzione “a scalino”)
+                        new_lr = max(lr_tgt, self.lr_min_hard_clip)
+                        #K.set_value(opt.learning_rate, new_lr)
+                        self.model.optimizer.learning_rate.assign(float(new_lr))
+                        if self.verbose:
+                            print(f"\nEpoch {epoch+1}: Cosine-guided ReduceLROnPlateau sets LR {lr_cur:.3e} -> {new_lr:.3e}")
+                        self.cooldown_counter = self.cooldown
+                    self.wait = 0
+
 # %% [markdown]
 # ## Define variables
 
 # %%
-base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
-
-input_folder = base_folder + 'Output Matlab/'
-
-#DeepMIMO_dataset_folder = input_folder + 'DeepMIMO Dataset/'
-DL_dataset_folder = input_folder + 'DL Dataset/'
-network_folder_in = input_folder + 'Neural Network/'
-
-output_folder = base_folder + 'Output_Python/'
-network_folder_out = output_folder + 'Neural_Network/'
-network_folder_out_RateDLpy = output_folder + 'Neural_Network/RateDLpy/'
-network_folder_out_RateDLpy_TFLite = output_folder + 'Neural_Network/RateDLpy_TFLite/'
-saved_models_keras = network_folder_out + 'saved_models_keras/'
-saved_models_tflite = network_folder_out + 'saved_models_tflite/'
-figure_folder = output_folder + 'Figures/'
-mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
-mcu_profiling_folder_model = mcu_profiling_folder + 'model/'
-mcu_profiling_folder_scaler = mcu_profiling_folder + 'scaler/'
-mcu_profiling_folder_test_data_normalized = mcu_profiling_folder + 'test_data_normalized/'
-mcu_profiling_folder_test_data = mcu_profiling_folder + 'test_data/'
-
-folders = [
-    output_folder,
-    network_folder_out,
-    network_folder_out_RateDLpy,
-    network_folder_out_RateDLpy_TFLite,
-    saved_models_keras,
-    saved_models_tflite,
-    figure_folder,
-    mcu_profiling_folder,
-    mcu_profiling_folder_model,
-    mcu_profiling_folder_scaler,
-    mcu_profiling_folder_test_data_normalized,
-    mcu_profiling_folder_test_data
-]
-
-for folder in folders:
-    if not os.path.exists(folder):  # Controlla se la cartella esiste
-        os.makedirs(folder, exist_ok=True)  # Crea la cartella se non esiste
-        print(f"\nCartella creata: {folder}")
-    #else:
-    #    print(f"La cartella esiste già: {folder}")
 
 # ----- Costruzione del modello MLP parametrico -----
 def build_mlp_v1(input_features, output_dim, num_layers, hidden_units_list):
@@ -378,6 +411,14 @@ def build_mlp_v2(input_features, output_dim, num_layers, hidden_units_list, drop
         model.add(ReLU(name=f'relu{i+1}'))
         model.add(Dropout(dropout_rate, name=f'dropout{i+1}'))
     model.add(Dense(output_dim, kernel_regularizer=tf.keras.regularizers.l2(l2_reg), name='output'))
+    return model
+
+def build_mlp_v3(input_features, output_dim, num_layers, hidden_units_list):
+    model = tf.keras.Sequential([tf.keras.Input(shape=(input_features,), name='input')])
+    for i in range(num_layers):
+        model.add(tf.keras.layers.Dense(hidden_units_list[i], activation='relu', name=f'hidden_{i}'))
+        model.add(tf.keras.layers.BatchNormalization(name=f'bn{i}'))  # <-- aggiunto BN
+    model.add(tf.keras.layers.Dense(output_dim, activation=None, name='output'))
     return model
 
 def convert_model_to_tflite(model_py, xval, model_path_tflite, save_files_flag_master):
@@ -398,23 +439,28 @@ def convert_model_to_tflite(model_py, xval, model_path_tflite, save_files_flag_m
     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
     converter.inference_input_type = tf.int8  # or tf.uint8
     converter.inference_output_type = tf.int8  # or tf.uint8
-    tflite_quant_model = converter.convert()
+    tflite_int8_model = converter.convert()
 
     if save_files_flag_master == 1:    
         with open(model_path_tflite, 'wb') as f:
-            f.write(tflite_quant_model)
+            f.write(tflite_int8_model)
+        print(f"### Save tflite int8 model into: {model_path_tflite}")
 
-    return tflite_quant_model
+    return tflite_int8_model
 
 
 def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
         train_model_flag, predict_loaded_model_flag,
-        convert_model_flag, Training_Size_dd, 
+        convert_model_flag, Training_Size_dd,
         input_features, output_dim, num_layers, hidden_units_list,
-        init_learning_rate, factor, patience, min_delta,
+        init_learning_rate, min_learning_rate, factor, patience, min_delta,
         mean_array_filepath, variance_array_filepath, test_set_size,
         end_folder, end_folder_Training_Size_dd, 
-        model_name_suffix, end_folder_Training_Size_dd_max_epochs_load, model_type_load, model_path_tflite,
+        end_folder_Training_Size_dd_epochs, model_name_suffix, model_path_tflite, model_path_keras,
+        DL_dataset_folder, network_folder_in,
+        network_folder_out_RateDLpy, network_folder_out_RateDLpy_TFLite, 
+        mcu_profiling_folder_test_data, mcu_profiling_folder_test_data_normalized, mcu_profiling_folder_scaler, 
+        tensorboard_logs, training_history_json,
         save_files_flag_master, save_files_flag_master_once):
 
         print("### DL_training_4_v3_test")
@@ -608,26 +654,22 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
         #        factor = 0.5
         #        patience = 3
         #        min_delta = 0.05
+        
+        #model_path_keras = saved_models_keras + model_type_load + '.keras'
 
         # %%
         ################################ Load Model ################################
         if load_model_flag == 1:
 
-            #end_folder_Training_Size_dd_max_epochs_load = end_folder_Training_Size_dd + '_' + str(max_epochs_load)
-            #model_type_load = 'model_py_test' + end_folder_Training_Size_dd_max_epochs_load + model_name_suffix
-
-            model_path_keras = saved_models_keras + model_type_load + '.keras'
             model_py = load_model(model_path_keras, custom_objects={'mse_custom': mse_custom})
             model_py.summary()
             print(f"\nLoad model: {model_path_keras}")
-
-            #model_path_tflite = saved_models_tflite + model_type_load + '_quant.tflite'
         
             if convert_model_flag == 1:
-                tflite_quant_model = convert_model_to_tflite(model_py, xval, model_path_tflite, save_files_flag_master)
+                tflite_int8_model = convert_model_to_tflite(model_py, xval, model_path_tflite, save_files_flag_master)
             else:
                 with open(model_path_tflite, 'rb') as f:
-                    tflite_quant_model = f.read()
+                    tflite_int8_model = f.read()
                 print('TFLite model loaded')
 
             
@@ -656,7 +698,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                                                                             xtest, Y_test,
                                                                             YValidation_un_val, YValidation_un_test, 
                                                                             model_py, 
-                                                                            network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, 
+                                                                            network_folder_out_RateDLpy, end_folder_Training_Size_dd_epochs, model_name_suffix,
                                                                             mean_array_filepath, variance_array_filepath, test_set_size, 
                                                                             test=test, save_files=save_files_flag)
                 #save_files_flag = 1
@@ -666,7 +708,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                                                                             xtest, Y_test, 
                                                                             YValidation_un_val, YValidation_un_test, 
                                                                             model_py, 
-                                                                            network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, 
+                                                                            network_folder_out_RateDLpy, end_folder_Training_Size_dd_epochs, model_name_suffix,
                                                                             mean_array_filepath, variance_array_filepath, test_set_size, 
                                                                             test=test, save_files=save_files_flag)
                 #save_files_flag = 0
@@ -676,7 +718,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                 #                                                  xtest, Y_test, 
                 #                                                  YValidation_un_val, YValidation_un_test, 
                 #                                                  model_py, 
-                #                                                  network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs_load, 
+                #                                                  network_folder_out_RateDLpy, end_folder_Training_Size_dd_epochs, model_name_suffix,
                 #                                                  test=test, save_files=save_files_flag)
                 #save_files_flag = 0
                 test = 3 # Predict with TF-Lite Model
@@ -684,8 +726,8 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                                                                                           xval, Y_val, 
                                                                                           xtest, Y_test, 
                                                                                           YValidation_un_val, YValidation_un_test, 
-                                                                                          tflite_quant_model, 
-                                                                                          network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load,
+                                                                                          tflite_int8_model, 
+                                                                                          network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_epochs, model_name_suffix,
                                                                                           mean_array_filepath, variance_array_filepath, test_set_size,
                                                                                           test=test, save_files=save_files_flag)
                 #save_files_flag = 1
@@ -694,8 +736,8 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                 #                                                                xval, Y_val, 
                 #                                                                xtest, Y_test, 
                 #                                                                YValidation_un_val, YValidation_un_test, 
-                #                                                                tflite_quant_model, 
-                #                                                                network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs_load, 
+                #                                                                tflite_int8_model, 
+                #                                                                network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_epochs, model_name_suffix,
                 #                                                                test=test, save_files=save_files_flag)
             
             learning_rate = model_py.optimizer.learning_rate.numpy()
@@ -705,38 +747,6 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
         ################################ Train Model ################################
         if train_model_flag == 1 and load_model_flag == 0:
             print("\n### define model architecture")
-
-            log_dir = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/tensorboard_logs_test/"
-            tensorboard_command = [
-                "tensorboard",
-                f"--logdir={log_dir}",
-                "--port=6006",
-                "--host=localhost"
-            ]
-
-            # Funzione per trovare e terminare TensorBoard se è già in esecuzione
-            def terminate_tensorboard():
-                for process in psutil.process_iter(['pid', 'name', 'cmdline']):
-                    try:
-                        if 'tensorboard' in process.info['name'] or \
-                        (process.info['cmdline'] and 'tensorboard' in process.info['cmdline'][0]):
-                            print(f"\nTerminazione di TensorBoard con PID: {process.info['pid']}")
-                            os.kill(process.info['pid'], signal.SIGTERM)
-                    except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
-                        pass
-
-            # Controlla se TensorBoard è già in esecuzione
-            try:
-                # Avvia TensorBoard in background
-                tensorboard_process = subprocess.Popen(tensorboard_command)
-                print(f"\nTensorBoard avviato in background.")
-            except:
-                print(f"\nfErrore nell'avvio di TensorBoard: {e}")
-                # Chiudi TensorBoard se è già in esecuzione
-                terminate_tensorboard()
-                # Avvia TensorBoard in background
-                tensorboard_process = subprocess.Popen(tensorboard_command)
-                print(f"\nTensorBoard avviato in background.")
 
             # Define the neural network architecture
             #model_py = Sequential([
@@ -759,9 +769,35 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
 
             model_py = build_mlp_v1(input_features, output_dim, num_layers, hidden_units_list)
             #model_py = build_mlp_v2(input_features, output_dim, num_layers, hidden_units_list)
+            #model_py = build_mlp_v3(input_features, output_dim, num_layers, hidden_units_list)
 
+            #if train_model_flag == 1:
+
+                #mini_batch_size = 500
+
+                # https://keras.io/api/optimizers/learning_rate_schedules/cosine_decay_restarts/
+                #steps_per_epoch = math.ceil(X_train.shape[0] / mini_batch_size)
+                #lr_decayed_fn = CosineDecayRestarts(
+                #    initial_learning_rate=init_learning_rate,
+                #    first_decay_steps=20 * steps_per_epoch, # epoche di discesa prima del restart
+                #    t_mul=1.0, # moltiplica la durata dei cicli successivi; 2.0 raddoppia ogni ciclo, 1.0 mantiene cicli di uguale lunghezza
+                #    m_mul=0.5, # moltiplica il picco LR a ogni restart; 1.0 riparte allo stesso picco, 0.9–0.95 crea restart via via più bassi se si desidera stabilizzare nel tempo
+                #    alpha=0.1, # valore minimo come frazione del LR iniziale alla fine del ciclo; 0.0 scende fino a 0, valori piccoli come 1e-6 stabiliscono un pavimento “soft”.
+                #    name="SGDRDecay"
+                #)
+
+                #lr_decayed_fn = CosineDecay(
+                #    initial_learning_rate=init_learning_rate,
+                #    decay_steps,
+                #    alpha=0.0015625, # valore minimo come frazione del LR iniziale alla fine del ciclo; 0.0 scende fino a 0, valori piccoli come 1e-6 stabiliscono un pavimento “soft”.
+                #    name="CosineDecay",
+                #    warmup_target=None,
+                #    warmup_steps=0,
+                #)
+        
             # Compile the model with SGD optimizer and mean squared error loss
             optimizer = SGD(learning_rate=init_learning_rate, momentum=0.9)
+            #optimizer = SGD(learning_rate=lr_decayed_fn, momentum=0.9)
 
             #model_py.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mse'])
             #model_py.compile(optimizer=optimizer, loss=mse_keras, metrics=['mse'])
@@ -772,45 +808,88 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
         if train_model_flag == 1:
             print("\n### train_model")
 
+            mini_batch_size = 500
+
             # For the output filenames
             end_folder_Training_Size_dd_max_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs_new)
-            datetime_str = datetime.datetime.now().strftime("%d-%m-%y-%H-%M")
-            model_type_save = 'model_py_test' + end_folder_Training_Size_dd_max_epochs + model_name_suffix + datetime_str
-
-            #filename_Rate_OPT_py = network_folder_out_RateDLpy + 'Rate_OPT_py_test' + end_folder_Training_Size_dd_max_epochs + '.mat'
-            #filename_Rate_DL_py = network_folder_out_RateDLpy + 'Rate_DL_py_test' + end_folder_Training_Size_dd_max_epochs + '.mat'
-
-            #print(model_py.loss)
-
-            mini_batch_size = 500
             
-            tensorboard_logs = log_dir + model_type_save
             tensorboard_callback = TensorBoard(log_dir=tensorboard_logs, histogram_freq=1)
 
+            # %%
+            # --------------------------------------------------------------------------------
+            #def lr_schedule(epoch, lr):
+            #    if epoch > 0 and epoch % 5 == 0: # Prima era modulo 3
+            #        return lr * 0.5  # Drop learning rate by factor of 0.5 every x epochs
+            #    return lr
+            #lr_scheduler = LearningRateScheduler(lr_schedule)
+
+            # --------------------------------------------------------------------------------
+            lr_scheduler = ReduceLROnPlateau(
+                monitor='val_loss',
+                factor=factor,            # Riduce init_learning_rate di factor times
+                patience=patience,        # Numero di epoche senza miglioramento dopo le quali ridurre il lr
+                min_delta=min_delta,      # Miglioramento minimo da considerare significativo per non incrementare le epoche di patience
+                cooldown=0,               # Number of epochs to wait before couting epochs using patience and min_delta
+                min_lr=min_learning_rate, # Lower bound on the learning rate
+                verbose=1
+            )
+
+            # --------------------------------------------------------------------------------
+            #optimizer.learning_rate = tf.Variable(init_learning_rate, dtype=tf.float32)
+            #lr_scheduler = CosineGuidedReduceOnPlateau(
+            #    monitor='val_loss', 
+            #    mode='min',
+            #    patience=patience, 
+            #    cooldown=0,  # Number of epochs to wait before using patience and min_delta
+            #    min_delta=min_delta,
+            #    lr_initial=init_learning_rate, 
+            #    decay_epochs=max_epochs_new/2, # epoche per arrivare a min_lr
+            #    min_lr=min_learning_rate, 
+            #    verbose=1
+            #)
+
+            # --------------------------------------------------------------------------------      
+            #def lr_schdule(total_epochs, lr_initial, min_lr):
+            #    alpha = min_lr / lr_initial
+            #    def schedule(epoch, lr):
+            #        e = min(epoch, total_epochs)
+            #        cosine = 0.5 * (1.0 + math.cos(math.pi * e / total_epochs))
+            #        return max(lr_initial * ((1 - alpha) * cosine + alpha), min_lr)
+            #    return schedule
+            #lr_scheduler = LearningRateScheduler(lr_schdule(total_epochs=max_epochs_new, lr_initial=init_learning_rate, min_lr=min_learning_rate), verbose=1)
+            
+            # --------------------------------------------------------------------------------
+
+            # Save the trained model
+            checkpoint_callback = ModelCheckpoint(
+                filepath=model_path_keras,
+                monitor='val_loss',
+                mode='min',
+                save_best_only=True,
+                save_weights_only=False,
+                verbose=0
+            )
+
+            earlystopping_callback = EarlyStopping(
+                monitor="val_loss",
+                min_delta=min_delta/2,
+                patience=patience+6, # =10 per evitare che earlystopping intervenga prima di patience di reducelronplateau
+                verbose=1,
+                mode="min",
+                baseline=None,
+                restore_best_weights=False, # uso modelcheckpoint per questo scopo
+                start_from_epoch=0,
+            )
+            
+            # %%
+            print("\nStart DL training...")
+            
             #if Training_Size_dd < mini_batch_size:
             #    validationFrequency = Training_Size_dd
             #else:
             #    validationFrequency = int(np.floor(Training_Size_dd/mini_batch_size))
             validationFrequency = 1
 
-            #def lr_schedule(epoch, lr):
-            #    if epoch > 0 and epoch % 5 == 0: # Prima era modulo 3
-            #        return lr * 0.5  # Drop learning rate by factor of 0.5 every x epochs
-            #    return lr
-
-            #lr_scheduler = LearningRateScheduler(lr_schedule)
-
-            lr_scheduler = ReduceLROnPlateau(
-                monitor='val_loss',
-                factor=factor,         # Riduce di metà
-                patience=patience,     # Numero di epoche senza miglioramento ≥ y
-                min_delta=min_delta,   # Miglioramento minimo da considerare significativo
-                cooldown=5,
-                min_lr=0.0015625,
-                verbose=1
-            )
-            
-            print("\nStart DL training...")
             start_time = time.time()
 
             history = model_py.fit(
@@ -823,8 +902,8 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                 #epochs=max_epochs,
                 epochs=max_epochs_new,
                 shuffle=True,  # Shuffle data at each epoch
-                callbacks=[lr_scheduler, tensorboard_callback],
-                #callbacks=[tensorboard_callback],
+                callbacks=[lr_scheduler, tensorboard_callback, checkpoint_callback, earlystopping_callback],
+                #callbacks=[tensorboard_callback, checkpoint_callback],
                 validation_freq=validationFrequency,
                 verbose=2
             )
@@ -833,19 +912,42 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
             print(f"Training completed in {elapsed_time / 60:.2f} minutes.")
 
             # Save the trained model
-            if save_files_flag_master == 1:
-                #The saved .keras file contains:
-                # - The model's configuration (architecture)
-                # - The model's weights
-                # - The model's optimizer's state (if any)
-                # model.save() is an alias for keras.saving.save_model()
-                model_py.save(saved_models_keras + model_type_save + '.keras')  # The file needs to end with the .keras extension
-                print(f"\nModel saved in {saved_models_keras}")
+            #if save_files_flag_master == 1:
+            #    #The saved .keras file contains:
+            #    # - The model's configuration (architecture)
+            #    # - The model's weights
+            #    # - The model's optimizer's state (if any)
+            #    # model.save() is an alias for keras.saving.save_model()
+            #    model_py.save(model_path_keras)  # The file needs to end with the .keras extension
+            #    print(f"\nModel saved in {saved_models_keras}")
 
+            # %%
             # Save history
-            #np.save(os.path.join(output_folder, 'history.npy'), history.history)
-            #np.save(os.path.join(output_folder, 'Y_predicted.npy'), Y_predicted)
-            #print("History and Y_predicted saved successfully.")
+            with open(training_history_json, "w") as f:
+                json.dump(history.history, f)
+            print("Save training history")
+
+            ## --- In un secondo momento, per plottare ---
+            #with open(training_history_json, "r") as f:
+            #    loaded_history = json.load(f)
+#
+            ## Plot della loss
+            #plt.plot(loaded_history['loss'], label="Training Loss")
+            #if 'val_loss' in loaded_history:
+            #    plt.plot(loaded_history['val_loss'], label="Validation Loss")
+            #plt.xlabel("Epochs")
+            #plt.ylabel("Loss")
+            #plt.legend()
+            #plt.grid(True)
+            #plt.show()
+
+            # %%
+            # Reload best model
+            # Ricrea lo stesso modello e carica i pesi migliori
+            #model_py = ...  # stessa architettura
+            #best_model.compile(...)
+            model_py = load_model(model_path_keras, custom_objects={'mse_custom': mse_custom})
+            print(f"\nReload model: {model_path_keras}")
 
             # %%
             ## DL Model Prediction
@@ -859,7 +961,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                                                                 xtest, Y_test, 
                                                                 YValidation_un_val, YValidation_un_test, 
                                                                 model_py, 
-                                                                network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, 
+                                                                network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, model_name_suffix,
                                                                 mean_array_filepath, variance_array_filepath, test_set_size, 
                                                                 test=test, save_files=save_files_flag)
             test = 1
@@ -868,7 +970,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                                                                 xtest, Y_test, 
                                                                 YValidation_un_val, YValidation_un_test, 
                                                                 model_py, 
-                                                                network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, 
+                                                                network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, model_name_suffix,
                                                                 mean_array_filepath, variance_array_filepath, test_set_size, 
                                                                 test=test, save_files=save_files_flag)
             #test = 2
@@ -877,20 +979,20 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
             #                                                  xtest, Y_test, 
             #                                                  YValidation_un_val, YValidation_un_test, 
             #                                                  model_py, 
-            #                                                  network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, 
+            #                                                  network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, model_name_suffix,
             #                                                  mean_array_filepath, variance_array_filepath, test_set_size, 
             #                                                  test=test)
 
             if convert_model_flag == 1:
-                tflite_quant_model = convert_model_to_tflite(model_py, xval, model_path_tflite, save_files_flag_master)
+                tflite_int8_model = convert_model_to_tflite(model_py, xval, model_path_tflite, save_files_flag_master)
 
                 test = 3 # Predict with TF-Lite Model
                 _, Indmax_DL_py_test_tflite, _, Rate_DL_py_test_tflite = model_predict(xdataset, Y_dataset, 
                                                                     xval, Y_val, 
                                                                     xtest, Y_test, 
                                                                     YValidation_un_val, YValidation_un_test, 
-                                                                    tflite_quant_model, 
-                                                                    network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs,
+                                                                    tflite_int8_model, 
+                                                                    network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs, model_name_suffix,
                                                                     mean_array_filepath, variance_array_filepath, test_set_size,
                                                                     test=test, save_files=save_files_flag)
                 
