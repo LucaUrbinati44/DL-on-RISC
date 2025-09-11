@@ -1,6 +1,7 @@
 import os
 import serial
-#import time
+import struct
+import time
 #import csv
 from datetime import datetime
 import re
@@ -8,12 +9,17 @@ import numpy as np
 import h5py
 
 # Parametri
-SERIAL_PORT = '/dev/ttyUSB0'
-BAUD_RATE = 115200
+#SERIAL_PORT = '/dev/ttyUSB0'
+#BAUD_RATE = 115200
+#BAUD_RATE = 921600
+#BAUD_RATE = 1500000
+#CHUNK_SIZE_MAX = 128
+#CHUNK_SIZE_MAX = 1024
 
 delimiter = ' '
 
 next_command = "NEXT"        # Comando seriale che invia dati in seriale
+
 
 def compute_stats(data_list):
     if not data_list:
@@ -24,6 +30,9 @@ def compute_stats(data_list):
     return np.mean(arr), np.percentile(arr, 50), np.percentile(arr, 95), np.std(arr, ddof=0)
 
 def get_rate_from_codebook(codebook_index_list, YValidation_un_test):
+    
+    print(len(codebook_index_list))
+    print(codebook_index_list)
     MaxR_DL_py = np.zeros(len(codebook_index_list), dtype=np.float32)
 
     # Ciclo di confronto
@@ -35,12 +44,14 @@ def get_rate_from_codebook(codebook_index_list, YValidation_un_test):
 
 
 def main(dummy,
-        data_csv, 
-        warmup_samples_for_statistics, 
-        YValidation_un_test, 
-        xtest_npy_filename, 
-        network_folder_out_RateDLpy_TFLite_mcu,
-        mcu_logfile):
+         mcu_serial_port, baud_rate, chunk_size_max,
+         data_csv, test_set_size,
+         small_samples, warmup_samples_for_statistics, 
+         YValidation_un_test, 
+         xtest_npy_filename, 
+         end_folder_Training_Size_dd_epochs, model_name_suffix,
+         network_folder_out_RateDLpy_TFLite_mcu,
+         mcu_profiling_logfile):
     # Liste per accumulare i tempi
     normalize_input_list = []
     quantize_input_list = []
@@ -54,84 +65,162 @@ def main(dummy,
     Error = 0
 
     if dummy == 'dummy_':
-        x_sample = np.load(data_csv)
+        xtest = np.load(data_csv)
     else:
-        x_sample = np.load(xtest_npy_filename)
+        xtest = np.load(xtest_npy_filename)
 
-    with serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1) as ser, \
-        open(mcu_logfile, 'w') as log:
+    if test_set_size == 'small':
+        xtest_size = small_samples
+    else:
+        xtest_size = xtest.shape[0]
+    x = xtest[:xtest_size,:]
+    print("xtest.shape:", xtest.shape)
+    print("x.shape:", x.shape)
 
-        print("Avviato logger + feeder su", SERIAL_PORT)
+    with serial.Serial(mcu_serial_port, baud_rate, timeout=10) as ser, \
+        open(mcu_profiling_logfile, 'w') as log:
 
-        for idx, sample in enumerate(x_sample):
+        print("Avviato logger + feeder su", mcu_serial_port)
+
+        lock_in = 0
+
+        for idx, sample in enumerate(x):           
+
+            if Error == 1:
+                break
 
             while True:
-                
+
+                if lock_in == 1:
+                    lock_in = 0
+                    break # Passa al sample successivo
+
                 # Leggere dalla seriale
                 line = ser.readline().decode('utf-8', errors='ignore').strip()
                 if not line:
                     continue
                 print(f"MCU: {line}")
-
+                
                 # Scrivere su log
                 log.write(f"{line}\n")
 
-                # Parsing dei tempi
-                match = re.match(r"normalize_input \[us\]: (\d+)", line)
-                if match:
-                    if idx > warmup_samples_for_statistics:
-                        normalize_input_list.append(int(match.group(1)))
-                
-                match = re.match(r"quantize_input \[us\]: (\d+)", line)
-                if match:
-                    if idx > warmup_samples_for_statistics:
-                        quantize_input_list.append(int(match.group(1)))
-
-                match = re.match(r"interpreter_invoke \[us\]: (\d+)", line)
-                if match:
-                    interpreter_invoke_list.append(int(match.group(1)))
-
-                match = re.match(r"dequantize_output \[us\]: (\d+)", line)
-                if match:
-                    if idx > warmup_samples_for_statistics:
-                        dequantize_output_list.append(int(match.group(1)))
-
-                match = re.match(r"extract_codebook_index \[\#\] \[us\]: (\d+) (\d+)", line)
-                if match:
-                    if idx > warmup_samples_for_statistics:
-                        #extract_codebook_index_list.append(int(match.group(1)))
-                        extract_codebook_index_time_list.append(int(match.group(2)))
-                
-                match = re.match(r"extract_codebook_index_fast \[\#\] \[us\]: (\d+) (\d+)", line)
-                if match:
-                    if idx > warmup_samples_for_statistics:
-                        Indmax_DL_py_load_test_tflite_mcu.append(int(match.group(1)))
-                        extract_codebook_index_fast_time_list.append(int(match.group(2)))
-
-                        # Quando si arriva all'ultima print da rilevare
-                        tot_latency      = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + dequantize_output_list[-1] + extract_codebook_index_time_list[-1]
-                        tot_latency_fast = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + extract_codebook_index_fast_time_list[-1]
-                        tot_latency_list.append(tot_latency)
-                        tot_latency_fast_list.append(tot_latency_fast)
-                
-                # Pattern che causa loop infinito
-                LOOP_PATTERN = re.compile(r"\bRebooting\b")
-                if LOOP_PATTERN.search(line):
-                    Error = 1
-                    break
-
                 # Attendere (while) segnale di NEXT dall'MCU (cioè quando richiede i dati)
                 if line == next_command:
-                    #sample_str = delimiter.join(datarow) + '\n'
-                    sample_str = delimiter.join(str(x) for x in sample) + '\n'
 
-                    # Inviare la riga di dati all'MCU
-                    ser.write(sample_str.encode('utf-8'))
-                    print(f"Inviato: {sample_str.strip()}")
-                    break
+                    # NON METTERE NESSUNA PRINT PRIMA DI INVIO HEADER ALTRIMENTI L'MCU NON LO VEDO
 
-            if Error == 1:
-                break
+                    data_floats = sample.tolist()  # array di float
+                    total_features = len(data_floats)
+
+                    # INVIO HEADER
+                    # Converte il valore intero total_features in una sequenza di 4 byte (unsigned int, formato little-endian) usando il modulo struct
+                    # < : little-endian (byte meno significativo per primo)
+                    # I : unsigned int (4 byte)
+                    ser.write(struct.pack('<I', total_features))
+                    ser.flush()
+
+                    # Aspetta risposta
+                    while True: 
+                        line = ser.readline().decode().strip()
+                        log.write(f"{line}\n")
+                        #print(f"MCU: {line}")
+                        if line == "OK":
+                            print(f"PYS: --> Trasferimento sample numero {idx+1}/{xtest_size} ({round((idx+1)/xtest_size*100,2)}%)")
+                            print("PYS: Header arrivato a MCU. Ora invio payload")
+                            break
+                        else:
+                            #print("Waiting OK from MCU")
+                            time.sleep(0.01)
+
+                    # INVIO PAYLOAD IN CHUNKS (per via del limite buffer UART MCU)
+                    features_sent = 0
+                    while features_sent < total_features:
+                        
+                        # INVIA CHUNK
+                        chunk_size = min(chunk_size_max, total_features - features_sent)
+                        data = struct.pack('<{}f'.format(chunk_size), *data_floats[features_sent:features_sent+chunk_size]) # little-endian
+                        ser.write(data)
+                        ser.flush()
+                        print(f"PYS: Inviate {features_sent+chunk_size}/{total_features} features ({(features_sent+chunk_size)/total_features*100}%)")
+
+                        # ASPETTA ACK
+                        while True:
+                            line = ser.readline().decode().strip()
+                            log.write(f"{line}\n")
+                            #print(f"MCU: {line}")
+                            if line == "ACK":
+                                break
+                            else:
+                                #print("Waiting ACK from MCU")
+                                time.sleep(0.01)
+                        
+                        features_sent += chunk_size
+
+                    while True: # Attendere (while) fine esecuzione MCU per recuperare i tempi
+
+                        # Leggere dalla seriale
+                        line = ser.readline().decode('utf-8', errors='ignore').strip()
+                        log.write(f"{line}\n")
+                        print(f"MCU: {line}")
+                        
+                        # Scrivere su log
+                        log.write(f"{line}\n")
+
+                        # Parsing dei tempi
+                        match = re.match(r"normalize_input \[us\]: (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 1")
+                            if idx > (warmup_samples_for_statistics - 1):
+                                normalize_input_list.append(int(match.group(1)))
+                        
+                        match = re.match(r"quantize_input \[us\]: (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 2")
+                            if idx > (warmup_samples_for_statistics - 1):
+                                quantize_input_list.append(int(match.group(1)))
+
+                        match = re.match(r"interpreter_invoke \[us\]: (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 3")
+                            interpreter_invoke_list.append(int(match.group(1)))
+
+                        match = re.match(r"dequantize_output \[us\]: (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 4")
+                            if idx > (warmup_samples_for_statistics - 1):
+                                dequantize_output_list.append(int(match.group(1)))
+
+                        match = re.match(r"extract_codebook_index \[\#\] \[us\]: (\d+) (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 5")
+                            if idx > (warmup_samples_for_statistics - 1):
+                                #extract_codebook_index_list.append(int(match.group(1)))
+                                extract_codebook_index_time_list.append(int(match.group(2)))
+                        
+                        match = re.match(r"extract_codebook_index_fast \[\#\] \[us\]: (\d+) (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 6")
+                            if idx > (warmup_samples_for_statistics - 1):
+                                Indmax_DL_py_load_test_tflite_mcu.append(int(match.group(1)))
+                                extract_codebook_index_fast_time_list.append(int(match.group(2)))
+
+                                # Quando si arriva all'ultima print da rilevare
+                                tot_latency      = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + dequantize_output_list[-1] + extract_codebook_index_time_list[-1]
+                                tot_latency_fast = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + extract_codebook_index_fast_time_list[-1]
+                                tot_latency_list.append(tot_latency)
+                                tot_latency_fast_list.append(tot_latency_fast)
+
+                            lock_in = 1 # Passa al sample successivo
+                            break # Esci dal while perchè hai raccolto tutti i tempi
+                            
+                        # Pattern che causa loop infinito
+                        LOOP_PATTERN = re.compile(r"\bRebooting\b")
+                        if LOOP_PATTERN.search(line):
+                            Error = 1
+                            break # Esci dal while
+                    
+                    if Error == 1:
+                        break # Esci dal while
 
     if Error == 0:
         #avg_normalize_input_us = sum(normalize_input_list) / len(normalize_input_list) if normalize_input_list else 0
@@ -152,14 +241,14 @@ def main(dummy,
         mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast = compute_stats(tot_latency_fast_list)
 
         if dummy == '':
-            filename_Indmax_DL_py = network_folder_out_RateDLpy_TFLite_mcu + 'Indmax_DL_py_test' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+            filename_Indmax_DL_py = os.path.join(network_folder_out_RateDLpy_TFLite_mcu, 'Indmax_DL_py_test' + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
             with h5py.File(filename_Indmax_DL_py, 'w') as f:
                 f.create_dataset('Indmax_DL_py_load_test_tflite_mcu', data=Indmax_DL_py_load_test_tflite_mcu)
                 print(f"\nIndmax_DL_py_load_test_tflite_mcu saved in {filename_Indmax_DL_py}")
             
             Rate_DL_py_load_test_tflite_mcu = get_rate_from_codebook(Indmax_DL_py_load_test_tflite_mcu, YValidation_un_test)
 
-            filename_Rate_DL_py = network_folder_out_RateDLpy_TFLite_mcu + 'Rate_DL_py_test' + end_folder_Training_Size_dd_max_epochs_load + '.mat'
+            filename_Rate_DL_py = os.path.join(network_folder_out_RateDLpy_TFLite_mcu, 'Rate_DL_py_test' + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
             with h5py.File(filename_Rate_DL_py, 'w') as f:
                 f.create_dataset('Rate_DL_py_load_test_tflite_mcu', data=Rate_DL_py_load_test_tflite_mcu)
                 print(f"\nRate_DL_py_load_test_tflite_mcu saved in {filename_Rate_DL_py}")

@@ -59,7 +59,7 @@ def model_predict(xdataset, Y_dataset,
                   YValidation_un_val, YValidation_un_test, 
                   model_py, 
                   network_folder_out_RateDLpy, end_folder_Training_Size_dd_epochs, model_name_suffix,
-                  mean_array_filepath, variance_array_filepath, test_set_size, 
+                  mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
                   test, save_files=1):
 
 
@@ -72,7 +72,7 @@ def model_predict(xdataset, Y_dataset,
         #x = xtest
         # Choose the number of test samples
         if test_set_size == 'small':
-            xtest_size = 10
+            xtest_size = small_samples
         else:
             xtest_size = xtest.shape[0]
         x = xtest[:xtest_size,:]
@@ -93,10 +93,6 @@ def model_predict(xdataset, Y_dataset,
         y = Y_val
         YValidation_un = YValidation_un_val
     
-    print(f"\n### model_predict {t}")
-
-    print('x.shape:', x.shape)
-    print('y.shape:', y.shape)
 
     filename_Indmax_OPT_py = os.path.join(network_folder_out_RateDLpy, 'Indmax_OPT_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
     filename_Indmax_DL_py = os.path.join(network_folder_out_RateDLpy, 'Indmax_DL_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
@@ -106,13 +102,17 @@ def model_predict(xdataset, Y_dataset,
     filename_Rate_OPT_py = os.path.join(network_folder_out_RateDLpy, 'Rate_OPT_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
     filename_Rate_DL_py = os.path.join(network_folder_out_RateDLpy, 'Rate_DL_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
 
-    print(f"\nStart DL prediction {t}...")
+    #print(f"\n### model_predict {t}")
+    print(f"\n### Start DL prediction {t} ###")
+
+    print('x.shape:', x.shape)
+    print('y.shape:', y.shape)
 
     Indmax_OPT_py = np.argmax(y, axis=1) # ATTENZIONE: ricordarsi di fare +1 in Matlab per ripristinare indici da zero-based a one-based
     print(f'Indmax_OPT_py.shape: {Indmax_OPT_py.shape}')
     print(f'np.min(Indmax_OPT_py): {np.min(Indmax_OPT_py)}')
     print(f'np.max(Indmax_OPT_py): {np.max(Indmax_OPT_py)}')
-    print(Indmax_OPT_py[0:5])
+    print(Indmax_OPT_py[0:small_samples])
 
     if test == 0 or test == 1 or test == 2:
         YPredicted = model_py.predict(x, verbose=1, batch_size=128)
@@ -147,8 +147,8 @@ def model_predict(xdataset, Y_dataset,
         details = interpreter.get_tensor_details()
         
         # Stampa l'elenco degli operatori
-        for op in interpreter._get_ops_details():
-            print(op['op_name'])
+        #for op in interpreter._get_ops_details():
+        #    print(op['op_name'])
 
         #3) Setting input tensor values.
         # Get input and output tensors.
@@ -181,13 +181,13 @@ def model_predict(xdataset, Y_dataset,
 
             sample = input_float[i]  # shape: (1024,)
             #print('sample.shape:', sample.shape)
-            #print('\nfloat_input:', ' '.join([f"{x:.6f}" for x in sample[0:5]]))
+            #print('\nfloat_input:', ' '.join([f"{x:.6f}" for x in sample[0:small_samples]]))
             sample = np.expand_dims(sample, axis=0)  # shape: (1, 1024)
 
             sample_normalized = np.array((sample - mean_array) / np.sqrt(variance_array), dtype=np.float32)
             
             input_int8 = np.round(sample / input_scale + input_zero_point).astype(np.int8)
-            #print('quantized_input:', ' '.join([f"{x}" for x in input_int8.flatten()[0:5]]))
+            #print('quantized_input:', ' '.join([f"{x}" for x in input_int8.flatten()[0:small_samples]]))
             #print('input_int8.shape:', input_int8.shape)
             #print('np.max(input_int8):', np.max(input_int8))
             #print('np.min(input_int8):', np.min(input_int8))
@@ -210,8 +210,8 @@ def model_predict(xdataset, Y_dataset,
             #print(f'output_scale: {output_scale:.6f}')
             #print(f'output_zero_point: {output_zero_point:.6f}')
             output_deq = (output_int8.astype(np.float32) - output_zero_point) * output_scale
-            #print('quantized_output:', ' '.join([f"{x}" for x in output_int8.flatten()[0:5]]))
-            #print('dequantized_output:', ' '.join([f"{x:.6f}" for x in output_deq[0][0:5]]))            #print('output_deq.shape:', output_deq.shape)
+            #print('quantized_output:', ' '.join([f"{x}" for x in output_int8.flatten()[0:small_samples]]))
+            #print('dequantized_output:', ' '.join([f"{x:.6f}" for x in output_deq[0][0:small_samples]]))            #print('output_deq.shape:', output_deq.shape)
             #print('np.max(output_deq):', np.max(output_deq))
             #print('np.min(output_deq):', np.min(output_deq))
             output_float.append(output_deq[0])  # output_deq.shape: (1, 1024) -> prendi [0]
@@ -231,7 +231,7 @@ def model_predict(xdataset, Y_dataset,
     print(f'np.min(Indmax_DL_py): {np.min(Indmax_DL_py)}')
     print(f'np.max(Indmax_DL_py): {np.max(Indmax_DL_py)}')
     print(f'max - min = {np.max(Indmax_DL_py) - np.min(Indmax_DL_py)}')
-    print(f'Indmax_DL_py[0:5]: {Indmax_DL_py[0:5]}')
+    print(f'\nIndmax_DL_py[0:{small_samples}]: {Indmax_DL_py[0:small_samples]}')
 
     if test == 0 or test == 1 or test == 3:
         #validation_accuracy = 0
@@ -248,7 +248,7 @@ def model_predict(xdataset, Y_dataset,
 
         Rate_OPT_py = MaxR_OPT_py.mean()
         Rate_DL_py = MaxR_DL_py.mean()
-        print(f'Rate_OPT: {Rate_OPT_py}')
+        print(f'\nRate_OPT: {Rate_OPT_py}')
         print(f'Rate_DL_py: {Rate_DL_py}')
         #validation_accuracy = validation_accuracy / Indmax_DL_py.shape[0]
 
@@ -449,12 +449,12 @@ def convert_model_to_tflite(model_py, xval, model_path_tflite, save_files_flag_m
     return tflite_int8_model
 
 
-def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
+def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
         train_model_flag, predict_loaded_model_flag,
         convert_model_flag, Training_Size_dd,
         input_features, output_dim, num_layers, hidden_units_list,
         init_learning_rate, min_learning_rate, factor, patience, min_delta,
-        mean_array_filepath, variance_array_filepath, test_set_size,
+        mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
         end_folder, end_folder_Training_Size_dd, 
         end_folder_Training_Size_dd_epochs, model_name_suffix, model_path_tflite, model_path_keras,
         DL_dataset_folder, network_folder_in,
@@ -571,6 +571,9 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
         print(X_dataset.shape) # (36200, 1024)
         print(Y_dataset.shape) 
 
+        if train_model_flag == 0 and load_model_flag == 0:
+            return YValidation_un_test
+
         # %%
         ## Recreate the same network in Python
 
@@ -622,9 +625,9 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
             np.save(xtestmean_npy_filename, mean_array)
             np.save(xtestvar_npy_filename, variance_array)
 
-            #print(X_train[0][0:5])
-            #print(mean_array[0:5])
-            #print(X_train_normalized[0][0:5])
+            #print(X_train[0][0:small_samples])
+            #print(mean_array[0:small_samples])
+            #print(X_train_normalized[0][0:small_samples])
 
         normalized = 1
 
@@ -643,34 +646,20 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
         # %%
         ## DL Model Training and Prediction
 
-        #if train_model_flag == 1:
-        #    if load_model_flag == 1:
-        #        max_epochs_new = max_epochs_load + max_epochs
-        #        factor = 0.5
-        #        patience = 3
-        #        min_delta = 0.025
-        #    else:
-        #        max_epochs_new = max_epochs
-        #        factor = 0.5
-        #        patience = 3
-        #        min_delta = 0.05
-        
-        #model_path_keras = saved_models_keras + model_type_load + '.keras'
-
         # %%
         ################################ Load Model ################################
         if load_model_flag == 1:
 
             model_py = load_model(model_path_keras, custom_objects={'mse_custom': mse_custom})
             model_py.summary()
-            print(f"\nLoad model: {model_path_keras}")
+            print(f"\n--> Load Keras model: {model_path_keras}")
         
             if convert_model_flag == 1:
                 tflite_int8_model = convert_model_to_tflite(model_py, xval, model_path_tflite, save_files_flag_master)
             else:
                 with open(model_path_tflite, 'rb') as f:
                     tflite_int8_model = f.read()
-                print('TFLite model loaded')
+                print(f'\n----> Load TFLite model: {model_path_tflite}')
 
             
             # %%
@@ -699,7 +688,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                                                                             YValidation_un_val, YValidation_un_test, 
                                                                             model_py, 
                                                                             network_folder_out_RateDLpy, end_folder_Training_Size_dd_epochs, model_name_suffix,
-                                                                            mean_array_filepath, variance_array_filepath, test_set_size, 
+                                                                            mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
                                                                             test=test, save_files=save_files_flag)
                 #save_files_flag = 1
                 test = 1 # Predict with test set
@@ -709,7 +698,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                                                                             YValidation_un_val, YValidation_un_test, 
                                                                             model_py, 
                                                                             network_folder_out_RateDLpy, end_folder_Training_Size_dd_epochs, model_name_suffix,
-                                                                            mean_array_filepath, variance_array_filepath, test_set_size, 
+                                                                            mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
                                                                             test=test, save_files=save_files_flag)
                 #save_files_flag = 0
                 #test = 2 # Predict with all dataset
@@ -811,7 +800,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
             mini_batch_size = 500
 
             # For the output filenames
-            end_folder_Training_Size_dd_max_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs_new)
+            end_folder_Training_Size_dd_max_epochs = end_folder_Training_Size_dd + '_' + str(max_epochs)
             
             tensorboard_callback = TensorBoard(log_dir=tensorboard_logs, histogram_freq=1)
 
@@ -843,7 +832,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
             #    cooldown=0,  # Number of epochs to wait before using patience and min_delta
             #    min_delta=min_delta,
             #    lr_initial=init_learning_rate, 
-            #    decay_epochs=max_epochs_new/2, # epoche per arrivare a min_lr
+            #    decay_epochs=max_epochs/2, # epoche per arrivare a min_lr
             #    min_lr=min_learning_rate, 
             #    verbose=1
             #)
@@ -856,7 +845,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
             #        cosine = 0.5 * (1.0 + math.cos(math.pi * e / total_epochs))
             #        return max(lr_initial * ((1 - alpha) * cosine + alpha), min_lr)
             #    return schedule
-            #lr_scheduler = LearningRateScheduler(lr_schdule(total_epochs=max_epochs_new, lr_initial=init_learning_rate, min_lr=min_learning_rate), verbose=1)
+            #lr_scheduler = LearningRateScheduler(lr_schdule(total_epochs=max_epochs, lr_initial=init_learning_rate, min_lr=min_learning_rate), verbose=1)
             
             # --------------------------------------------------------------------------------
 
@@ -898,9 +887,8 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                 #train_dataset, 
                 #validation_data=val_dataset
                 batch_size=mini_batch_size,
-                initial_epoch=max_epochs_load,
-                #epochs=max_epochs,
-                epochs=max_epochs_new,
+                initial_epoch=initial_epoch,
+                epochs=max_epochs,
                 shuffle=True,  # Shuffle data at each epoch
                 callbacks=[lr_scheduler, tensorboard_callback, checkpoint_callback, earlystopping_callback],
                 #callbacks=[tensorboard_callback, checkpoint_callback],
@@ -947,7 +935,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
             #model_py = ...  # stessa architettura
             #best_model.compile(...)
             model_py = load_model(model_path_keras, custom_objects={'mse_custom': mse_custom})
-            print(f"\nReload model: {model_path_keras}")
+            print(f"\n--> Reload best Keras model: {model_path_keras}")
 
             # %%
             ## DL Model Prediction
@@ -962,7 +950,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                                                                 YValidation_un_val, YValidation_un_test, 
                                                                 model_py, 
                                                                 network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, model_name_suffix,
-                                                                mean_array_filepath, variance_array_filepath, test_set_size, 
+                                                                mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
                                                                 test=test, save_files=save_files_flag)
             test = 1
             Indmax_OPT_py_test, Indmax_DL_py_test, Rate_OPT_py_test, Rate_DL_py_test = model_predict(xdataset, Y_dataset, 
@@ -971,7 +959,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                                                                 YValidation_un_val, YValidation_un_test, 
                                                                 model_py, 
                                                                 network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, model_name_suffix,
-                                                                mean_array_filepath, variance_array_filepath, test_set_size, 
+                                                                mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
                                                                 test=test, save_files=save_files_flag)
             #test = 2
             #_, _, Rate_OPT_py_test, Rate_DL_py_test = model_predict(xdataset, Y_dataset, 
@@ -980,7 +968,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
             #                                                  YValidation_un_val, YValidation_un_test, 
             #                                                  model_py, 
             #                                                  network_folder_out_RateDLpy, end_folder_Training_Size_dd_max_epochs, model_name_suffix,
-            #                                                  mean_array_filepath, variance_array_filepath, test_set_size, 
+            #                                                  mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
             #                                                  test=test)
 
             if convert_model_flag == 1:
@@ -1019,6 +1007,7 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
         # Output finali       
         try:
             if load_model_flag == 1:
+                print(f"\n### FINAL RESULTS:")
                 print(f"\nRate_OPT_py_load_val: {Rate_OPT_py_load_val}")
                 print(f"Rate_DL_py_load_val: {Rate_DL_py_load_val}")
 
@@ -1041,10 +1030,11 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
             print('Some missing info to print, no problem')
         
         print(f"\nRicorda che Rate_DL_valOld non può essere confrontato con Rate_DL_py_load_val e Rate_DL_py_load_test, perchè il primo è calcolato sul validation set old, mentre i secondi sul val e test set nuovi")
+        print("\n---------------------------------------------------------\n")
 
         tf.keras.backend.clear_session()
 
-        if load_model_flag == 1:
+        if train_model_flag == 1 and load_model_flag == 0:
             return model_py, \
                 Rate_OPT_py_load_val,    Rate_DL_py_load_val, \
                 Rate_OPT_py_load_test,   Rate_DL_py_load_test, \
@@ -1052,5 +1042,5 @@ def main(My, Mz, load_model_flag, max_epochs_new, max_epochs_load,
                 Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
                 Indmax_DL_py_load_test_tflite, \
                 YValidation_un_test
-        elif train_model_flag == 1:
+        elif train_model_flag == 0 and load_model_flag == 1:
             return
