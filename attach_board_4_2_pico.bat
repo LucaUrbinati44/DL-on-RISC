@@ -1,0 +1,3 @@
+echo [*] Collegamento dispositivo USB 4-2 a WSL...
+usbipd attach --busid 4-2 --wsl
+pause

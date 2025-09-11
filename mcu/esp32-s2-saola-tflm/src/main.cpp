@@ -41,6 +41,7 @@ namespace
   int output_zero_point;
   float input_scale_inv;
 
+  float chunk_buf[CHUNK_SIZE_MAX];
   float float_input[INPUT_FEATURE_SIZE];
   float float_input_normalized[INPUT_FEATURE_SIZE];
   float dequantized_output[OUTPUT_FEATURE_SIZE];
@@ -135,9 +136,10 @@ void setup()
 
   // pinMode(LED_BUILTIN, OUTPUT);
   // digitalWrite(LED_BUILTIN, LOW);
-  Serial.begin(115200);
+  Serial.begin(BAUD_RATE);
+  Serial.setTimeout(5000);
 
-  delay(10000);
+  delay(3000);
 
   // unsigned long t0 = micros();
   // unsigned long t1 = micros();
@@ -253,6 +255,8 @@ void setup()
   Serial.println(" MHz");
 }
 
+// ------------------------------------------------------------
+
 void loop()
 {
   bool got_data;
@@ -261,10 +265,11 @@ void loop()
   {
     Serial.println("NEXT"); // Richiesta di un nuovo sample
     delay(1000);
+
     got_data = Serial.available(); // Attende risposta
     if (got_data)
     {
-      // Serial.println("got data\n");
+      //Serial.println("got data\n");
       break;
     }
     else
@@ -274,23 +279,71 @@ void loop()
     }
   }
 
-  // Legge la riga dalla seriale
-  String line = Serial.readStringUntil('\n');
+  //// Legge la riga dalla seriale
+  //// --- HEADER: 4 byte con numero totale elementi --- (little-endian)
+  //uint8_t hdr[4];
+  //int got = 0;
+  //while (got < 4) got += Serial.readBytes(hdr+got, 4-got);
+  //
+  //uint32_t total_features = (uint32_t)hdr[0] | ((uint32_t)hdr[1]<<8) | ((uint32_t)hdr[2]<<16) | ((uint32_t)hdr[3]<<24);
+  ////Serial.print("Total number of expected features: ");
+  ////Serial.println(total_features);
+  //if (total_features != INPUT_FEATURE_SIZE) {
+  //  Serial.println("ERROR: unexpected total number of expected features");
+  //  return;
+  //} else {
+  //  Serial.println("OK");
+  //}
 
-  // Parsing dei valori
-  int index = 0;
-  char *token = strtok((char *)line.c_str(), " ");
-  float float_token;
-  Serial.print("Ricevuto: ");
-  while (token != nullptr && index < INPUT_FEATURE_SIZE)
-  {
-    float_token = atof(token);
-    float_input[index++] = float_token;
-    token = strtok(nullptr, " ");
-    Serial.print(float_token, 8);
-    Serial.print(" ");
+  // --- RICEZIONE CHUNK ---
+  uint32_t features_received = 0;
+  //while (features_received < total_features) {
+  while (features_received < INPUT_FEATURE_SIZE) {
+    //uint16_t chunk_size = min((uint32_t)CHUNK_SIZE_MAX, total_features - features_received);
+    uint16_t chunk_size = min((uint32_t)CHUNK_SIZE_MAX, INPUT_FEATURE_SIZE - features_received);
+    uint32_t chunk_size_in_bytes = chunk_size * sizeof(float);
+
+    // Legge dati dalla porta seriale e li memorizza in un buffer.
+    // Il primo argomento (p + bytes_received) è il puntatore alla posizione corrente nel buffer dove scrivere i nuovi dati.
+    // Il secondo argomento (chunk_size_in_bytes - bytes_received) è il numero di byte da leggere (quanti ne mancano per completare il chunk).
+    uint8_t *p = (uint8_t*)chunk_buf;
+    uint32_t bytes_received = 0;
+    while (bytes_received < chunk_size_in_bytes) {
+      int r = Serial.readBytes(p + bytes_received, chunk_size_in_bytes - bytes_received);
+      if (r <= 0) { 
+        Serial.println("ERR timeout");
+        return; // interrompi se errore
+      }
+      bytes_received += r;
+    }
+    
+    // Ora chunk_buf contiene `chunk_size` float (little-endian)
+    for (int i = 0; i < chunk_size; i++) {
+      float_input[features_received + i] = chunk_buf[i];
+    }
+
+    features_received += chunk_size;
+  
+    //Serial.print("Received ");
+    //Serial.print(features_received + chunk_size);
+    //Serial.print("/");
+    //Serial.print(total_features);
+    //Serial.print(" features (");
+    //Serial.print((features_received+chunk_size)/total_features*100);
+    //Serial.println(")");
+    
+    // conferma ricezione chunk
+    Serial.println("ACK"); 
   }
-  Serial.println("");
+  
+  //Serial.print("Total received float: ");
+  //Serial.println(features_received);
+  if (features_received != INPUT_FEATURE_SIZE) {
+    Serial.println("ERROR: unexpected total number of received features");
+    return;
+  }
+
+  // ------------------------------------------------------------------------
 
   int64_t ta = esp_timer_get_time();
   normalize_input(float_input, float_input_normalized);
@@ -340,4 +393,6 @@ void loop()
   Serial.print(codebook_index_fast);
   Serial.print(" ");
   Serial.println(tb - ta - overhead_esp);
+
+  Serial.println("------------------------");
 }

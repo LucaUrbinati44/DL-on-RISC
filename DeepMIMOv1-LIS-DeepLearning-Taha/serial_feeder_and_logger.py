@@ -10,11 +10,6 @@ import h5py
 
 # Parametri
 #SERIAL_PORT = '/dev/ttyUSB0'
-#BAUD_RATE = 115200
-#BAUD_RATE = 921600
-#BAUD_RATE = 1500000
-#CHUNK_SIZE_MAX = 128
-#CHUNK_SIZE_MAX = 1024
 
 delimiter = ' '
 
@@ -88,6 +83,9 @@ def main(dummy,
 
             if Error == 1:
                 break
+            
+            data_floats = sample.tolist()  # array di float
+            total_features = len(data_floats)
 
             while True:
 
@@ -109,28 +107,25 @@ def main(dummy,
 
                     # NON METTERE NESSUNA PRINT PRIMA DI INVIO HEADER ALTRIMENTI L'MCU NON LO VEDO
 
-                    data_floats = sample.tolist()  # array di float
-                    total_features = len(data_floats)
-
-                    # INVIO HEADER
-                    # Converte il valore intero total_features in una sequenza di 4 byte (unsigned int, formato little-endian) usando il modulo struct
-                    # < : little-endian (byte meno significativo per primo)
-                    # I : unsigned int (4 byte)
-                    ser.write(struct.pack('<I', total_features))
-                    ser.flush()
-
-                    # Aspetta risposta
-                    while True: 
-                        line = ser.readline().decode().strip()
-                        log.write(f"{line}\n")
-                        #print(f"MCU: {line}")
-                        if line == "OK":
-                            print(f"PYS: --> Trasferimento sample numero {idx+1}/{xtest_size} ({round((idx+1)/xtest_size*100,2)}%)")
-                            print("PYS: Header arrivato a MCU. Ora invio payload")
-                            break
-                        else:
-                            #print("Waiting OK from MCU")
-                            time.sleep(0.01)
+                    ## INVIO HEADER
+                    ## Converte il valore intero total_features in una sequenza di 4 byte (unsigned int, formato little-endian) usando il modulo struct
+                    ## < : little-endian (byte meno significativo per primo)
+                    ## I : unsigned int (4 byte)
+                    #ser.write(struct.pack('<I', total_features))
+                    #ser.flush()
+                    #
+                    ## Aspetta risposta
+                    #while True: 
+                    #    line = ser.readline().decode().strip()
+                    #    log.write(f"{line}\n")
+                    #    #print(f"MCU: {line}")
+                    #    if line == "OK":
+                    #        print(f"PYS: --> Trasferimento sample numero {idx+1}/{xtest_size} ({round((idx+1)/xtest_size*100,2)}%)")
+                    #        print("PYS: Header arrivato a MCU. Ora invio payload")
+                    #        break
+                    #    else:
+                    #        #print("Waiting OK from MCU")
+                    #        time.sleep(0.01)
 
                     # INVIO PAYLOAD IN CHUNKS (per via del limite buffer UART MCU)
                     features_sent = 0
@@ -147,12 +142,12 @@ def main(dummy,
                         while True:
                             line = ser.readline().decode().strip()
                             log.write(f"{line}\n")
-                            #print(f"MCU: {line}")
+                            print(f"MCU: {line}")
                             if line == "ACK":
                                 break
                             else:
-                                #print("Waiting ACK from MCU")
-                                time.sleep(0.01)
+                                print("Waiting ACK from MCU")
+                                time.sleep(0.1)
                         
                         features_sent += chunk_size
 

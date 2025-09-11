@@ -159,8 +159,8 @@ save_files_flag_master_once = 0
 #BAUD_RATE = 921600
 #BAUD_RATE = 1500000
 baud_rate = 1500000
-#chunk_size_max = 128
-chunk_size_max = 1024
+chunk_size_max = 128
+#chunk_size_max = 1024
 
 # ------------------------------------------------------------------------------------------
 

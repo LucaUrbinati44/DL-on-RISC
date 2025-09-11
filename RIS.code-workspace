@@ -15,6 +15,16 @@
 		{
 			"name": "esp32-s2-saola-blink",
 			"path": "mcu/esp32-s2-saola-blink"
+		},
+		{
+			"name": "stm32-h7",
+			"path": "mcu/stm32-h7"
+		},
+		{
+			"path": "mcu/stm32-f4"
+		},
+		{
+			"path": "mcu/pico"
 		}
 	],
 	"settings": {
@@ -35,6 +45,11 @@
 				"filePath": "renode_examples/litex-vexriscv-tensorflow-lite-demo/renode",
 				"group": "Default"
 			}
-		]
+		],
+		"files.associations": {
+			"string": "cpp",
+			"stdint.h": "c",
+			"random": "cpp"
+		}
 	}
 }
