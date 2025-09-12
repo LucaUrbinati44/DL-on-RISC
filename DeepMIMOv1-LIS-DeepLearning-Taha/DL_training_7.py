@@ -57,13 +57,13 @@ Training_Size_dd = Training_Size[0]
 
 # ------------------------------------------------------------------------------------------
 
-debug = 2            # 0: production mode,  2: dummy mode
+debug = 1            # 0: production mode,  2: dummy mode
 
 #dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
 dummy = ''
 
-test_set_size = 'small' # 'full' in prodcution
-#test_set_size = 'full'
+#test_set_size = 'small' # 'full' in prodcution
+test_set_size = 'full'
 
 if test_set_size == 'small':
     small_samples = 100 # even and greater than or equal to 2
@@ -79,7 +79,7 @@ if debug == 0:
     output_dims = [My*Mz]         # Numero di neuroni di uscita (32x32 = 1024)
     num_layers_list = [0,1,2,3]   # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
     R_list = [32, 8, 1]
-elif debug == 1: # (9x9+1)x2 x 1h ciascuno = 20h
+elif debug == 1: # (9x9+1)x2 x 8min ciascuno = 2.67h
     active_cells = [8]
     output_dims = [My*Mz]
     num_layers_list = [0,1,2,3]
@@ -159,8 +159,8 @@ save_files_flag_master_once = 0
 #BAUD_RATE = 921600
 #BAUD_RATE = 1500000
 baud_rate = 1500000
-chunk_size_max = 128
-#chunk_size_max = 1024
+#chunk_size_max = 128
+chunk_size_max = 1024
 
 # ------------------------------------------------------------------------------------------
 

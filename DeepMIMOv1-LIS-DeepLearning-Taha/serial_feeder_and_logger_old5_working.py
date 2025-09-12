@@ -2,11 +2,19 @@ import os
 import serial
 import struct
 import time
+#import csv
+from datetime import datetime
 import re
 import numpy as np
 import h5py
 
+# Parametri
+#SERIAL_PORT = '/dev/ttyUSB0'
+
 delimiter = ' '
+
+next_command = "NEXT"        # Comando seriale che invia dati in seriale
+
 
 def compute_stats(data_list):
     if not data_list:
@@ -18,8 +26,8 @@ def compute_stats(data_list):
 
 def get_rate_from_codebook(codebook_index_list, YValidation_un_test):
     
-    #print(len(codebook_index_list))
-    #print(codebook_index_list)
+    print(len(codebook_index_list))
+    print(codebook_index_list)
     MaxR_DL_py = np.zeros(len(codebook_index_list), dtype=np.float32)
 
     # Ciclo di confronto
@@ -68,9 +76,9 @@ def main(dummy,
         open(mcu_profiling_logfile, 'w') as log:
         print("Avviato logger + feeder su", mcu_serial_port)
 
-        time.sleep(10) # Tempo per reset MCU
+        time.sleep(2) # Tempo per reset MCU
 
-        for idx, sample in enumerate(x):
+        for idx, sample in enumerate(x):           
 
             print("PSY: ------------------------")
             print(f"PSY: Sample {idx+1}/{xtest_size}")
@@ -78,18 +86,7 @@ def main(dummy,
             data_floats = sample.tolist()  # array di float
             total_features = len(data_floats)
 
-            # INVIO PAYLOAD IN CHUNKS (per via del limite buffer UART MCU)
-            features_sent = 0
-            while features_sent < total_features:
-                # INVIA CHUNK
-                chunk_size = min(chunk_size_max, total_features - features_sent)
-                data = struct.pack('<{}f'.format(chunk_size), *data_floats[features_sent:features_sent+chunk_size]) # little-endian
-                ser.write(data)
-                ser.flush()
-                features_sent += chunk_size
-                #print(f"PYS: Inviate {features_sent}/{total_features} features ({features_sent/total_features*100}%)")
-
-            while True: # Leggi output MCU
+            while True:
 
                 # Leggere dalla seriale
                 line = ser.readline().decode('utf-8', errors='ignore').strip()
@@ -98,6 +95,20 @@ def main(dummy,
                 
                 print(f"MCU: {line}")
                 log.write(f"{line}\n") # Scrivere su log
+
+                # Attendere (while) segnale di NEXT dall'MCU (cioè quando richiede i dati)
+                if line == next_command:
+
+                    # INVIO PAYLOAD IN CHUNKS (per via del limite buffer UART MCU)
+                    features_sent = 0
+                    while features_sent < total_features:
+                        # INVIA CHUNK
+                        chunk_size = min(chunk_size_max, total_features - features_sent)
+                        data = struct.pack('<{}f'.format(chunk_size), *data_floats[features_sent:features_sent+chunk_size]) # little-endian
+                        ser.write(data)
+                        ser.flush()
+                        features_sent += chunk_size
+                        print(f"PYS: Inviate {features_sent}/{total_features} features ({features_sent/total_features*100}%)")
 
                 # Parsing dei tempi
                 match = re.match(r"normalize_input \[us\]: (\d+)", line)
@@ -150,6 +161,9 @@ def main(dummy,
                 if LOOP_PATTERN.search(line):
                     Error = 1
                     break # Esci dal while
+
+                #if "------------------------" in line: # fine esecuzione
+                #    break
 
             if Error == 1:
                 break # Esci dal for

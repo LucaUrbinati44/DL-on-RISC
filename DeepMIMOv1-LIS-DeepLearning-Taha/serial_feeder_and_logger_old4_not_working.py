@@ -2,11 +2,19 @@ import os
 import serial
 import struct
 import time
+#import csv
+from datetime import datetime
 import re
 import numpy as np
 import h5py
 
+# Parametri
+#SERIAL_PORT = '/dev/ttyUSB0'
+
 delimiter = ' '
+
+next_command = "NEXT"        # Comando seriale che invia dati in seriale
+
 
 def compute_stats(data_list):
     if not data_list:
@@ -18,8 +26,8 @@ def compute_stats(data_list):
 
 def get_rate_from_codebook(codebook_index_list, YValidation_un_test):
     
-    #print(len(codebook_index_list))
-    #print(codebook_index_list)
+    print(len(codebook_index_list))
+    print(codebook_index_list)
     MaxR_DL_py = np.zeros(len(codebook_index_list), dtype=np.float32)
 
     # Ciclo di confronto
@@ -66,93 +74,148 @@ def main(dummy,
 
     with serial.Serial(mcu_serial_port, baud_rate, timeout=10) as ser, \
         open(mcu_profiling_logfile, 'w') as log:
+
         print("Avviato logger + feeder su", mcu_serial_port)
 
-        time.sleep(10) # Tempo per reset MCU
+        lock_in = 0
 
-        for idx, sample in enumerate(x):
+        for idx, sample in enumerate(x):           
 
-            print("PSY: ------------------------")
-            print(f"PSY: Sample {idx+1}/{xtest_size}")
+            if Error == 1:
+                break
             
             data_floats = sample.tolist()  # array di float
             total_features = len(data_floats)
 
-            # INVIO PAYLOAD IN CHUNKS (per via del limite buffer UART MCU)
-            features_sent = 0
-            while features_sent < total_features:
-                # INVIA CHUNK
-                chunk_size = min(chunk_size_max, total_features - features_sent)
-                data = struct.pack('<{}f'.format(chunk_size), *data_floats[features_sent:features_sent+chunk_size]) # little-endian
-                ser.write(data)
-                ser.flush()
-                features_sent += chunk_size
-                #print(f"PYS: Inviate {features_sent}/{total_features} features ({features_sent/total_features*100}%)")
+            while True:
 
-            while True: # Leggi output MCU
+                if lock_in == 1:
+                    lock_in = 0
+                    break # Passa al sample successivo
 
                 # Leggere dalla seriale
                 line = ser.readline().decode('utf-8', errors='ignore').strip()
                 if not line:
                     continue
-                
                 print(f"MCU: {line}")
-                log.write(f"{line}\n") # Scrivere su log
-
-                # Parsing dei tempi
-                match = re.match(r"normalize_input \[us\]: (\d+)", line)
-                if match:
-                    #print("PYS: MATCH 1")
-                    if idx > (warmup_samples_for_statistics - 1):
-                        normalize_input_list.append(int(match.group(1)))
                 
-                match = re.match(r"quantize_input \[us\]: (\d+)", line)
-                if match:
-                    #print("PYS: MATCH 2")
-                    if idx > (warmup_samples_for_statistics - 1):
-                        quantize_input_list.append(int(match.group(1)))
+                # Scrivere su log
+                log.write(f"{line}\n")
 
-                match = re.match(r"interpreter_invoke \[us\]: (\d+)", line)
-                if match:
-                    #print("PYS: MATCH 3")
-                    interpreter_invoke_list.append(int(match.group(1)))
+                # Attendere (while) segnale di NEXT dall'MCU (cioè quando richiede i dati)
+                if line == next_command:
 
-                match = re.match(r"dequantize_output \[us\]: (\d+)", line)
-                if match:
-                    #print("PYS: MATCH 4")
-                    if idx > (warmup_samples_for_statistics - 1):
-                        dequantize_output_list.append(int(match.group(1)))
+                    # NON METTERE NESSUNA PRINT PRIMA DI INVIO HEADER ALTRIMENTI L'MCU NON LO VEDO
 
-                match = re.match(r"extract_codebook_index \[\#\] \[us\]: (\d+) (\d+)", line)
-                if match:
-                    #print("PYS: MATCH 5")
-                    if idx > (warmup_samples_for_statistics - 1):
-                        #extract_codebook_index_list.append(int(match.group(1)))
-                        extract_codebook_index_time_list.append(int(match.group(2)))
-                
-                match = re.match(r"extract_codebook_index_fast \[\#\] \[us\]: (\d+) (\d+)", line)
-                if match:
-                    #print("PYS: MATCH 6")
-                    if idx > (warmup_samples_for_statistics - 1):
-                        Indmax_DL_py_load_test_tflite_mcu.append(int(match.group(1)))
-                        extract_codebook_index_fast_time_list.append(int(match.group(2)))
+                    ## INVIO HEADER
+                    ## Converte il valore intero total_features in una sequenza di 4 byte (unsigned int, formato little-endian) usando il modulo struct
+                    ## < : little-endian (byte meno significativo per primo)
+                    ## I : unsigned int (4 byte)
+                    #ser.write(struct.pack('<I', total_features))
+                    #ser.flush()
+                    #
+                    ## Aspetta risposta
+                    #while True: 
+                    #    line = ser.readline().decode().strip()
+                    #    log.write(f"{line}\n")
+                    #    #print(f"MCU: {line}")
+                    #    if line == "OK":
+                    #        print(f"PYS: --> Trasferimento sample numero {idx+1}/{xtest_size} ({round((idx+1)/xtest_size*100,2)}%)")
+                    #        print("PYS: Header arrivato a MCU. Ora invio payload")
+                    #        break
+                    #    else:
+                    #        #print("Waiting OK from MCU")
+                    #        time.sleep(0.01)
 
-                        # Quando si arriva all'ultima print da rilevare
-                        tot_latency      = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + dequantize_output_list[-1] + extract_codebook_index_time_list[-1]
-                        tot_latency_fast = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + extract_codebook_index_fast_time_list[-1]
-                        tot_latency_list.append(tot_latency)
-                        tot_latency_fast_list.append(tot_latency_fast)
+                    # INVIO PAYLOAD IN CHUNKS (per via del limite buffer UART MCU)
+                    features_sent = 0
+                    while features_sent < total_features:
+                        
+                        # INVIA CHUNK
+                        chunk_size = min(chunk_size_max, total_features - features_sent)
+                        data = struct.pack('<{}f'.format(chunk_size), *data_floats[features_sent:features_sent+chunk_size]) # little-endian
+                        ser.write(data)
+                        ser.flush()
+                        print(f"PYS: Inviate {features_sent+chunk_size}/{total_features} features ({(features_sent+chunk_size)/total_features*100}%)")
 
-                    break # Esci dal while perchè hai raccolto tutti i tempi, passa al sample successivo
+                        # ASPETTA ACK
+                        while True:
+                            line = ser.readline().decode().strip()
+                            log.write(f"{line}\n")
+                            print(f"MCU: {line}")
+                            if line == "ACK":
+                                break
+                            else:
+                                print("Waiting ACK from MCU")
+                                time.sleep(0.1)
+                        
+                        features_sent += chunk_size
+
+                    while True: # Attendere (while) fine esecuzione MCU per recuperare i tempi
+
+                        # Leggere dalla seriale
+                        line = ser.readline().decode('utf-8', errors='ignore').strip()
+                        log.write(f"{line}\n")
+                        print(f"MCU: {line}")
+                        
+                        # Scrivere su log
+                        log.write(f"{line}\n")
+
+                        # Parsing dei tempi
+                        match = re.match(r"normalize_input \[us\]: (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 1")
+                            if idx > (warmup_samples_for_statistics - 1):
+                                normalize_input_list.append(int(match.group(1)))
+                        
+                        match = re.match(r"quantize_input \[us\]: (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 2")
+                            if idx > (warmup_samples_for_statistics - 1):
+                                quantize_input_list.append(int(match.group(1)))
+
+                        match = re.match(r"interpreter_invoke \[us\]: (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 3")
+                            interpreter_invoke_list.append(int(match.group(1)))
+
+                        match = re.match(r"dequantize_output \[us\]: (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 4")
+                            if idx > (warmup_samples_for_statistics - 1):
+                                dequantize_output_list.append(int(match.group(1)))
+
+                        match = re.match(r"extract_codebook_index \[\#\] \[us\]: (\d+) (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 5")
+                            if idx > (warmup_samples_for_statistics - 1):
+                                #extract_codebook_index_list.append(int(match.group(1)))
+                                extract_codebook_index_time_list.append(int(match.group(2)))
+                        
+                        match = re.match(r"extract_codebook_index_fast \[\#\] \[us\]: (\d+) (\d+)", line)
+                        if match:
+                            #print("PYS: MATCH 6")
+                            if idx > (warmup_samples_for_statistics - 1):
+                                Indmax_DL_py_load_test_tflite_mcu.append(int(match.group(1)))
+                                extract_codebook_index_fast_time_list.append(int(match.group(2)))
+
+                                # Quando si arriva all'ultima print da rilevare
+                                tot_latency      = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + dequantize_output_list[-1] + extract_codebook_index_time_list[-1]
+                                tot_latency_fast = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + extract_codebook_index_fast_time_list[-1]
+                                tot_latency_list.append(tot_latency)
+                                tot_latency_fast_list.append(tot_latency_fast)
+
+                            lock_in = 1 # Passa al sample successivo
+                            break # Esci dal while perchè hai raccolto tutti i tempi
+                            
+                        # Pattern che causa loop infinito
+                        LOOP_PATTERN = re.compile(r"\bRebooting\b")
+                        if LOOP_PATTERN.search(line):
+                            Error = 1
+                            break # Esci dal while
                     
-                # Pattern che causa loop infinito
-                LOOP_PATTERN = re.compile(r"\bRebooting\b")
-                if LOOP_PATTERN.search(line):
-                    Error = 1
-                    break # Esci dal while
-
-            if Error == 1:
-                break # Esci dal for
+                    if Error == 1:
+                        break # Esci dal while
 
     if Error == 0:
         #avg_normalize_input_us = sum(normalize_input_list) / len(normalize_input_list) if normalize_input_list else 0

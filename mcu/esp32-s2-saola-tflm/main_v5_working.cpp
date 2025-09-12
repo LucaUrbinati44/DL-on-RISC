@@ -261,8 +261,12 @@ void setup()
 void loop()
 {
 
+  Serial.println("NEXT");
+  //delay(1000);
+
   // --- RICEZIONE CHUNK ---
   uint32_t features_received = 0;
+  //while (features_received < total_features) {
   while (features_received < INPUT_FEATURE_SIZE) {
     //uint16_t chunk_size = min((uint32_t)CHUNK_SIZE_MAX, total_features - features_received);
     uint16_t chunk_size = min((uint32_t)CHUNK_SIZE_MAX, INPUT_FEATURE_SIZE - features_received);
@@ -286,6 +290,7 @@ void loop()
     float *chunk_as_float = reinterpret_cast<float*>(chunk_buf);
     for (int i = 0; i < chunk_size; i++) {
       float_input[features_received + i] = chunk_as_float[i];
+      //float_input[features_received + i] = chunk_buf[i];
     }
 
     features_received += chunk_size;
@@ -297,17 +302,18 @@ void loop()
     //Serial.print(" features (");
     //Serial.print((features_received+chunk_size)/total_features*100);
     //Serial.println(")");
+    
+    // conferma ricezione chunk
+    //Serial.println("ACK"); 
   }
   
-  //if (features_received == INPUT_FEATURE_SIZE) {
-  //  Serial.println("All features received");
-  //} else {
-  //  Serial.println("ERROR: unexpected total number of received features");
-  //  return;
-  //}
+  //Serial.print("Total received float: ");
+  //Serial.println(features_received);
   if (features_received != INPUT_FEATURE_SIZE) {
     Serial.println("ERROR: unexpected total number of received features");
     return;
+  } else {
+    Serial.println("All features received");
   }
 
   // ------------------------------------------------------------------------
@@ -361,4 +367,5 @@ void loop()
   Serial.print(" ");
   Serial.println(tb - ta - overhead_esp);
 
+  //Serial.println("------------------------");
 }
