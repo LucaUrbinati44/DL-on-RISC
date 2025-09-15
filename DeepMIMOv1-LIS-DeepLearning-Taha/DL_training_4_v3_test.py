@@ -717,7 +717,7 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
                                                                                           YValidation_un_val, YValidation_un_test, 
                                                                                           tflite_int8_model, 
                                                                                           network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_epochs, model_name_suffix,
-                                                                                          mean_array_filepath, variance_array_filepath, test_set_size,
+                                                                                          mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
                                                                                           test=test, save_files=save_files_flag)
                 #save_files_flag = 1
                 #test = 4 # Predict with TF-Lite Model with all dataset
@@ -981,7 +981,7 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
                                                                     YValidation_un_val, YValidation_un_test, 
                                                                     tflite_int8_model, 
                                                                     network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs, model_name_suffix,
-                                                                    mean_array_filepath, variance_array_filepath, test_set_size,
+                                                                    mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
                                                                     test=test, save_files=save_files_flag)
                 
             else:
@@ -1034,13 +1034,20 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
 
         tf.keras.backend.clear_session()
 
-        if train_model_flag == 1 and load_model_flag == 0:
-            return model_py, \
-                Rate_OPT_py_load_val,    Rate_DL_py_load_val, \
-                Rate_OPT_py_load_test,   Rate_DL_py_load_test, \
+        #if train_model_flag == 1 and load_model_flag == 0:
+        #    return model_py, \
+        #        Rate_OPT_py_load_val,    Rate_DL_py_load_val, \
+        #        Rate_OPT_py_load_test,   Rate_DL_py_load_test, \
+        #        Rate_DL_py_load_test_tflite, \
+        #        Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
+        #        Indmax_DL_py_load_test_tflite, \
+        #        YValidation_un_test
+        #elif train_model_flag == 0 and load_model_flag == 1:
+        #    return
+        return  model_py, \
+                Rate_OPT_py_load_val,  Rate_DL_py_load_val, \
+                Rate_OPT_py_load_test, Rate_DL_py_load_test, \
                 Rate_DL_py_load_test_tflite, \
                 Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
                 Indmax_DL_py_load_test_tflite, \
                 YValidation_un_test
-        elif train_model_flag == 0 and load_model_flag == 1:
-            return

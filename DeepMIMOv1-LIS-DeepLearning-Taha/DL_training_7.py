@@ -66,7 +66,7 @@ dummy = ''
 test_set_size = 'full'
 
 if test_set_size == 'small':
-    small_samples = 100 # even and greater than or equal to 2
+    small_samples = 10 # even and greater than or equal to 2
     warmup_samples_for_statistics = small_samples / 2
 else:
     small_samples = 5
@@ -146,12 +146,12 @@ max_epochs = 200 # tanto c'è early stopping
 ##### LOADING (for inference and profiling) #####
 datetime_str = datetime.datetime.now().strftime("experiment-09-09-25-15-56")
 initial_epoch = 200 # se vuoi continuare un allenamento, sono le epoche dalle quali riparti
-load_model_flag = 0
+load_model_flag = 1 # TODO: potenziale indiziato
+predict_loaded_model_flag = load_model_flag # deve essere uguale a load_model_flag
 train_model_flag = 0
-predict_loaded_model_flag = 1
 convert_model_flag = 0
 profiling_flag = 1
-compile_and_upload_flag = 1
+compile_and_upload_flag = 0 # TODO: RIATTIVARE
 save_files_flag_master = 0
 save_files_flag_master_once = 0
 
@@ -643,7 +643,7 @@ def parse_compilation_logfile(file_path):
 def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
                     input_features, output_dim, num_layers, R, hidden_units_list, 
                     patience, min_delta, max_epochs, initial_epoch,
-                    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
+                    #model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
                     RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
                     mean_norm, perc50_norm, perc95_norm, std_norm,
                     mean_int8, perc50_int8, perc95_int8, std_int8,
@@ -665,7 +665,7 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
         'end_folder_Training_Size_dd_epochs', 'K_DL', 
         'input_features', 'output_dim', 'num_layers', 'R', 'hidden_units_list', 
         'patience', 'min_delta', 'max_epochs', 'initial_epoch',
-        'model_h_size_int8_kb', 'model_file_size_int8_kb', 'model_file_size_int8_mb',
+        #'model_h_size_int8_kb', 'model_file_size_int8_kb', 'model_file_size_int8_mb',
         'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 'env_name',
 
         # normalize_input
@@ -728,80 +728,102 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
             'min_delta':         min_delta,
             'max_epochs':        max_epochs,
             'initial_epoch':     initial_epoch,
-            'model_h_size_int8_kb':    model_h_size_int8_kb,
-            'model_file_size_int8_kb': model_file_size_int8_kb,
-            'model_file_size_int8_mb': model_file_size_int8_mb,
-            'RAM_KB':       RAM_KB,
-            'Flash_MB':     Flash_MB,
-            'CLK_FREQ_MHZ': CLK_FREQ_MHZ,
-            'RAM_HW_KB':    RAM_HW_KB,
-            'Flash_HW_MB':  Flash_HW_MB,
-            'env_name':     env_name,
+            #'model_h_size_int8_kb':    f"{model_h_size_int8_kb:.3f}",
+            #'model_file_size_int8_kb': f"{model_file_size_int8_kb:.3f}",
+            #'model_file_size_int8_mb': f"{model_file_size_int8_mb:.3f}",
+            'RAM_KB':       f"{RAM_KB:.3f}",
+            'Flash_MB':     f"{Flash_MB:.3f}",
+            'CLK_FREQ_MHZ': f"{CLK_FREQ_MHZ:.3f}",
+            'RAM_HW_KB':    f"{RAM_HW_KB:.3f}",
+            'Flash_HW_MB':  f"{Flash_HW_MB:.3f}",
+            'env_name':     env_name.ljust(40),
 
             # normalize_input
-            'mean_norm': round(mean_norm, 3),
-            'perc50_norm': round(perc50_norm, 3),
-            'perc95_norm': round(perc95_norm, 3),
-            'std_norm': round(std_norm, 3),
+            'mean_norm': f"{mean_norm.item():.3f}",
+            'perc50_norm': f"{perc50_norm.item():.3f}",
+            'perc95_norm': f"{perc95_norm.item():.3f}",
+            'std_norm': f"{std_norm.item():.3f}",
 
             # quantize_input
-            'mean_int8': round(mean_int8, 3),
-            'perc50_int8': round(perc50_int8, 3),
-            'perc95_int8': round(perc95_int8, 3),
-            'std_int8': round(std_int8, 3),
+            'mean_int8': f"{mean_int8.item():.3f}",
+            'perc50_int8': f"{perc50_int8.item():.3f}",
+            'perc95_int8': f"{perc95_int8.item():.3f}",
+            'std_int8': f"{std_int8.item():.3f}",
 
             # interpreter_invoke
-            'mean_invoke': round(mean_invoke, 3),
-            'perc50_invoke': round(perc50_invoke, 3),
-            'perc95_invoke': round(perc95_invoke, 3),
-            'std_invoke': round(std_invoke, 3),
+            'mean_invoke': f"{mean_invoke.item():.3f}",
+            'perc50_invoke': f"{perc50_invoke.item():.3f}",
+            'perc95_invoke': f"{perc95_invoke.item():.3f}",
+            'std_invoke': f"{std_invoke.item():.3f}",
 
             # dequantize_output
-            'mean_dequant': round(mean_dequant, 3),
-            'perc50_dequant': round(perc50_dequant, 3),
-            'perc95_dequant': round(perc95_dequant, 3),
-            'std_dequant': round(std_dequant, 3),
+            'mean_dequant': f"{mean_dequant.item():.3f}",
+            'perc50_dequant': f"{perc50_dequant.item():.3f}",
+            'perc95_dequant': f"{perc95_dequant.item():.3f}",
+            'std_dequant': f"{std_dequant.item():.3f}",
 
             # extract_codebook_index
-            'mean_extract': round(mean_extract, 3),
-            'perc50_extract': round(perc50_extract, 3),
-            'perc95_extract': round(perc95_extract, 3),
-            'std_extract': round(std_extract, 3),
+            'mean_extract': f"{mean_extract.item():.3f}",
+            'perc50_extract': f"{perc50_extract.item():.3f}",
+            'perc95_extract': f"{perc95_extract.item():.3f}",
+            'std_extract': f"{std_extract.item():.3f}",
 
             # extract_codebook_index_fast
-            'mean_extract_fast': round(mean_extract_fast, 3),
-            'perc50_extract_fast': round(perc50_extract_fast, 3),
-            'perc95_extract_fast': round(perc95_extract_fast, 3),
-            'std_extract_fast': round(std_extract_fast, 3),
+            'mean_extract_fast': f"{mean_extract_fast.item():.3f}",
+            'perc50_extract_fast': f"{perc50_extract_fast.item():.3f}",
+            'perc95_extract_fast': f"{perc95_extract_fast.item():.3f}",
+            'std_extract_fast': f"{std_extract_fast.item():.3f}",
 
             # total latency
-            'mean_tot_latency': round(mean_tot_latency, 3),
-            'perc50_tot_latency': round(perc50_tot_latency, 3),
-            'perc95_tot_latency': round(perc95_tot_latency, 3),
-            'std_tot_latency': round(std_tot_latency, 3),
+            'mean_tot_latency': f"{mean_tot_latency.item():.3f}",
+            'perc50_tot_latency': f"{perc50_tot_latency.item():.3f}",
+            'perc95_tot_latency': f"{perc95_tot_latency.item():.3f}",
+            'std_tot_latency': f"{std_tot_latency.item():.3f}",
 
-            'mean_tot_latency_fast': round(mean_tot_latency_fast, 3),
-            'perc50_tot_latency_fast': round(perc50_tot_latency_fast, 3),
-            'perc95_tot_latency_fast': round(perc95_tot_latency_fast, 3),
-            'std_tot_latency_fast': round(std_tot_latency_fast, 3),
+            'mean_tot_latency_fast': f"{mean_tot_latency_fast.item():.3f}",
+            'perc50_tot_latency_fast': f"{perc50_tot_latency_fast.item():.3f}",
+            'perc95_tot_latency_fast': f"{perc95_tot_latency_fast.item():.3f}",
+            'std_tot_latency_fast': f"{std_tot_latency_fast.item():.3f}",
 
-            'Rate_OPT_py_load_val': round(Rate_OPT_py_load_val, 3),
-            'Rate_DL_py_load_val': round(Rate_DL_py_load_val, 3),
-            'Rate_OPT_py_load_test': round(Rate_OPT_py_load_test, 3),
-            'Rate_DL_py_load_test': round(Rate_DL_py_load_test, 3),
-            'Rate_DL_py_load_test_tflite': round(Rate_DL_py_load_test_tflite, 3),
-            'Rate_DL_py_load_test_tflite_mcu': round(Rate_DL_py_load_test_tflite_mcu.item(), 3),
+            'Rate_OPT_py_load_val': f"{Rate_OPT_py_load_val.item():.3f}",
+            'Rate_DL_py_load_val': f"{Rate_DL_py_load_val.item():.3f}",
+            'Rate_OPT_py_load_test': f"{Rate_OPT_py_load_test.item():.3f}",
+            'Rate_DL_py_load_test': f"{Rate_DL_py_load_test.item():.3f}",
+            'Rate_DL_py_load_test_tflite': f"{Rate_DL_py_load_test_tflite.item():.3f}",
+            'Rate_DL_py_load_test_tflite_mcu': f"{Rate_DL_py_load_test_tflite_mcu.item():.3f}",
             
             # subset
-            'Indmax_OPT_py_load_test[0:5]': Indmax_OPT_py_load_test[0:small_samples], 
-            'Indmax_DL_py_load_test[0:5]': Indmax_DL_py_load_test[0:small_samples], 
-            'Indmax_DL_py_load_test_tflite[0:5]': Indmax_DL_py_load_test_tflite[0:small_samples], 
-            'Indmax_DL_py_load_test_tflite_mcu[0:5]': Indmax_DL_py_load_test_tflite_mcu[0:small_samples]
+            'Indmax_OPT_py_load_test[0:5]': Indmax_OPT_py_load_test.tolist()[0:5], 
+            'Indmax_DL_py_load_test[0:5]': Indmax_DL_py_load_test.tolist()[0:5], 
+            'Indmax_DL_py_load_test_tflite[0:5]': Indmax_DL_py_load_test_tflite.tolist()[0:5], 
+            'Indmax_DL_py_load_test_tflite_mcu[0:5]': Indmax_DL_py_load_test_tflite_mcu[0:5]
         }
 
         writer.writerow(row)
+
+        #for k, v in row.items():
+        #    print(k, type(v))
+#
+        #    if isinstance(v, np.ndarray):
+        #        row[k] = v.tolist()
+        #    elif isinstance(v, np.generic):
+        #        row[k] = round(v.item(), 3)
+#
+        #    print(k, type(v))
+#
+        #def convert_np(obj):
+        #    if isinstance(obj, np.generic):
+        #        return obj.item()
+        #    return obj
+        #
+        #print(json.dumps(row, indent=4, default=convert_np))
+
         print(json.dumps(row, indent=4))
 
+        print("mean_invoke:", mean_invoke)
+        print("mean_invoke round(.item):", round(mean_invoke.item(), 3))
+        print("mean_invoke round.item:", round(mean_invoke, 3).item())
+        print("mean_invoke round.item:", f"{mean_invoke:.3f}")
 
 # ----- Run di una singola configurazione -----
 def run_experiment(dummy, data_csv, x_sample, 
@@ -910,12 +932,12 @@ def run_experiment(dummy, data_csv, x_sample,
         # Esporta il modello in formato header file per TFLM
         export_to_c(model_type_load, model_path_tflite, save_dir=mcu_lib_model_folder)
         
-        if load_model_flag == 1:
-            model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb = get_model_info_precise(model_py, model_path_tflite, save_dir=mcu_lib_model_folder)
-        else:
-            model_h_size_int8_kb = 0
-            model_file_size_int8_kb = 0
-            model_file_size_int8_mb = 0
+        #if load_model_flag == 1:
+        #    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb = get_model_info_precise(model_py, model_path_tflite, save_dir=mcu_lib_model_folder)
+        #else:
+        #    model_h_size_int8_kb = 0
+        #    model_file_size_int8_kb = 0
+        #    model_file_size_int8_mb = 0
         
         change_config_file_2(mcu_include_config, mean_array_filepath, variance_array_filepath)
 
@@ -1051,7 +1073,7 @@ def run_experiment(dummy, data_csv, x_sample,
                 save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
                                 input_features, output_dim, num_layers, R, hidden_units_list, 
                                 patience, min_delta, max_epochs, initial_epoch,
-                                model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
+                                #model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
                                 RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
                                 mean_norm, perc50_norm, perc95_norm, std_norm,
                                 mean_int8, perc50_int8, perc95_int8, std_int8,
@@ -1071,6 +1093,8 @@ def run_experiment(dummy, data_csv, x_sample,
 
 # --- ESEMPIO USO --- #
 if __name__ == "__main__":
+
+    start_time = time.time()
 
     mcu_folder = pio_projects_folder + mcu_type['name']
     mcu_include_config = os.path.join(mcu_folder, 'include/config.h') 
@@ -1174,3 +1198,6 @@ if __name__ == "__main__":
                                    patience, min_delta, max_epochs, initial_epoch,
                                    mean_array_filepath, variance_array_filepath, warmup_samples_for_statistics, xtest_npy_filename,
                                    end_folder, end_folder_Training_Size_dd)
+                    
+    elapsed_time = time.time() - start_time
+    print(f"Script debug={debug}, test_set_size={test_set_size}, mcu_type={mcu_type['name']} completed in {elapsed_time / 60:.2f} minutes ({elapsed_time / 60:.2f / 60:.2f} hours.")
