@@ -1,0 +1,39 @@
+Processing esp32-s2-saola-tflm-o3-modelinram (platform: espressif32; board: esp32-s2-saola-1; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32-s2-saola-1.html
+PLATFORM: Espressif 32 (6.12.0) > Espressif ESP32-S2-Saola-1
+HARDWARE: ESP32S2 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b 
+ - tool-esptoolpy @ 2.40900.0 (4.9.0) 
+ - tool-mkfatfs @ 2.0.1 
+ - tool-mklittlefs @ 1.203.210628 (2.3) 
+ - tool-mkspiffs @ 2.230.0 (2.30) 
+ - tool-openocd-esp32 @ 2.1100.20220706 (11.0) 
+ - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5 
+ - toolchain-xtensa-esp32s2 @ 8.4.0+2021r2-patch5
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 36 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- lib-luca
+|-- model
+|-- tflite-micro
+Building in release mode
+Compiling .pio/build/esp32-s2-saola-tflm-o3-modelinram/libd63/model/mlp_model_data.cc.o
+Archiving .pio/build/esp32-s2-saola-tflm-o3-modelinram/libd63/libmodel.a
+Indexing .pio/build/esp32-s2-saola-tflm-o3-modelinram/libd63/libmodel.a
+Linking .pio/build/esp32-s2-saola-tflm-o3-modelinram/firmware.elf
+/home/work_wsl/.platformio/packages/toolchain-xtensa-esp32s2/bin/../lib/gcc/xtensa-esp32s2-elf/8.4.0/../../../../xtensa-esp32s2-elf/bin/ld: .pio/build/esp32-s2-saola-tflm-o3-modelinram/firmware.elf section `.flash.rodata' will not fit in region `drom0_0_seg'
+/home/work_wsl/.platformio/packages/toolchain-xtensa-esp32s2/bin/../lib/gcc/xtensa-esp32s2-elf/8.4.0/../../../../xtensa-esp32s2-elf/bin/ld: region `drom0_0_seg' overflowed by 5567696 bytes
+collect2: error: ld returned 1 exit status
+*** [.pio/build/esp32-s2-saola-tflm-o3-modelinram/firmware.elf] Error 1
+========================= [FAILED] Took 65.45 seconds =========================
+
+Environment                        Status    Duration
+---------------------------------  --------  ------------
+esp32-s2-saola-tflm-o3-modelinram  FAILED    00:01:05.454
+==================== 1 failed, 0 succeeded in 00:01:05.454 ====================

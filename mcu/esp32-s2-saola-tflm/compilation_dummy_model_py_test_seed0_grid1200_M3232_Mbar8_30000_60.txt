@@ -1,0 +1,173 @@
+Processing esp32-s2-saola-tflm-o3-modelinram (platform: espressif32; board: esp32-s2-saola-1; framework: arduino)
+--------------------------------------------------------------------------------
+Verbose mode can be enabled via `-v, --verbose` option
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32-s2-saola-1.html
+PLATFORM: Espressif 32 (6.12.0) > Espressif ESP32-S2-Saola-1
+HARDWARE: ESP32S2 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b 
+ - tool-esptoolpy @ 2.40900.0 (4.9.0) 
+ - tool-mkfatfs @ 2.0.1 
+ - tool-mklittlefs @ 1.203.210628 (2.3) 
+ - tool-mkspiffs @ 2.230.0 (2.30) 
+ - tool-openocd-esp32 @ 2.1100.20220706 (11.0) 
+ - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5 
+ - toolchain-xtensa-esp32s2 @ 8.4.0+2021r2-patch5
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 36 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- lib-luca
+|-- model
+|-- tflite-micro
+Building in release mode
+Compiling .pio/build/esp32-s2-saola-tflm-o3-modelinram/src/main.cpp.o
+Compiling .pio/build/esp32-s2-saola-tflm-o3-modelinram/lib9c8/lib-luca/dequantize_output.cc.o
+Compiling .pio/build/esp32-s2-saola-tflm-o3-modelinram/lib9c8/lib-luca/extract_codebook_index.cc.o
+Compiling .pio/build/esp32-s2-saola-tflm-o3-modelinram/lib9c8/lib-luca/extract_codebook_index_fast.cc.o
+Compiling .pio/build/esp32-s2-saola-tflm-o3-modelinram/lib9c8/lib-luca/normalize_input.cc.o
+Compiling .pio/build/esp32-s2-saola-tflm-o3-modelinram/lib9c8/lib-luca/quantize_input.cc.o
+Compiling .pio/build/esp32-s2-saola-tflm-o3-modelinram/libd63/model/mlp_model_data.cc.o
+Archiving .pio/build/esp32-s2-saola-tflm-o3-modelinram/libd63/libmodel.a
+Archiving .pio/build/esp32-s2-saola-tflm-o3-modelinram/lib9c8/lib-luca.a
+Indexing .pio/build/esp32-s2-saola-tflm-o3-modelinram/libd63/libmodel.a
+Indexing .pio/build/esp32-s2-saola-tflm-o3-modelinram/lib9c8/lib-luca.a
+lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:815:22: note: converting indirect call in TfLiteStatus tflite::MicroMutableOpResolver<tOpCount>::AddBuiltin(tflite::BuiltinOperator, const TFLMRegistration&, tflite::TfLiteBridgeBuiltinParseFunction) [with unsigned int tOpCount = 1] to direct call to const TFLMRegistration* tflite::MicroMutableOpResolver<tOpCount>::FindOp(tflite::BuiltinOperator) const [with unsigned int tOpCount = 1]
+lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:57:29: note: loop with 1 iterations completely unrolled (header execution count 102576000)
+lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:87:38: note: loop with 1 iterations completely unrolled (header execution count 102576008)
+Linking .pio/build/esp32-s2-saola-tflm-o3-modelinram/firmware.elf
+Retrieving maximum program size .pio/build/esp32-s2-saola-tflm-o3-modelinram/firmware.elf
+Checking size .pio/build/esp32-s2-saola-tflm-o3-modelinram/firmware.elf
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [==        ]  18.3% (used 59936 bytes from 327680 bytes)
+Flash: [===       ]  34.1% (used 1363222 bytes from 3997696 bytes)
+Building .pio/build/esp32-s2-saola-tflm-o3-modelinram/firmware.bin
+esptool.py v4.9.0
+Creating esp32s2 image...
+Merged 2 ELF sections
+Successfully created esp32s2 image.
+Configuring upload protocol...
+AVAILABLE: cmsis-dap, esp-bridge, esp-prog, espota, esptool, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa
+CURRENT: upload_protocol = esptool
+Looking for upload port...
+Using manually specified: /dev/ttyUSB0
+Uploading .pio/build/esp32-s2-saola-tflm-o3-modelinram/firmware.bin
+esptool.py v4.9.0
+Serial port /dev/ttyUSB0
+Connecting.....
+Chip is ESP32-S2R2 (revision v0.0)
+Features: WiFi, No Embedded Flash, Embedded PSRAM 2MB, ADC and temperature sensor calibration in BLK2 of efuse V2
+Crystal is 40MHz
+MAC: 7c:df:a1:96:9b:4c
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00004fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+Flash will be erased from 0x0000e000 to 0x0000ffff...
+Flash will be erased from 0x00010000 to 0x0015cfff...
+SHA digest in image updated
+Compressed 14848 bytes to 10310...
+Writing at 0x00001000... (100 %)
+Wrote 14848 bytes (10310 compressed) at 0x00001000 in 0.5 seconds (effective 243.2 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 105...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (105 compressed) at 0x00008000 in 0.1 seconds (effective 386.6 kbit/s)...
+Hash of data verified.
+Compressed 8192 bytes to 47...
+Writing at 0x0000e000... (100 %)
+Wrote 8192 bytes (47 compressed) at 0x0000e000 in 0.1 seconds (effective 560.2 kbit/s)...
+Hash of data verified.
+Compressed 1363584 bytes to 1222354...
+Writing at 0x00010000... (1 %)
+Writing at 0x00014434... (2 %)
+Writing at 0x0001842f... (4 %)
+Writing at 0x0001c42a... (5 %)
+Writing at 0x00020425... (6 %)
+Writing at 0x00024420... (8 %)
+Writing at 0x0002841b... (9 %)
+Writing at 0x0002c416... (10 %)
+Writing at 0x00030411... (12 %)
+Writing at 0x0003440c... (13 %)
+Writing at 0x00038407... (14 %)
+Writing at 0x0003c402... (16 %)
+Writing at 0x000403fd... (17 %)
+Writing at 0x000443f8... (18 %)
+Writing at 0x000483f3... (20 %)
+Writing at 0x0004c3ee... (21 %)
+Writing at 0x000503e9... (22 %)
+Writing at 0x000543e4... (24 %)
+Writing at 0x000583e4... (25 %)
+Writing at 0x0005c3df... (26 %)
+Writing at 0x000603da... (28 %)
+Writing at 0x000643d5... (29 %)
+Writing at 0x000683d0... (30 %)
+Writing at 0x0006c3cb... (32 %)
+Writing at 0x000703c6... (33 %)
+Writing at 0x000743c1... (34 %)
+Writing at 0x000783bc... (36 %)
+Writing at 0x0007c3b7... (37 %)
+Writing at 0x000803b2... (38 %)
+Writing at 0x000843ad... (40 %)
+Writing at 0x000883a8... (41 %)
+Writing at 0x0008c3a3... (42 %)
+Writing at 0x0009039e... (44 %)
+Writing at 0x00094399... (45 %)
+Writing at 0x00098394... (46 %)
+Writing at 0x0009c38f... (48 %)
+Writing at 0x000a038a... (49 %)
+Writing at 0x000a4385... (50 %)
+Writing at 0x000a8380... (52 %)
+Writing at 0x000ac37b... (53 %)
+Writing at 0x000b0376... (54 %)
+Writing at 0x000b4371... (56 %)
+Writing at 0x000b836c... (57 %)
+Writing at 0x000bc367... (58 %)
+Writing at 0x000c0362... (60 %)
+Writing at 0x000c435d... (61 %)
+Writing at 0x000c8358... (62 %)
+Writing at 0x000cc353... (64 %)
+Writing at 0x000d034e... (65 %)
+Writing at 0x000d4349... (66 %)
+Writing at 0x000d8344... (68 %)
+Writing at 0x000dc33f... (69 %)
+Writing at 0x000e033a... (70 %)
+Writing at 0x000e4335... (72 %)
+Writing at 0x000e8330... (73 %)
+Writing at 0x000ec32b... (74 %)
+Writing at 0x000f0326... (76 %)
+Writing at 0x000f4321... (77 %)
+Writing at 0x000f831c... (78 %)
+Writing at 0x000fc317... (80 %)
+Writing at 0x00100312... (81 %)
+Writing at 0x0010430d... (82 %)
+Writing at 0x00108308... (84 %)
+Writing at 0x0010c303... (85 %)
+Writing at 0x001102fe... (86 %)
+Writing at 0x00117aec... (88 %)
+Writing at 0x001248b4... (89 %)
+Writing at 0x0012e9ed... (90 %)
+Writing at 0x0013410e... (92 %)
+Writing at 0x0013943a... (93 %)
+Writing at 0x0013e63f... (94 %)
+Writing at 0x0014397e... (96 %)
+Writing at 0x00148f6d... (97 %)
+Writing at 0x001516c9... (98 %)
+Writing at 0x001594c7... (100 %)
+Wrote 1363584 bytes (1222354 compressed) at 0x00010000 in 28.0 seconds (effective 389.0 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...
+========================= [SUCCESS] Took 81.85 seconds =========================
+
+Environment                        Status    Duration
+---------------------------------  --------  ------------
+esp32-s2-saola-tflm-o3-modelinram  SUCCESS   00:01:21.848
+========================= 1 succeeded in 00:01:21.848 =========================

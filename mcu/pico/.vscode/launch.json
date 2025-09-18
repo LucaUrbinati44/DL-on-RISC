@@ -12,35 +12,35 @@
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug",
-            "executable": "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/pico/.pio/build/pico/firmware.elf",
-            "projectEnvName": "pico",
-            "toolchainBinDir": "/home/work_wsl/.platformio/packages/toolchain-gccarmnoneeabi@1.90201.191206/bin",
+            "executable": "C:/Users/Work/Desktop/deepMIMO/RIS/mcu/pico/.pio/build/pico-windows/firmware.elf",
+            "projectEnvName": "pico-windows",
+            "toolchainBinDir": "C:/Users/Work/.platformio/packages/toolchain-gccarmnoneeabi/bin",
             "internalConsoleOptions": "openOnSessionStart",
-            "svdPath": "/home/work_wsl/.platformio/platforms/raspberrypi/misc/svd/rp2040.svd",
+            "svdPath": "C:/Users/Work/.platformio/platforms/raspberrypi/misc/svd/rp2040.svd",
             "preLaunchTask": {
                 "type": "PlatformIO",
-                "task": "Pre-Debug"
+                "task": "Pre-Debug (pico-windows)"
             }
         },
         {
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
-            "executable": "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/pico/.pio/build/pico/firmware.elf",
-            "projectEnvName": "pico",
-            "toolchainBinDir": "/home/work_wsl/.platformio/packages/toolchain-gccarmnoneeabi@1.90201.191206/bin",
+            "executable": "C:/Users/Work/Desktop/deepMIMO/RIS/mcu/pico/.pio/build/pico-windows/firmware.elf",
+            "projectEnvName": "pico-windows",
+            "toolchainBinDir": "C:/Users/Work/.platformio/packages/toolchain-gccarmnoneeabi/bin",
             "internalConsoleOptions": "openOnSessionStart",
-            "svdPath": "/home/work_wsl/.platformio/platforms/raspberrypi/misc/svd/rp2040.svd"
+            "svdPath": "C:/Users/Work/.platformio/platforms/raspberrypi/misc/svd/rp2040.svd"
         },
         {
             "type": "platformio-debug",
             "request": "launch",
             "name": "PIO Debug (without uploading)",
-            "executable": "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/pico/.pio/build/pico/firmware.elf",
-            "projectEnvName": "pico",
-            "toolchainBinDir": "/home/work_wsl/.platformio/packages/toolchain-gccarmnoneeabi@1.90201.191206/bin",
+            "executable": "C:/Users/Work/Desktop/deepMIMO/RIS/mcu/pico/.pio/build/pico-windows/firmware.elf",
+            "projectEnvName": "pico-windows",
+            "toolchainBinDir": "C:/Users/Work/.platformio/packages/toolchain-gccarmnoneeabi/bin",
             "internalConsoleOptions": "openOnSessionStart",
-            "svdPath": "/home/work_wsl/.platformio/platforms/raspberrypi/misc/svd/rp2040.svd",
+            "svdPath": "C:/Users/Work/.platformio/platforms/raspberrypi/misc/svd/rp2040.svd",
             "loadMode": "manual"
         }
     ]

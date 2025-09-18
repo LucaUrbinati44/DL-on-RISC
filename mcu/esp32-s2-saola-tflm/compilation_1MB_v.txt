@@ -1,0 +1,217 @@
+Processing esp32-s2-saola-tflm (platform: espressif32; board: esp32-s2-saola-1; framework: arduino; upload_protocol: esptool; upload_port: /dev/ttyUSB0; monitor_port: /dev/ttyUSB0; monitor_speed: 115200; build_unflags: -std=gnu++11; build_flags: -Iinclude, -Ilib/lib-luca, -Ilib/model, -Ilib/tflite-micro, -Ilib/tflite-micro/tensorflow, -Ilib/tflite-micro/tensorflow/lite, -Ilib/tflite-micro/tensorflow/lite/micro, -Ilib/tflite-micro/tensorflow/lite/kernels, -Ilib/tflite-micro/bus, -Ilib/tflite-micro/third_party/, -Ilib/tflite-micro/third_party/gemmlowp, -Ilib/tflite-micro/third_party/kissfft, -Ilib/tflite-micro/third_party/ruy, -std=gnu++17)
+--------------------------------------------------------------------------------
+CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32-s2-saola-1.html
+PLATFORM: Espressif 32 (6.12.0) > Espressif ESP32-S2-Saola-1
+HARDWARE: ESP32S2 240MHz, 320KB RAM, 4MB Flash
+DEBUG: Current (cmsis-dap) External (cmsis-dap, esp-bridge, esp-prog, iot-bus-jtag, jlink, minimodule, olimex-arm-usb-ocd, olimex-arm-usb-ocd-h, olimex-arm-usb-tiny-h, olimex-jtag-tiny, tumpa)
+PACKAGES: 
+ - framework-arduinoespressif32 @ 3.20017.241212+sha.dcc1105b 
+ - tool-esptoolpy @ 2.40900.0 (4.9.0) 
+ - tool-openocd-esp32 @ 2.1100.20220706 (11.0) 
+ - toolchain-riscv32-esp @ 8.4.0+2021r2-patch5 
+ - toolchain-xtensa-esp32s2 @ 8.4.0+2021r2-patch5
+LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
+LDF Modes: Finder ~ chain, Compatibility ~ soft
+Found 36 compatible libraries
+Scanning dependencies...
+Dependency Graph
+|-- lib-luca (License: Unknown, Path: /mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/esp32-s2-saola-tflm/lib/lib-luca)
+|-- model (License: Unknown, Path: /mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/esp32-s2-saola-tflm/lib/model)
+|-- tflite-micro (License: Unknown, Path: /mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/esp32-s2-saola-tflm/lib/tflite-micro)
+Building in release mode
+<lambda>(["checkprogsize"], [".pio/build/esp32-s2-saola-tflm/firmware.elf"])
+MethodWrapper(["checkprogsize"], [".pio/build/esp32-s2-saola-tflm/firmware.elf"])
+Advanced Memory Usage is available via "PlatformIO Home > Project Inspect"
+RAM:   [====      ]  40.5% (used 132656 bytes from 327680 bytes)
+Flash: [==        ]  23.1% (used 302138 bytes from 1310720 bytes)
+.pio/build/esp32-s2-saola-tflm/firmware.elf  :
+section                                                                                                                                                             size         addr
+.rtc.text                                                                                                                                                              0   1074200576
+.rtc.dummy                                                                                                                                                             0   1073340416
+.rtc.force_fast                                                                                                                                                        0   1073340416
+.rtc_noinit                                                                                                                                                           16   1342177280
+.rtc.force_slow                                                                                                                                                        0   1342177296
+.iram0.vectors                                                                                                                                                      1027   1073889280
+.iram0.text                                                                                                                                                        45836   1073890308
+.dram0_reserved_for_iram                                                                                                                                           46864   1073430528
+.dram0.data                                                                                                                                                         9872   1073477392
+.noinit                                                                                                                                                                0   1073487264
+.ext_ram.bss                                                                                                                                                           0   1062207488
+.dram0.bss                                                                                                                                                        122784   1073487264
+.flash.appdesc                                                                                                                                                       256   1056964640
+.flash.rodata                                                                                                                                                      86988   1056964896
+.flash.rodata_noload                                                                                                                                                   0   1057051884
+.flash.text                                                                                                                                                       158415   1074266144
+.iram0.text_end                                                                                                                                                        0   1073936144
+.dram0.heap_start                                                                                                                                                      0   1073610048
+.xt.prop                                                                                                                                                          168252            0
+.xt.lit                                                                                                                                                             5064            0
+.xtensa.info                                                                                                                                                          56            0
+.comment                                                                                                                                                             102            0
+.xt.lit._ZNK6tflite22MicroMutableOpResolverILj1EE15GetOpDataParserENS_15BuiltinOperatorE                                                                               0            0
+.xt.lit._ZNK6tflite22MicroMutableOpResolverILj1EE6FindOpEPKc                                                                                                           8            0
+.xt.lit._ZN6tflite22MicroMutableOpResolverILj1EED5Ev                                                                                                                   0            0
+.xt.prop._ZNK6tflite22MicroMutableOpResolverILj1EE15GetOpDataParserENS_15BuiltinOperatorE                                                                             36            0
+.xt.prop._ZNK6tflite22MicroMutableOpResolverILj1EE6FindOpEPKc                                                                                                         96            0
+.xt.prop._ZN6tflite22MicroMutableOpResolverILj1EED5Ev                                                                                                                  0            0
+.xt.prop._ZNK6tflite22MicroMutableOpResolverILj1EE6FindOpENS_15BuiltinOperatorE                                                                                       36            0
+.xt.prop._ZN6tflite22MicroMutableOpResolverILj1EED2Ev                                                                                                                 36            0
+.xt.prop._ZN6tflite22MicroMutableOpResolverILj1EED0Ev                                                                                                                 36            0
+.xt.prop._ZTVN6tflite22MicroMutableOpResolverILj1EEE                                                                                                                  12            0
+.xt.lit._ZNK6tflite8Operator15builtin_optionsEv                                                                                                                        0            0
+.xt.lit._ZNK11flatbuffers5Table8GetFieldIiEET_tS2_                                                                                                                     0            0
+.xt.lit._ZNK11flatbuffers5Table8GetFieldIhEET_tS2_                                                                                                                     0            0
+.xt.lit._ZNK6tflite8Operator20builtin_options_typeEv                                                                                                                   0            0
+.xt.lit._ZNK11flatbuffers5Table8GetFieldIaEET_tS2_                                                                                                                     0            0
+.xt.lit._ZN11flatbuffers5Table10GetPointerIPKNS_6VectorIijEEjEET_t                                                                                                     0            0
+.xt.prop._ZNK6tflite8Operator15builtin_optionsEv                                                                                                                      36            0
+.xt.prop._ZNK11flatbuffers5Table8GetFieldIiEET_tS2_                                                                                                                   36            0
+.xt.prop._ZNK11flatbuffers5Table8GetFieldIhEET_tS2_                                                                                                                   36            0
+.xt.prop._ZNK6tflite8Operator20builtin_options_typeEv                                                                                                                 36            0
+.xt.prop._ZNK11flatbuffers5Table8GetFieldIaEET_tS2_                                                                                                                   36            0
+.xt.prop._ZN11flatbuffers5Table10GetPointerIPKNS_6VectorIijEEjEET_t                                                                                                   48            0
+.xt.prop._ZNK11flatbuffers5Table22GetOptionalFieldOffsetEt                                                                                                            36            0
+.xt.lit._ZNK6tflite12RuntimeShape4DimsEi                                                                                                                               0            0
+.xt.lit._ZN6tflite15FlatSizeSkipDimERKNS_12RuntimeShapeEi                                                                                                              0            0
+.xt.lit._ZN6tflite13reference_ops14FullyConnectedERKNS_20FullyConnectedParamsERKNS_12RuntimeShapeEPKfS6_S8_S6_S8_S6_Pf                                                 8            0
+.xt.lit._ZN6tflite5micro13GetTensorDataIaEEPKT_PK16TfLiteEvalTensor                                                                                                    0            0
+.xt.lit._ZN6tflite21reference_integer_ops14FullyConnectedIaaaiEEvRKNS_20FullyConnectedParamsERKNS_12RuntimeShapeEPKT_S7_PKT0_S7_PKT2_S7_PT1_                           0            0
+.xt.lit._ZN6tflite21reference_integer_ops24FullyConnectedPerChannelIsasiEEvRKNS_20FullyConnectedParamsEPKiS6_RKNS_12RuntimeShapeEPKT_S9_PKT0_S9_PKT2_S9_PT1_           0            0
+.xt.lit._ZN6tflite21reference_integer_ops14FullyConnectedIsasiEEvRKNS_20FullyConnectedParamsERKNS_12RuntimeShapeEPKT_S7_PKT0_S7_PKT2_S7_PT1_                           0            0
+.xt.lit._ZN6tflite21reference_integer_ops24FullyConnectedPerChannelIsasxEEvRKNS_20FullyConnectedParamsEPKiS6_RKNS_12RuntimeShapeEPKT_S9_PKT0_S9_PKT2_S9_PT1_           0            0
+.xt.lit._ZN6tflite21reference_integer_ops14FullyConnectedIsasxEEvRKNS_20FullyConnectedParamsERKNS_12RuntimeShapeEPKT_S7_PKT0_S7_PKT2_S7_PT1_                           0            0
+.xt.prop._ZNK6tflite12RuntimeShape4DimsEi                                                                                                                             60            0
+.xt.prop._ZN6tflite15FlatSizeSkipDimERKNS_12RuntimeShapeEi                                                                                                            84            0
+.xt.prop._ZN6tflite13reference_ops14FullyConnectedERKNS_20FullyConnectedParamsERKNS_12RuntimeShapeEPKfS6_S8_S6_S8_S6_Pf                                              144            0
+.xt.prop._ZN6tflite5micro13GetTensorDataIaEEPKT_PK16TfLiteEvalTensor                                                                                                  48            0
+.xt.prop._ZN6tflite21reference_integer_ops14FullyConnectedIaaaiEEvRKNS_20FullyConnectedParamsERKNS_12RuntimeShapeEPKT_S7_PKT0_S7_PKT2_S7_PT1_                        144            0
+.xt.prop._ZN6tflite21reference_integer_ops24FullyConnectedPerChannelIsasiEEvRKNS_20FullyConnectedParamsEPKiS6_RKNS_12RuntimeShapeEPKT_S9_PKT0_S9_PKT2_S9_PT1_        144            0
+.xt.prop._ZN6tflite21reference_integer_ops14FullyConnectedIsasiEEvRKNS_20FullyConnectedParamsERKNS_12RuntimeShapeEPKT_S7_PKT0_S7_PKT2_S7_PT1_                        144            0
+.xt.prop._ZN6tflite21reference_integer_ops24FullyConnectedPerChannelIsasxEEvRKNS_20FullyConnectedParamsEPKiS6_RKNS_12RuntimeShapeEPKT_S9_PKT0_S9_PKT2_S9_PT1_        168            0
+.xt.prop._ZN6tflite21reference_integer_ops14FullyConnectedIsasxEEvRKNS_20FullyConnectedParamsERKNS_12RuntimeShapeEPKT_S7_PKT0_S7_PKT2_S7_PT1_                        168            0
+.xt.prop._ZNK6tflite12RuntimeShape8FlatSizeEv                                                                                                                         60            0
+.xt.lit._ZN6tflite23EnumNameBuiltinOperatorENS_15BuiltinOperatorE                                                                                                      8            0
+.xt.lit._ZNK11flatbuffers6VectorIijE3GetEj                                                                                                                             8            0
+.xt.lit._ZNK11flatbuffers6VectorINS_6OffsetIN6tflite8SubGraphEEEjE3GetEj                                                                                               8            0
+.xt.lit._ZN11flatbuffers5Table10GetPointerIPKNS_6VectorINS_6OffsetIN6tflite8SubGraphEEEjEEjEET_t                                                                       0            0
+.xt.prop._ZN6tflite23EnumNameBuiltinOperatorENS_15BuiltinOperatorE                                                                                                    60            0
+.xt.prop._ZNK11flatbuffers6VectorIijE3GetEj                                                                                                                           48            0
+.xt.prop._ZNK11flatbuffers6VectorINS_6OffsetIN6tflite8SubGraphEEEjE3GetEj                                                                                             48            0
+.xt.prop._ZN11flatbuffers5Table10GetPointerIPKNS_6VectorINS_6OffsetIN6tflite8SubGraphEEEjEEjEET_t                                                                     48            0
+.xt.prop._ZN6tflite36MicroContextAllocatePersistentBufferEP13TfLiteContextj                                                                                           36            0
+.xt.prop._ZN6tflite39MicroContextRequestScratchBufferInArenaEP13TfLiteContextjPi                                                                                      36            0
+.xt.prop._ZN6tflite28MicroContextGetScratchBufferEP13TfLiteContexti                                                                                                   36            0
+.xt.prop._ZN6tflite21MicroContextGetTensorEPK13TfLiteContexti                                                                                                         36            0
+.xt.prop._ZN6tflite25MicroContextGetEvalTensorEPK13TfLiteContexti                                                                                                     36            0
+.xt.prop._ZN6tflite30MicroContextGetExternalContextEP13TfLiteContext25TfLiteExternalContextType                                                                       36            0
+.xt.prop._ZZN6tflite24EnumNamesBuiltinOperatorEvE5names                                                                                                               12            0
+.xt.prop._ZN6tflite23MicroInterpreterContext16external_contextEv                                                                                                      36            0
+.xt.prop._ZN6tflite23MicroInterpreterContext5graphEv                                                                                                                  36            0
+.xt.prop._ZTVN6tflite23MicroInterpreterContextE                                                                                                                       12            0
+.xt.lit._ZNK6tflite5Model9subgraphsEv                                                                                                                                  0            0
+.xt.prop._ZNK6tflite5Model9subgraphsEv                                                                                                                                36            0
+.xt.prop._ZN6tflite21MicroInterpreterGraph20GetResourceVariablesEv                                                                                                    36            0
+.xt.prop._ZN6tflite19ScopedMicroProfilerD2Ev                                                                                                                          36            0
+.xt.prop._ZTVN6tflite21MicroInterpreterGraphE                                                                                                                         12            0
+.xt.lit._ZN6tflite18MicroErrorReporterD5Ev                                                                                                                             0            0
+.xt.prop._ZN6tflite18MicroErrorReporterD5Ev                                                                                                                            0            0
+.xt.prop._ZN6tflite18MicroErrorReporterD2Ev                                                                                                                           36            0
+.xt.prop._ZN6tflite18MicroErrorReporterD0Ev                                                                                                                           36            0
+.xt.prop._ZTVN6tflite18MicroErrorReporterE                                                                                                                            12            0
+.xt.lit._ZNK6tflite22QuantizationParameters5scaleEv                                                                                                                    0            0
+.xt.lit._ZNK6tflite22QuantizationParameters10zero_pointEv                                                                                                              0            0
+.xt.lit._ZNK6tflite6Tensor4typeEv                                                                                                                                      0            0
+.xt.lit._ZNK11flatbuffers6VectorIxjE3GetEj                                                                                                                             8            0
+.xt.lit._ZNK11flatbuffers6VectorINS_6OffsetIN6tflite6TensorEEEjE3GetEj                                                                                                 8            0
+.xt.lit._ZN11flatbuffers5Table10GetPointerIPKNS_6VectorINS_6OffsetIN6tflite6TensorEEEjEEjEET_t                                                                         0            0
+.xt.prop._ZNK6tflite22QuantizationParameters5scaleEv                                                                                                                  36            0
+.xt.prop._ZNK6tflite22QuantizationParameters10zero_pointEv                                                                                                            36            0
+.xt.prop._ZNK6tflite6Tensor4typeEv                                                                                                                                    36            0
+.xt.prop._ZNK11flatbuffers6VectorIxjE3GetEj                                                                                                                           48            0
+.xt.prop._ZNK11flatbuffers6VectorINS_6OffsetIN6tflite6TensorEEEjE3GetEj                                                                                               48            0
+.xt.prop._ZN11flatbuffers5Table10GetPointerIPKNS_6VectorINS_6OffsetIN6tflite6TensorEEEjEEjEET_t                                                                       48            0
+.xt.prop._ZTVN6tflite14MicroAllocatorE                                                                                                                                12            0
+.xt.prop._ZTVN6tflite26SingleArenaBufferAllocatorE                                                                                                                    12            0
+.xt.prop._ZNK6tflite19GreedyMemoryPlanner21preserves_all_tensorsEv                                                                                                    36            0
+.xt.prop._ZTVN6tflite19GreedyMemoryPlannerE                                                                                                                           12            0
+.xt.prop._ZN6tflite18MicroMemoryPlanner9AddBufferEiiii                                                                                                                36            0
+.xt.prop._ZN6tflite18MicroMemoryPlanner4InitEPhi                                                                                                                      36            0
+.xt.prop._ZN6tflite18MicroMemoryPlanner15PrintMemoryPlanEv                                                                                                            36            0
+.xt.prop._ZNK6tflite19LinearMemoryPlanner21preserves_all_tensorsEv                                                                                                    36            0
+.xt.prop._ZTVN6tflite19LinearMemoryPlannerE                                                                                                                           12            0
+.xt.lit._ZNK11flatbuffers6VectorINS_6OffsetIN6tflite8OperatorEEEjE3GetEj                                                                                               8            0
+.xt.lit._ZN11flatbuffers5Table10GetPointerIPKvjEET_t                                                                                                                   0            0
+.xt.prop._ZNK11flatbuffers6VectorINS_6OffsetIN6tflite8OperatorEEEjE3GetEj                                                                                             48            0
+.xt.prop._ZN11flatbuffers5Table10GetPointerIPKvjEET_t                                                                                                                 48            0
+.xt.prop._ZN14HardwareSerial9readBytesEPcj                                                                                                                            36            0
+.xt.prop._ZNSt14_Function_baseD2Ev                                                                                                                                    36            0
+.xt.prop._ZTV14HardwareSerial                                                                                                                                         12            0
+.xt.lit._ZN5Print5writeEPKc                                                                                                                                            8            0
+.xt.prop._ZN5Print5writeEPKc                                                                                                                                          60            0
+.xt.lit._ZN6String4initEv                                                                                                                                              0            0
+.xt.prop._ZN6String4initEv                                                                                                                                            36            0
+.xt.prop._ZNK6String3lenEv                                                                                                                                            60            0
+.xt.prop._ZN6String6setLenEi                                                                                                                                          72            0
+.xt.lit._ZN3nvs4Lock4initEv                                                                                                                                            0            0
+.xt.prop._ZN3nvs4Lock4initEv                                                                                                                                          72            0
+.xt.lit._ZN14intrusive_listIN3nvs7Storage14NamespaceEntryEE17clearAndFreeNodesEv                                                                                       0            0
+.xt.prop._ZN14intrusive_listIN3nvs7Storage14NamespaceEntryEE17clearAndFreeNodesEv                                                                                    108            0
+.xt.prop._ZN14intrusive_listIN3nvs7Storage14NamespaceEntryEE9push_backEPS2_                                                                                           60            0
+.xt.lit._ZN3nvs12NVSPartitionD5Ev                                                                                                                                      0            0
+.xt.prop._ZN3nvs12NVSPartitionD5Ev                                                                                                                                     0            0
+.xt.prop._ZN3nvs12NVSPartitionD2Ev                                                                                                                                    36            0
+.xt.prop._ZN3nvs12NVSPartitionD0Ev                                                                                                                                    36            0
+.xt.prop._ZTVN3nvs12NVSPartitionE                                                                                                                                     12            0
+.xt.lit._ZN3nvs19NVSPartitionManagerD5Ev                                                                                                                               0            0
+.xt.prop._ZN3nvs19NVSPartitionManagerD5Ev                                                                                                                              0            0
+.xt.prop._ZN3nvs19NVSPartitionManagerD2Ev                                                                                                                             36            0
+.xt.prop._ZN3nvs19NVSPartitionManagerD0Ev                                                                                                                             36            0
+.xt.prop._ZN14intrusive_listIN3nvs12NVSPartitionEE5eraseENS2_8iteratorE                                                                                               84            0
+.xt.prop._ZTVN3nvs19NVSPartitionManagerE                                                                                                                              12            0
+.xt.prop._ZN14intrusive_listIN3nvs8HashList13HashListBlockEE5eraseENS3_8iteratorE                                                                                     84            0
+.xt.lit._ZN3nvs4ItemC5EhNS_8ItemTypeEhPKch                                                                                                                             0            0
+.xt.prop._ZN3nvs4ItemC5EhNS_8ItemTypeEhPKch                                                                                                                            0            0
+.xt.prop._ZN3nvs20isVariableLengthTypeENS_8ItemTypeE                                                                                                                  48            0
+.xt.prop._ZN3nvs4ItemC2EhNS_8ItemTypeEhPKch                                                                                                                           60            0
+.xt.prop._ZNK19CompressedEnumTableIN3nvs4Page10EntryStateELj2ELj126EE3getEjPS2_                                                                                       48            0
+.xt.lit._ZN14intrusive_listIN3nvs4PageEE5clearEv                                                                                                                       0            0
+.xt.prop._ZN14intrusive_listIN3nvs4PageEE5clearEv                                                                                                                     60            0
+.xt.prop._ZN14intrusive_listIN3nvs4PageEE9push_backEPS1_                                                                                                              60            0
+.xt.prop._ZN14intrusive_listIN3nvs4PageEE5eraseENS2_8iteratorE                                                                                                        84            0
+.xt.lit._ZNK9__gnu_cxx24__concurrence_lock_error4whatEv                                                                                                                8            0
+.xt.lit._ZNK9__gnu_cxx26__concurrence_unlock_error4whatEv                                                                                                              8            0
+.xt.lit._ZN9__gnu_cxx24__concurrence_lock_errorD5Ev                                                                                                                    8            0
+.xt.lit._ZN9__gnu_cxx26__concurrence_unlock_errorD5Ev                                                                                                                  8            0
+.xt.lit._ZN9__gnu_cxx7__mutex4lockEv                                                                                                                                   8            0
+.xt.lit._ZN9__gnu_cxx13__scoped_lockD5Ev                                                                                                                               8            0
+.xt.prop._ZNK9__gnu_cxx24__concurrence_lock_error4whatEv                                                                                                              48            0
+.xt.prop._ZNK9__gnu_cxx26__concurrence_unlock_error4whatEv                                                                                                            48            0
+.xt.prop._ZN9__gnu_cxx24__concurrence_lock_errorD5Ev                                                                                                                  12            0
+.xt.prop._ZN9__gnu_cxx26__concurrence_unlock_errorD5Ev                                                                                                                12            0
+.xt.prop._ZN9__gnu_cxx7__mutex4lockEv                                                                                                                                 48            0
+.xt.prop._ZN9__gnu_cxx13__scoped_lockD5Ev                                                                                                                             12            0
+.xt.prop._ZN9__gnu_cxx24__concurrence_lock_errorD2Ev                                                                                                                  36            0
+.xt.prop._ZN9__gnu_cxx26__concurrence_unlock_errorD2Ev                                                                                                                36            0
+.xt.prop._ZN9__gnu_cxx24__concurrence_lock_errorD0Ev                                                                                                                  36            0
+.xt.prop._ZN9__gnu_cxx26__concurrence_unlock_errorD0Ev                                                                                                                36            0
+.xt.prop._ZN9__gnu_cxx13__scoped_lockD2Ev                                                                                                                             72            0
+.xt.prop._ZTISt9exception                                                                                                                                             12            0
+.xt.prop._ZTIN9__gnu_cxx24__concurrence_lock_errorE                                                                                                                   12            0
+.xt.prop._ZTIN9__gnu_cxx26__concurrence_unlock_errorE                                                                                                                 12            0
+.xt.prop._ZTVN9__gnu_cxx24__concurrence_lock_errorE                                                                                                                   12            0
+.xt.prop._ZTVN9__gnu_cxx26__concurrence_unlock_errorE                                                                                                                 12            0
+.xt.prop._ZTVN10__cxxabiv117__class_type_infoE                                                                                                                        12            0
+.xt.prop._ZTISt9bad_alloc                                                                                                                                             12            0
+.xt.prop._ZTVN10__cxxabiv120__si_class_type_infoE                                                                                                                     12            0
+.xt.prop._ZTISt17bad_function_call                                                                                                                                    12            0
+.xt.prop._ZTVSt17bad_function_call                                                                                                                                    12            0
+.debug_frame                                                                                                                                                       84660            0
+.debug_info                                                                                                                                                     10604187            0
+.debug_abbrev                                                                                                                                                     388612            0
+.debug_loc                                                                                                                                                        709601            0
+.debug_aranges                                                                                                                                                     32448            0
+.debug_ranges                                                                                                                                                      99272            0
+.debug_line                                                                                                                                                      1444187            0
+.debug_str                                                                                                                                                       1194545            0
+Total                                                                                                                                                           15207904
+========================= [SUCCESS] Took 46.62 seconds =========================

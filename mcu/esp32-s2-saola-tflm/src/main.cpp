@@ -138,9 +138,8 @@ void setup()
   // pinMode(LED_BUILTIN, OUTPUT);
   // digitalWrite(LED_BUILTIN, LOW);
   Serial.begin(BAUD_RATE);
-  Serial.setTimeout(5000);
-
-  delay(3000);
+  //delay(3000);
+  while (!Serial); // Wait until someone opens the serial communication
 
   // unsigned long t0 = micros();
   // unsigned long t1 = micros();
@@ -164,6 +163,13 @@ void setup()
   // Copy move from Flash to RAM
   Serial.println("*** Copy move from Flash to RAM");
   model_ram = (uint8_t *)malloc(g_mlp_model_data_len);
+  if (!model_ram) {
+    Serial.println("ERRORE: malloc fallita, memoria insufficiente!");
+    while (1) {
+      Serial.println("STOP");
+      delay(1000);
+    }
+  }
   memcpy(model_ram, g_mlp_model_data, g_mlp_model_data_len);
   model = tflite::GetModel(model_ram);
 #else
@@ -242,15 +248,19 @@ void setup()
   output_scale = model_output->params.scale;
   output_zero_point = model_output->params.zero_point;
 
-  Serial.printf("input_scale: %0.6f\n", (double)input_scale);
-  Serial.printf("input_zero_point: %d\n", input_zero_point);
-  Serial.printf("output_scale: %0.6f\n", (double)output_scale);
-  Serial.printf("output_zero_point: %d\n\n", output_zero_point);
+  Serial.print("input_scale: ");
+  Serial.println((double)input_scale, 6);
+  Serial.print("input_zero_point: ");
+  Serial.println((double)input_zero_point, 6);
+  Serial.print("output_scale: ");
+  Serial.println((double)output_scale, 6);
+  Serial.print("output_zero_point: ");
+  Serial.println((double)output_zero_point, 6);
 
   input_scale_inv = 1.0f / input_scale;
 
   // printModelAndActivationsPlacement();
-
+  
   Serial.print("CPU Frequency: ");
   Serial.print(getCpuFrequencyMhz());
   Serial.println(" MHz");
@@ -276,6 +286,7 @@ void loop()
       int r = Serial.readBytes(chunk_buf + bytes_received, chunk_size_in_bytes - bytes_received);
       if (r <= 0) { 
         Serial.println("ERR timeout or no data yet");
+        Serial.println("NEXT");
         return;
       }
       bytes_received += r;

@@ -57,7 +57,7 @@ Training_Size_dd = Training_Size[0]
 
 # ------------------------------------------------------------------------------------------
 
-debug = 1            # 0: production mode,  2: dummy mode
+debug = 2            # 0: production mode,  2: dummy mode
 
 #dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
 dummy = ''
@@ -97,9 +97,22 @@ else: # modello di Taha
     output_dims = [1024]
     num_layers_list = [3]
 
-# TODO add other MCU types
-mcu_type = {'name': 'esp32-s2-saola-tflm', 
-            'port': '/dev/ttyUSB0'}
+# TODO
+#mcu_type = {'name': 'pico', 
+#            'port': '/dev/tty???',
+#            'baud_rate': ???}
+
+#mcu_type = {'name': 'esp32-s2-saola-tflm', 
+#            'port': '/dev/ttyUSB0',
+#            'baud_rate': 1500000}
+
+#mcu_type = {'name': 'nucleo-f446ze', 
+#            'port': '/dev/ttyACM1',
+#            'baud_rate': 921600}
+
+mcu_type = {'name': 'nucleo-h753zi',
+            'port': '/dev/ttyACM2',
+            'baud_rate': 921600}
 
 # ------------------------------------------------------------------------------------------
 
@@ -140,25 +153,20 @@ max_epochs = 200 # tanto c'è early stopping
 #save_files_flag_master = 1
 #save_files_flag_master_once = 0
 
-##### loading and training (for continuing training) #####
-#TODO se serve
-
 ##### LOADING (for inference and profiling) #####
 datetime_str = datetime.datetime.now().strftime("experiment-09-09-25-15-56")
 initial_epoch = 200 # se vuoi continuare un allenamento, sono le epoche dalle quali riparti
-load_model_flag = 1 # TODO: potenziale indiziato
-predict_loaded_model_flag = load_model_flag # deve essere uguale a load_model_flag
+
 train_model_flag = 0
 convert_model_flag = 0
-profiling_flag = 1
-compile_and_upload_flag = 0 # TODO: RIATTIVARE
 save_files_flag_master = 0
 save_files_flag_master_once = 0
 
-#BAUD_RATE = 115200
-#BAUD_RATE = 921600
-#BAUD_RATE = 1500000
-baud_rate = 1500000
+load_model_flag = 1
+predict_loaded_model_flag = load_model_flag # deve essere uguale a load_model_flag
+profiling_flag = 1
+compile_and_upload_flag = 1 # TODO: RIATTIVARE
+
 #chunk_size_max = 128
 chunk_size_max = 1024
 
@@ -581,7 +589,7 @@ def parse_compilation_logfile(file_path):
     RAM_HW_KB = 0
     Flash_HW_MB = 0
 
-    Error = 0
+    Error_does_not_fit = 0
 
     # Pattern normale quando la compilazione ha successo
     # | significa "o"
@@ -594,13 +602,17 @@ def parse_compilation_logfile(file_path):
     ram_pattern = re.compile(r'^\s*RAM:.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
     flash_pattern = re.compile(r'^\s*Flash:.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
     hardware_pattern = re.compile(r"HARDWARE:\s+\S+\s+(\d+)MHz,\s+(\d+)KB RAM,\s+(\d+)MB Flash", re.IGNORECASE)
-    error_pattern = re.compile(r"\bError\b")
+    #error_pattern = re.compile(r"\berror\b", re.IGNORECASE)
+    error_pattern = re.compile(r"\bError+\s\b")
 
     # Pattern di errore da overflow
     # \d+ per indicare un numero di byte (così non catturi testo non previsto).
     # re.IGNORECASE per sicurezza, anche se di solito PlatformIO le scrive in minuscolo.
-    overflow_flash = re.compile(r"region `drom0_0_seg' overflowed by (\d+) bytes", re.IGNORECASE)
+    # ESP32
+    overflow_flash_esp32 = re.compile(r"region `drom0_0_seg' overflowed by (\d+) bytes", re.IGNORECASE)
     overflow_ram   = re.compile(r"region `dram0_0_seg' overflowed by (\d+) bytes", re.IGNORECASE)
+    # STM32
+    overflow_flash_stm32 = re.compile(r"region `FLASH' overflowed by (\d+) bytes", re.IGNORECASE)
 
     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
         for line in f:
@@ -618,6 +630,7 @@ def parse_compilation_logfile(file_path):
             
             match = hardware_pattern.search(line)
             if match:
+                #print("match hardware")
                 CLK_FREQ_MHZ = int(match.group(1))
                 RAM_HW_KB = int(match.group(2))
                 Flash_HW_MB = int(match.group(3))
@@ -626,22 +639,30 @@ def parse_compilation_logfile(file_path):
             match = overflow_ram.search(line)
             if match:
                 RAM_KB = -int(match.group(1))
+                Error_does_not_fit = 1
 
             # Cerca overflow Flash
-            match = overflow_flash.search(line)
+            match = overflow_flash_esp32.search(line)
             if match:
                 Flash_MB = -int(match.group(1))
+                Error_does_not_fit = 2
+            match = overflow_flash_stm32.search(line)
+            if match:
+                Flash_MB = -int(match.group(1))
+                Error_does_not_fit = 2
 
             match = error_pattern.search(line)
             if match:
-                Error = 1
+                print("match Error")
+                Error_does_not_fit = 3
 
-    return round(RAM_KB,2), round(Flash_MB,2), round(CLK_FREQ_MHZ,2), round(RAM_HW_KB,2), round(Flash_HW_MB,2), Error
+    return RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, Error_does_not_fit
 
 
 # ----- Salva risultati del profiling su file -----
 def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
-                    input_features, output_dim, num_layers, R, hidden_units_list, 
+                    Error_does_not_fit, Error_model_in_ram,
+                    input_features, num_layers, R, hidden_units_list, output_dim, 
                     patience, min_delta, max_epochs, initial_epoch,
                     #model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
                     RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
@@ -662,8 +683,10 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
     print('\n*** save_results_v3')
 
     fieldnames = [
+        'timestamp',
         'end_folder_Training_Size_dd_epochs', 'K_DL', 
-        'input_features', 'output_dim', 'num_layers', 'R', 'hidden_units_list', 
+        'Error_does_not_fit', 'Error_model_in_ram', 
+        'input_features', 'num_layers', 'R', 'hidden_units_list', 'output_dim',
         'patience', 'min_delta', 'max_epochs', 'initial_epoch',
         #'model_h_size_int8_kb', 'model_file_size_int8_kb', 'model_file_size_int8_mb',
         'RAM_KB', 'Flash_MB', 'CLK_FREQ_MHZ', 'RAM_HW_KB', 'Flash_HW_MB', 'env_name',
@@ -717,17 +740,20 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
             writer.writeheader()
 
         row = {
+            'timestamp': datetime.datetime.now().strftime("%d-%m-%y--%H:%M"),
             'end_folder_Training_Size_dd_epochs': end_folder_Training_Size_dd_epochs, 
             'K_DL': K_DL,
-            'input_features':    input_features,
-            'output_dim':        output_dim,
-            'num_layers':        num_layers,
-            'R':                 R,
-            'hidden_units_list': hidden_units_list,
-            'patience':          patience,
-            'min_delta':         min_delta,
-            'max_epochs':        max_epochs,
-            'initial_epoch':     initial_epoch,
+            'Error_does_not_fit': Error_does_not_fit,
+            'Error_model_in_ram': Error_model_in_ram,
+            'input_features':     input_features,
+            'num_layers':         num_layers,
+            'R':                  R,
+            'hidden_units_list':  ' '.join(str(x) for x in hidden_units_list).ljust(10),
+            'output_dim':         output_dim,
+            'patience':           patience,
+            'min_delta':          min_delta,
+            'max_epochs':         max_epochs,
+            'initial_epoch':      initial_epoch,
             #'model_h_size_int8_kb':    f"{model_h_size_int8_kb:.3f}",
             #'model_file_size_int8_kb': f"{model_file_size_int8_kb:.3f}",
             #'model_file_size_int8_mb': f"{model_file_size_int8_mb:.3f}",
@@ -739,58 +765,58 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
             'env_name':     env_name.ljust(40),
 
             # normalize_input
-            'mean_norm': f"{mean_norm.item():.3f}",
-            'perc50_norm': f"{perc50_norm.item():.3f}",
-            'perc95_norm': f"{perc95_norm.item():.3f}",
-            'std_norm': f"{std_norm.item():.3f}",
+            'mean_norm': f"{mean_norm:.3f}",
+            'perc50_norm': f"{perc50_norm:.3f}",
+            'perc95_norm': f"{perc95_norm:.3f}",
+            'std_norm': f"{std_norm:.3f}",
 
             # quantize_input
-            'mean_int8': f"{mean_int8.item():.3f}",
-            'perc50_int8': f"{perc50_int8.item():.3f}",
-            'perc95_int8': f"{perc95_int8.item():.3f}",
-            'std_int8': f"{std_int8.item():.3f}",
+            'mean_int8': f"{mean_int8:.3f}",
+            'perc50_int8': f"{perc50_int8:.3f}",
+            'perc95_int8': f"{perc95_int8:.3f}",
+            'std_int8': f"{std_int8:.3f}",
 
             # interpreter_invoke
-            'mean_invoke': f"{mean_invoke.item():.3f}",
-            'perc50_invoke': f"{perc50_invoke.item():.3f}",
-            'perc95_invoke': f"{perc95_invoke.item():.3f}",
-            'std_invoke': f"{std_invoke.item():.3f}",
+            'mean_invoke': f"{mean_invoke:.3f}",
+            'perc50_invoke': f"{perc50_invoke:.3f}",
+            'perc95_invoke': f"{perc95_invoke:.3f}",
+            'std_invoke': f"{std_invoke:.3f}",
 
             # dequantize_output
-            'mean_dequant': f"{mean_dequant.item():.3f}",
-            'perc50_dequant': f"{perc50_dequant.item():.3f}",
-            'perc95_dequant': f"{perc95_dequant.item():.3f}",
-            'std_dequant': f"{std_dequant.item():.3f}",
+            'mean_dequant': f"{mean_dequant:.3f}",
+            'perc50_dequant': f"{perc50_dequant:.3f}",
+            'perc95_dequant': f"{perc95_dequant:.3f}",
+            'std_dequant': f"{std_dequant:.3f}",
 
             # extract_codebook_index
-            'mean_extract': f"{mean_extract.item():.3f}",
-            'perc50_extract': f"{perc50_extract.item():.3f}",
-            'perc95_extract': f"{perc95_extract.item():.3f}",
-            'std_extract': f"{std_extract.item():.3f}",
+            'mean_extract': f"{mean_extract:.3f}",
+            'perc50_extract': f"{perc50_extract:.3f}",
+            'perc95_extract': f"{perc95_extract:.3f}",
+            'std_extract': f"{std_extract:.3f}",
 
             # extract_codebook_index_fast
-            'mean_extract_fast': f"{mean_extract_fast.item():.3f}",
-            'perc50_extract_fast': f"{perc50_extract_fast.item():.3f}",
-            'perc95_extract_fast': f"{perc95_extract_fast.item():.3f}",
-            'std_extract_fast': f"{std_extract_fast.item():.3f}",
+            'mean_extract_fast': f"{mean_extract_fast:.3f}",
+            'perc50_extract_fast': f"{perc50_extract_fast:.3f}",
+            'perc95_extract_fast': f"{perc95_extract_fast:.3f}",
+            'std_extract_fast': f"{std_extract_fast:.3f}",
 
             # total latency
-            'mean_tot_latency': f"{mean_tot_latency.item():.3f}",
-            'perc50_tot_latency': f"{perc50_tot_latency.item():.3f}",
-            'perc95_tot_latency': f"{perc95_tot_latency.item():.3f}",
-            'std_tot_latency': f"{std_tot_latency.item():.3f}",
+            'mean_tot_latency': f"{mean_tot_latency:.3f}",
+            'perc50_tot_latency': f"{perc50_tot_latency:.3f}",
+            'perc95_tot_latency': f"{perc95_tot_latency:.3f}",
+            'std_tot_latency': f"{std_tot_latency:.3f}",
 
-            'mean_tot_latency_fast': f"{mean_tot_latency_fast.item():.3f}",
-            'perc50_tot_latency_fast': f"{perc50_tot_latency_fast.item():.3f}",
-            'perc95_tot_latency_fast': f"{perc95_tot_latency_fast.item():.3f}",
-            'std_tot_latency_fast': f"{std_tot_latency_fast.item():.3f}",
+            'mean_tot_latency_fast': f"{mean_tot_latency_fast:.3f}",
+            'perc50_tot_latency_fast': f"{perc50_tot_latency_fast:.3f}",
+            'perc95_tot_latency_fast': f"{perc95_tot_latency_fast:.3f}",
+            'std_tot_latency_fast': f"{std_tot_latency_fast:.3f}",
 
             'Rate_OPT_py_load_val': f"{Rate_OPT_py_load_val.item():.3f}",
             'Rate_DL_py_load_val': f"{Rate_DL_py_load_val.item():.3f}",
             'Rate_OPT_py_load_test': f"{Rate_OPT_py_load_test.item():.3f}",
             'Rate_DL_py_load_test': f"{Rate_DL_py_load_test.item():.3f}",
             'Rate_DL_py_load_test_tflite': f"{Rate_DL_py_load_test_tflite.item():.3f}",
-            'Rate_DL_py_load_test_tflite_mcu': f"{Rate_DL_py_load_test_tflite_mcu.item():.3f}",
+            'Rate_DL_py_load_test_tflite_mcu': f"{Rate_DL_py_load_test_tflite_mcu:.3f}",
             
             # subset
             'Indmax_OPT_py_load_test[0:5]': Indmax_OPT_py_load_test.tolist()[0:5], 
@@ -800,30 +826,7 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
         }
 
         writer.writerow(row)
-
-        #for k, v in row.items():
-        #    print(k, type(v))
-#
-        #    if isinstance(v, np.ndarray):
-        #        row[k] = v.tolist()
-        #    elif isinstance(v, np.generic):
-        #        row[k] = round(v.item(), 3)
-#
-        #    print(k, type(v))
-#
-        #def convert_np(obj):
-        #    if isinstance(obj, np.generic):
-        #        return obj.item()
-        #    return obj
-        #
-        #print(json.dumps(row, indent=4, default=convert_np))
-
         print(json.dumps(row, indent=4))
-
-        print("mean_invoke:", mean_invoke)
-        print("mean_invoke round(.item):", round(mean_invoke.item(), 3))
-        print("mean_invoke round.item:", round(mean_invoke, 3).item())
-        print("mean_invoke round.item:", f"{mean_invoke:.3f}")
 
 # ----- Run di una singola configurazione -----
 def run_experiment(dummy, data_csv, x_sample, 
@@ -944,7 +947,7 @@ def run_experiment(dummy, data_csv, x_sample,
         # Lancia compilazione e upload firmware in maniera bloccante
         compilation_logfile = os.path.join(mcu_folder, 'compilation_'+model_type_load+'.txt')
 
-        i = 1
+        i = 1 # TODO: must be 1
         #while i <= 4:
         while i <= 2:
             # prima provi con modello in ram
@@ -973,6 +976,7 @@ def run_experiment(dummy, data_csv, x_sample,
                         #["pio", "run", "--environment", mcu_type['name']+'-o3-unroll-selected', "--project-dir", mcu_folder, "--target", "upload"],
                         #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm-espnn', "--project-dir", mcu_folder, "--target", "upload"],
                         #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm', "--project-dir", mcu_folder, "--target", "upload"],
+                        #["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload", '-v'],
                         ["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload"],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
@@ -988,9 +992,9 @@ def run_experiment(dummy, data_csv, x_sample,
 
             # Lancia il parser per recuperare RAM e ROM da compilation output
             # La Flash include non solo il modello perciò sarà maggiore di model_size_int8_mb
-            RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, Error1 = parse_compilation_logfile(compilation_logfile)
+            RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, Error_does_not_fit = parse_compilation_logfile(compilation_logfile)
 
-            if Error1 == 0:
+            if Error_does_not_fit == 0:
 
                 start_time = time.time()
                 # Lancia serial feeded and logger per calcolare la latenza
@@ -1002,8 +1006,8 @@ def run_experiment(dummy, data_csv, x_sample,
                 mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, \
                 mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
                 mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
-                Indmax_DL_py_load_test_tflite_mcu, Rate_DL_py_load_test_tflite_mcu, Error2 = serial_feeder_and_logger.main(dummy,
-                                                                                                                           mcu_type['port'], baud_rate, chunk_size_max,
+                Indmax_DL_py_load_test_tflite_mcu, Rate_DL_py_load_test_tflite_mcu, Error_model_in_ram = serial_feeder_and_logger.main(dummy,
+                                                                                                                           mcu_type['port'], mcu_type['baud_rate'], chunk_size_max,
                                                                                                                            data_csv, test_set_size, small_samples,
                                                                                                                            warmup_samples_for_statistics, 
                                                                                                                            YValidation_un_test, 
@@ -1015,22 +1019,16 @@ def run_experiment(dummy, data_csv, x_sample,
                 elapsed_time = time.time() - start_time
                 print(f"serial_feeder_and_logger completed in {elapsed_time / 60:.2f} minutes.")                                                                                                    
         
-                if Error2 == 1 and i == 1:
-                    print("*** ATTENZIONE: Error2 == 1 and i == 1")
-                    break
-                elif Error2 == 1 and i == 2:
-                    print("*** ATTENZIONE: Error2 == 1 and i == 2")
-                    break
-                elif Error2 == 1 and i == 3: # if error
-                    print("*** ATTENZIONE: Error2 == 1 and i == 3")
-                    break
-                elif Error2 == 1 and i == 4: # if error
-                    print("*** ATTENZIONE: Error2 == 1 and i == 4")
-                    break
-                elif Error2 == 0:
-                    i += 1
-
-            else:
+                if Error_model_in_ram != 0 and i == 1:
+                    print("*** ATTENZIONE: Error_model_in_ram == 1 and i == 1")
+                elif Error_model_in_ram != 0 and i == 2:
+                    print("*** ATTENZIONE: Error_model_in_ram == 1 and i == 2")
+                elif Error_model_in_ram != 0 and i == 3: # if error
+                    print("*** ATTENZIONE: Error_model_in_ram == 1 and i == 3")
+                elif Error_model_in_ram != 0 and i == 4: # if error
+                    print("*** ATTENZIONE: Error_model_in_ram == 1 and i == 4")
+            
+            if Error_does_not_fit != 0 or Error_model_in_ram != 0:
                 mean_norm = 0
                 perc50_norm = 0
                 perc95_norm = 0
@@ -1065,29 +1063,34 @@ def run_experiment(dummy, data_csv, x_sample,
                 std_tot_latency_fast = 0
                 Indmax_DL_py_load_test_tflite_mcu = [0, 0, 0, 0, 0]
                 Rate_DL_py_load_test_tflite_mcu = 0
-                Error2 = 1
+
+                if Error_does_not_fit != 0:
+                    Error_model_in_ram = 0
+
 
             # %%
-            if Error2 == 0:
-                # Appendi risultati nel file output_csv
-                save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
-                                input_features, output_dim, num_layers, R, hidden_units_list, 
-                                patience, min_delta, max_epochs, initial_epoch,
-                                #model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
-                                RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
-                                mean_norm, perc50_norm, perc95_norm, std_norm,
-                                mean_int8, perc50_int8, perc95_int8, std_int8,
-                                mean_invoke, perc50_invoke, perc95_invoke, std_invoke,
-                                mean_dequant, perc50_dequant, perc95_dequant, std_dequant,
-                                mean_extract, perc50_extract, perc95_extract, std_extract,
-                                mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast,
-                                mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency,
-                                mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast,
-                                Rate_OPT_py_load_val, Rate_DL_py_load_val,
-                                Rate_OPT_py_load_test, Rate_DL_py_load_test,
-                                Rate_DL_py_load_test_tflite, Rate_DL_py_load_test_tflite_mcu,
-                                Indmax_OPT_py_load_test, Indmax_DL_py_load_test, 
-                                Indmax_DL_py_load_test_tflite, Indmax_DL_py_load_test_tflite_mcu)
+            # Appendi risultati nel file output_csv
+            save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
+                            Error_does_not_fit, Error_model_in_ram,
+                            input_features, num_layers, R, hidden_units_list, output_dim,
+                            patience, min_delta, max_epochs, initial_epoch,
+                            #model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
+                            RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
+                            mean_norm, perc50_norm, perc95_norm, std_norm,
+                            mean_int8, perc50_int8, perc95_int8, std_int8,
+                            mean_invoke, perc50_invoke, perc95_invoke, std_invoke,
+                            mean_dequant, perc50_dequant, perc95_dequant, std_dequant,
+                            mean_extract, perc50_extract, perc95_extract, std_extract,
+                            mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast,
+                            mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency,
+                            mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast,
+                            Rate_OPT_py_load_val, Rate_DL_py_load_val,
+                            Rate_OPT_py_load_test, Rate_DL_py_load_test,
+                            Rate_DL_py_load_test_tflite, Rate_DL_py_load_test_tflite_mcu,
+                            Indmax_OPT_py_load_test, Indmax_DL_py_load_test, 
+                            Indmax_DL_py_load_test_tflite, Indmax_DL_py_load_test_tflite_mcu)
+
+            i += 1
 
 # %%
 
@@ -1102,20 +1105,20 @@ if __name__ == "__main__":
     mcu_lib_libluca_folder = os.path.join(mcu_folder, 'lib/lib-luca/') 
     mcu_lib_model_folder = os.path.join(mcu_folder, 'lib/model/') 
 
-    if not os.path.exists(mcu_folder):  # Controlla se la cartella esiste
-        os.makedirs(mcu_folder, exist_ok=True)  # Crea la cartella se non esiste
-        os.system('pio project init --project-dir ' + mcu_folder + ' --board ' + mcu_type['name'] + ' --ide arduino' + \
-                  ' --project-option="upload_protocol = esptool" ' \
-                  '--project-option="upload_port = /dev/ttyUSB0" ' \
-                  '--project-option="monitor_port = /dev/ttyUSB0" ' \
-                  '--project-option="monitor_speed = 115200" ' \
-                  '--project-option="build_flags = ' \
-                  '-Ilib/tflite-micro ' \
-                  '-Ilib/tflite-micro/tensorflow ' \
-                  '-Ilib/tflite-micro/tensorflow/lite/c ' \
-                  '-Ilib/tflite-micro/tensorflow/lite/micro ' \
-                  '-Ilib/tflite-micro/tensorflow/lite/schema" ')
-        print(f"\nProgetto pio creato: {mcu_folder}")
+    #if not os.path.exists(mcu_folder):  # Controlla se la cartella esiste
+    #    os.makedirs(mcu_folder, exist_ok=True)  # Crea la cartella se non esiste
+    #    os.system('pio project init --project-dir ' + mcu_folder + ' --board ' + mcu_type['name'] + ' --ide arduino' + \
+    #              ' --project-option="upload_protocol = esptool" ' \
+    #              '--project-option="upload_port = /dev/ttyUSB0" ' \
+    #              '--project-option="monitor_port = /dev/ttyUSB0" ' \
+    #              '--project-option="monitor_speed = 115200" ' \
+    #              '--project-option="build_flags = ' \
+    #              '-Ilib/tflite-micro ' \
+    #              '-Ilib/tflite-micro/tensorflow ' \
+    #              '-Ilib/tflite-micro/tensorflow/lite/c ' \
+    #              '-Ilib/tflite-micro/tensorflow/lite/micro ' \
+    #              '-Ilib/tflite-micro/tensorflow/lite/schema" ')
+    #    print(f"\nProgetto pio creato: {mcu_folder}")
 
     if train_model_flag == 1 and load_model_flag == 0:
         run_tensorboard()
@@ -1169,7 +1172,7 @@ if __name__ == "__main__":
 
         for output_dim in output_dims:
 
-            change_config_file_1(mcu_include_config, input_features, output_dim, baud_rate, chunk_size_max)
+            change_config_file_1(mcu_include_config, input_features, output_dim, mcu_type['baud_rate'], chunk_size_max)
             change_lib_file_1(mcu_lib_libluca_folder, input_features, output_dim)
             
             once_zero_layers = 0 # serve per evitare che si iteri su R quando num_layers = 0
@@ -1200,4 +1203,4 @@ if __name__ == "__main__":
                                    end_folder, end_folder_Training_Size_dd)
                     
     elapsed_time = time.time() - start_time
-    print(f"Script debug={debug}, test_set_size={test_set_size}, mcu_type={mcu_type['name']} completed in {elapsed_time / 60:.2f} minutes ({elapsed_time / 60:.2f / 60:.2f} hours.")
+    print(f"Script debug={debug}, test_set_size={test_set_size}, mcu_type={mcu_type['name']} completed in {elapsed_time / 60:.2f} minutes ({elapsed_time / 3600:.2f} hours)")

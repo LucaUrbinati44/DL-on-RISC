@@ -14,7 +14,7 @@ def compute_stats(data_list):
     arr = np.array(data_list)
     # Deviazione standard (popolazione intera, ddof=0)
     # Se vuoi quella campionaria (N-1 al denominatore): ddof=1
-    return np.mean(arr), np.percentile(arr, 50), np.percentile(arr, 95), np.std(arr, ddof=0)
+    return np.mean(arr).item(), np.percentile(arr, 50).item(), np.percentile(arr, 95).item(), np.std(arr, ddof=0).item()
 
 def get_rate_from_codebook(codebook_index_list, YValidation_un_test):
     
@@ -26,7 +26,7 @@ def get_rate_from_codebook(codebook_index_list, YValidation_un_test):
     for b in range(len(codebook_index_list)):
         MaxR_DL_py[b]  = YValidation_un_test[codebook_index_list[b]-1,  b] # -1 to come back to 0-based indexing 
 
-    Rate_DL_py = MaxR_DL_py.mean()
+    Rate_DL_py = MaxR_DL_py.mean().item()
     return Rate_DL_py
 
 
@@ -49,7 +49,7 @@ def main(dummy,
     extract_codebook_index_fast_time_list = []
     tot_latency_list = []
     tot_latency_fast_list = []
-    Error = 0
+    Error_model_in_ram = 0
 
     if dummy == 'dummy_':
         xtest = np.load(data_csv)
@@ -68,9 +68,25 @@ def main(dummy,
         open(mcu_profiling_logfile, 'w') as log:
         print("Avviato logger + feeder su", mcu_serial_port)
 
-        time.sleep(10) # Tempo per reset MCU
+        while True:
+            line = ser.readline().decode('utf-8', errors='ignore').strip()
+            if not line:
+                continue
+            
+            print(f"MCU: {line}")
+            log.write(f"{line}\n") # Scrivere su log
+            if line == "NEXT":
+                time.sleep(10) # Tempo da lasciare per far preparare l'MCU a leggere dalla seriale
+                break
+            
+            if line == "STOP":
+                Error_model_in_ram = 1
+                break # Esci dal while    
 
         for idx, sample in enumerate(x):
+
+            if Error_model_in_ram == 1:
+                break # Esci dal for
 
             print("PSY: ------------------------")
             print(f"PSY: Sample {idx+1}/{xtest_size}")
@@ -148,13 +164,13 @@ def main(dummy,
                 # Pattern che causa loop infinito
                 LOOP_PATTERN = re.compile(r"\bRebooting\b")
                 if LOOP_PATTERN.search(line):
-                    Error = 1
+                    Error_model_in_ram = 1
                     break # Esci dal while
 
-            if Error == 1:
+            if Error_model_in_ram == 1:
                 break # Esci dal for
 
-    if Error == 0:
+    if Error_model_in_ram == 0:
         #avg_normalize_input_us = sum(normalize_input_list) / len(normalize_input_list) if normalize_input_list else 0
         #avg_quantize_input_us = sum(quantize_input_list) / len(quantize_input_list) if quantize_input_list else 0
         #avg_interpreter_invoke_us = sum(interpreter_invoke_list) / len(interpreter_invoke_list) if interpreter_invoke_list else 0
@@ -232,5 +248,5 @@ def main(dummy,
            mean_extract_fast, perc50_extract_fast, perc95_extract_fast, std_extract_fast, \
            mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
            mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
-           Indmax_DL_py_load_test_tflite_mcu, Rate_DL_py_load_test_tflite_mcu, Error
+           Indmax_DL_py_load_test_tflite_mcu, Rate_DL_py_load_test_tflite_mcu, Error_model_in_ram
     
