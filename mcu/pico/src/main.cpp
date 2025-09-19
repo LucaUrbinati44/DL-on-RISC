@@ -54,5 +54,5 @@ void loop()
     counter = 0;
   }
 
-  Serial.println("Sono il nuovo codice!");
+  Serial.println("Sono il nuovo codice 2!");
 }

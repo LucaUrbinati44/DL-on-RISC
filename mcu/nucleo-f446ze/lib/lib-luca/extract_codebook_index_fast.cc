@@ -19,5 +19,5 @@ int extract_codebook_index_fast(const int8_t *buffer)
     }
   }
 
-  return max_index + 1;
+  return max_index;
 }

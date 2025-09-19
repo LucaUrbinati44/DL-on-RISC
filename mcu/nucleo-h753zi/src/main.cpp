@@ -242,6 +242,13 @@ void setup()
     return;
   }
 
+  //Serial.print("mean_array[0]: ");
+  //Serial.println((double)mean_array[0], 22);
+  Serial.print("mean_array: ");
+  Serial.println((double)mean_array, 22);
+  //Serial.print("variance_array_sqrt_inv[0]: ");
+  //Serial.println((double)variance_array_sqrt_inv[0], 22);
+  
   // Obtain scale and zero point
   input_scale = model_input->params.scale;
   input_zero_point = model_input->params.zero_point;
@@ -249,13 +256,13 @@ void setup()
   output_zero_point = model_output->params.zero_point;
 
   Serial.print("input_scale: ");
-  Serial.println((double)input_scale, 6);
+  Serial.println((double)input_scale, 22);
   Serial.print("input_zero_point: ");
-  Serial.println((double)input_zero_point, 6);
+  Serial.println((double)input_zero_point, 22);
   Serial.print("output_scale: ");
-  Serial.println((double)output_scale, 6);
+  Serial.println((double)output_scale, 22);
   Serial.print("output_zero_point: ");
-  Serial.println((double)output_zero_point, 6);
+  Serial.println((double)output_zero_point, 22);
 
   input_scale_inv = 1.0f / input_scale;
 
@@ -291,6 +298,26 @@ void loop()
       int r = Serial.readBytes(chunk_buf + bytes_received, chunk_size_in_bytes - bytes_received);
       if (r <= 0) { 
         Serial.println("ERR timeout or no data yet");
+        Serial.println("Sono STM32-H7");
+        Serial.print("Overhead ESP [us]: ");
+        Serial.println(overhead_esp);
+        //Serial.print("mean_array[0]: ");
+        //Serial.println((double)mean_array[0], 22);
+        Serial.print("mean_array: ");
+        Serial.println((double)mean_array, 22);
+        //Serial.print("variance_array_sqrt_inv[0]: ");
+        //Serial.println((double)variance_array_sqrt_inv[0], 22);
+        Serial.print("input_scale: ");
+        Serial.println((double)input_scale, 22);
+        Serial.print("input_zero_point: ");
+        Serial.println((double)input_zero_point, 22);
+        //Serial.print("output_scale: ");
+        //Serial.println((double)output_scale, 22);
+        //Serial.print("output_zero_point: ");
+        //Serial.println((double)output_zero_point, 22);
+        Serial.print("CPU Frequency: ");
+        Serial.print(F_CPU / 1000000);
+        Serial.println(" MHz");
         Serial.println("NEXT");
         return;
       }

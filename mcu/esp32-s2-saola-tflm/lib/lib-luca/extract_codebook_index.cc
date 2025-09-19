@@ -16,5 +16,5 @@ int extract_codebook_index(float *buffer)
     }
   }
 
-  return max_index + 1;
+  return max_index;
 }

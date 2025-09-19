@@ -73,7 +73,7 @@ def model_predict(xdataset, Y_dataset,
         # Choose the number of test samples
         if test_set_size == 'small':
             xtest_size = small_samples
-        else:
+        elif test_set_size == 'full':
             xtest_size = xtest.shape[0]
         x = xtest[:xtest_size,:]
         y = Y_test
@@ -123,11 +123,15 @@ def model_predict(xdataset, Y_dataset,
         #with open(mean_array_filepath, 'r') as f:
         #    mean_array = f.read()
         mean_array = np.load(mean_array_filepath)
+        print(mean_array.shape)
+        #print(f"mean_array: {mean_array[0]:.22f}")
+        print(f"mean_array: {mean_array:.22f}")
                 
         #variance_array_filepath = mcu_profiling_folder_scaler + 'variance' + end_folder_Training_Size_dd + '.npy'
         #with open(variance_array_filepath, 'w') as f:
         #    variance_array = f.read()
         variance_array = np.load(variance_array_filepath)
+        print(f"variance_array: {variance_array[0]:.22f}")
 
         #tflite_model = schema_fb.Model.GetRootAsModel(tflite_int8_model, 0)
         #for i in range(tflite_model.MetadataLength()):
@@ -164,8 +168,8 @@ def model_predict(xdataset, Y_dataset,
         #print('output_shape:', output_shape)
 
         input_scale, input_zero_point = input_details[0]['quantization']
-        #print('input_scale:', input_scale)
-        #print('input_zero_point:', input_zero_point)
+        print('input_scale:', input_scale)
+        print('input_zero_point:', input_zero_point)
         
         input_float = x
         #print('input_float.shape:', input_float.shape) # (3100, 1024)
@@ -592,12 +596,14 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
         # adapt() will compute the mean and variance of the data and store them as the layer's weights. 
         # adapt() should be called before fit(), evaluate(), or predict().
 
-        mean_array = np.array([trainedNet_scaler]*X_train.shape[1], dtype=force_datatype)
+        #mean_array = np.array([trainedNet_scaler]*X_train.shape[1], dtype=force_datatype)
+        mean_array = np.array(trainedNet_scaler, dtype=force_datatype)
         variance_array =  np.array([1]*X_train.shape[1], dtype=force_datatype)
-        #print(mean_array.shape)
-        #print(mean_array[0])
-        #print(variance_array.shape)
-        #print(variance_array[0])
+        print("mean_array.shape:", mean_array.shape)
+        #print(f"{mean_array[0]:.22f}")
+        print(f"{mean_array:.22f}")
+        print("variance_array.shape:", variance_array.shape)
+        print(f"{variance_array[0]:.22f}")
 
         ### Normalize data
         # Normalizzazione manuale se già hai mean_array e variance_array da MATLAB
@@ -605,9 +611,6 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
         X_val_normalized = np.array((X_val - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
         X_test_normalized = np.array((X_test - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
         X_dataset_normalized = np.array((X_dataset - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
-
-        #print(mean_array)
-        #print(variance_array)
         
         xtest_npy_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + '.npy'
         xtestnorm_npy_filename = mcu_profiling_folder_test_data_normalized + 'test_set_normalized' + end_folder_Training_Size_dd + '.npy'
@@ -729,8 +732,8 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
                 #                                                                network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_epochs, model_name_suffix,
                 #                                                                test=test, save_files=save_files_flag)
             
-            learning_rate = model_py.optimizer.learning_rate.numpy()
-            print(f"Learning rate loaded model: {learning_rate}")
+            #learning_rate = model_py.optimizer.learning_rate.numpy()
+            #print(f"Learning rate loaded model: {learning_rate}")
 
         # %%
         ################################ Train Model ################################

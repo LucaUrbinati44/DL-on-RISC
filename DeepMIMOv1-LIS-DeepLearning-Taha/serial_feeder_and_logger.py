@@ -24,7 +24,7 @@ def get_rate_from_codebook(codebook_index_list, YValidation_un_test):
 
     # Ciclo di confronto
     for b in range(len(codebook_index_list)):
-        MaxR_DL_py[b]  = YValidation_un_test[codebook_index_list[b]-1,  b] # -1 to come back to 0-based indexing 
+        MaxR_DL_py[b]  = YValidation_un_test[codebook_index_list[b],  b]
 
     Rate_DL_py = MaxR_DL_py.mean().item()
     return Rate_DL_py
@@ -149,8 +149,9 @@ def main(dummy,
                 match = re.match(r"extract_codebook_index_fast \[\#\] \[us\]: (\d+) (\d+)", line)
                 if match:
                     #print("PYS: MATCH 6")
+                    Indmax_DL_py_load_test_tflite_mcu.append(int(match.group(1))) # IMPORTANTE: non deve subire il warmup altrimenti falsa i risultati del rate!
+                    
                     if idx > (warmup_samples_for_statistics - 1):
-                        Indmax_DL_py_load_test_tflite_mcu.append(int(match.group(1)))
                         extract_codebook_index_fast_time_list.append(int(match.group(2)))
 
                         # Quando si arriva all'ultima print da rilevare

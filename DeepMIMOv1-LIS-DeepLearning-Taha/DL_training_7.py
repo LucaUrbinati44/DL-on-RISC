@@ -62,15 +62,15 @@ debug = 2            # 0: production mode,  2: dummy mode
 #dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
 dummy = ''
 
-#test_set_size = 'small' # 'full' in prodcution
-test_set_size = 'full'
+test_set_size = 'small' # 'full' in prodcution
+#test_set_size = 'full'
 
 if test_set_size == 'small':
-    small_samples = 10 # even and greater than or equal to 2
-    warmup_samples_for_statistics = small_samples / 2
+    small_samples = 5 # even and greater than or equal to 2
+    warmup_samples_for_statistics = 0
 else:
-    small_samples = 5
-    warmup_samples_for_statistics = 100
+    small_samples = 5 # non cambiare, usata solo per le print
+    warmup_samples_for_statistics = 100 # TODO: 100, riabililo dopo
 
 # SPAZIO DI RICERCA 
 # 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
@@ -111,7 +111,7 @@ else: # modello di Taha
 #            'baud_rate': 921600}
 
 mcu_type = {'name': 'nucleo-h753zi',
-            'port': '/dev/ttyACM2',
+            'port': '/dev/ttyACM0',
             'baud_rate': 921600}
 
 # ------------------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ initial_epoch = 200 # se vuoi continuare un allenamento, sono le epoche dalle qu
 train_model_flag = 0
 convert_model_flag = 0
 save_files_flag_master = 0
-save_files_flag_master_once = 0
+save_files_flag_master_once = 1
 
 load_model_flag = 1
 predict_loaded_model_flag = load_model_flag # deve essere uguale a load_model_flag
@@ -545,27 +545,34 @@ def change_config_file_2(mcu_include_config, mean_array_filepath, variance_array
     with open(mcu_include_config, "r", encoding="utf-8") as f:
         content = f.read()
 
-    #pattern_mean = re.compile(r"(extern const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
-    #pattern_variance = re.compile(r"(extern const float variance_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    # Versione con mean array e variance array
     pattern_mean = re.compile(r"(const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
     pattern_variance = re.compile(r"(const float variance_array_sqrt_inv\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
-
-    #with open(mean_array_filepath, newline='', encoding="utf-8") as f:
-    #    reader = csv.reader(f)
-    #    row = next(reader)  # leggi unica riga
-    #    new_mean_array = [float(x) for x in row]        
+     
     mean_array = np.load(mean_array_filepath)      
     array_str = ", ".join(f"{v}f" for v in mean_array)
     content = re.sub(pattern_mean, rf"\g<1>\n    {array_str}\n\3", content)
-
-    #with open(variance_array_filepath, newline='', encoding="utf-8") as f:
-    #    reader = csv.reader(f)
-    #    row = next(reader)  # leggi unica riga
-    #    new_variance_array = [float(x) for x in row]        
+    
     variance_array = np.load(variance_array_filepath)
-    #array_str = ", ".join(f"{v}f" for v in variance_array)
     array_str = ", ".join(f"{1/np.sqrt(v)}f" for v in variance_array)
     content = re.sub(pattern_variance, rf"\g<1>\n    {array_str}\n\3", content)
+
+    # salva file
+    with open(mcu_include_config, "w", encoding="utf-8") as f:
+        f.write(content)
+
+def change_config_file_3(mcu_include_config, mean_array_filepath):
+
+    print('\n*** change_config_file_3')
+ 
+    with open(mcu_include_config, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Versione con solo mean scalar
+    pattern_mean = re.compile(r"(const float mean_array PROGMEM = )([0-9eE\+\-\.]+)(;)")
+     
+    mean_array = np.load(mean_array_filepath)
+    content = re.sub(pattern_mean, rf"\g<1>{mean_array}\3", content)
 
     # salva file
     with open(mcu_include_config, "w", encoding="utf-8") as f:
@@ -812,11 +819,11 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
             'std_tot_latency_fast': f"{std_tot_latency_fast:.3f}",
 
             'Rate_OPT_py_load_val': f"{Rate_OPT_py_load_val.item():.3f}",
-            'Rate_DL_py_load_val': f"{Rate_DL_py_load_val.item():.3f}",
-            'Rate_OPT_py_load_test': f"{Rate_OPT_py_load_test.item():.3f}",
-            'Rate_DL_py_load_test': f"{Rate_DL_py_load_test.item():.3f}",
-            'Rate_DL_py_load_test_tflite': f"{Rate_DL_py_load_test_tflite.item():.3f}",
-            'Rate_DL_py_load_test_tflite_mcu': f"{Rate_DL_py_load_test_tflite_mcu:.3f}",
+            'Rate_DL_py_load_val': f"{Rate_DL_py_load_val.item():.3f}", # serve per capire se c'è stato overfitting del modello sul test set
+            'Rate_OPT_py_load_test': f"{Rate_OPT_py_load_test.item():.6f}",
+            'Rate_DL_py_load_test': f"{Rate_DL_py_load_test.item():.6f}",
+            'Rate_DL_py_load_test_tflite': f"{Rate_DL_py_load_test_tflite.item():.6f}",
+            'Rate_DL_py_load_test_tflite_mcu': f"{Rate_DL_py_load_test_tflite_mcu:.6f}",
             
             # subset
             'Indmax_OPT_py_load_test[0:5]': Indmax_OPT_py_load_test.tolist()[0:5], 
@@ -942,14 +949,15 @@ def run_experiment(dummy, data_csv, x_sample,
         #    model_file_size_int8_kb = 0
         #    model_file_size_int8_mb = 0
         
-        change_config_file_2(mcu_include_config, mean_array_filepath, variance_array_filepath)
+        #change_config_file_2(mcu_include_config, mean_array_filepath, variance_array_filepath)
+        change_config_file_3(mcu_include_config, mean_array_filepath)
 
         # Lancia compilazione e upload firmware in maniera bloccante
         compilation_logfile = os.path.join(mcu_folder, 'compilation_'+model_type_load+'.txt')
 
         i = 1 # TODO: must be 1
         #while i <= 4:
-        while i <= 2:
+        while i <= 2: # TODO: must be 2
             # prima provi con modello in ram
             # poi provi con modello in flash
             if i == 1:
@@ -1131,7 +1139,7 @@ if __name__ == "__main__":
                 
         input_features = M_bar * K_DL * 2 #    8 celle attive x 64 subcarriers x 2 (real/img) = 1024
 
-        mean_array_filepath = mcu_profiling_folder_scaler + dummy + 'mean' + end_folder_Training_Size_dd + '.npy'            
+        mean_array_filepath = mcu_profiling_folder_scaler + dummy + 'mean' + end_folder_Training_Size_dd + '.npy'                    
         variance_array_filepath = mcu_profiling_folder_scaler + dummy + 'variance' + end_folder_Training_Size_dd + '.npy'
 
         print("\n---------------------------------------------------------\n")
@@ -1143,23 +1151,14 @@ if __name__ == "__main__":
             # Sample fake data for quantization
             x_sample = np.random.rand(10, input_features).astype(np.float32)
             # Sample mean and variance for normalization
-            mean_array = np.random.rand(1, input_features).astype(np.float32)
-            variance_array = np.random.rand(1, input_features).astype(np.float32)
+            #mean_array = np.random.rand(1, input_features).astype(np.float32)
+            mean_array = np.random.rand(1, 1).astype(np.float32)
+            #variance_array = np.random.rand(1, input_features).astype(np.float32)
 
             data_csv = mcu_profiling_folder_test_data + dummy + 'data.npy'
-            #with open(data_csv, 'w') as f:
-            #    for sample in x_sample:
-            #        f.write(" ".join(map(str, sample)) + "\n")
-            np.save(data_csv, x_sample)
 
-            #with open(mean_array_filepath, 'w') as f:
-            #    for sample in mean_array:
-            #        f.write(", ".join(map(str, sample)) + "\n")
+            np.save(data_csv, x_sample)
             np.save(mean_array_filepath, mean_array)
-                    
-            #with open(variance_array_filepath, 'w') as f:
-            #    for sample in variance_array:
-            #        f.write(", ".join(map(str, sample)) + "\n")
             np.save(variance_array_filepath, variance_array)    
 
             xtest_npy_filename = ''
