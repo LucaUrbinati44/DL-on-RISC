@@ -98,9 +98,10 @@ else: # modello di Taha
     num_layers_list = [3]
 
 # TODO
-#mcu_type = {'name': 'pico', 
-#            'port': '/dev/tty???',
-#            'baud_rate': ???}
+mcu_type = {'name': 'pico', 
+            'port': '/dev/ttyACM0',
+            'baud_rate': 921600,
+            'bus_id': '4-2'} 
 
 #mcu_type = {'name': 'esp32-s2-saola-tflm', 
 #            'port': '/dev/ttyUSB0',
@@ -110,9 +111,9 @@ else: # modello di Taha
 #            'port': '/dev/ttyACM1',
 #            'baud_rate': 921600}
 
-mcu_type = {'name': 'nucleo-h753zi',
-            'port': '/dev/ttyACM0',
-            'baud_rate': 921600}
+#mcu_type = {'name': 'nucleo-h753zi',
+#            'port': '/dev/ttyACM0',
+#            'baud_rate': 921600}
 
 # ------------------------------------------------------------------------------------------
 
@@ -973,30 +974,73 @@ def run_experiment(dummy, data_csv, x_sample,
             if compile_and_upload_flag == 1:
                 print(f"\n*** Lancio pio run {i})... Segui gli avanzamenti qui: {compilation_logfile}")
                 with open(compilation_logfile, "w", encoding="utf-8") as logfile:
-                    process = subprocess.Popen(
-                        #["pio", "run", "--environment", mcu_type['name'], "--project-dir", mcu_folder],
-                        #["pio", "run", "--environment", mcu_type['name']+'', "--project-dir", mcu_folder, "--target", "upload"],
-                        #["pio", "run", "--environment", mcu_type['name']+'-o0', "--project-dir", mcu_folder, "--target", "upload"],
-                        #["pio", "run", "--environment", mcu_type['name']+'-o3', "--project-dir", mcu_folder, "--target", "upload"],
-                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallauto', "--project-dir", mcu_folder, "--target", "upload"],
-                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallforced', "--project-dir", mcu_folder, "--target", "upload"],
-                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallforced-selected', "--project-dir", mcu_folder, "--target", "upload"],
-                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unroll-selected', "--project-dir", mcu_folder, "--target", "upload"],
-                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm-espnn', "--project-dir", mcu_folder, "--target", "upload"],
-                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm', "--project-dir", mcu_folder, "--target", "upload"],
-                        #["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload", '-v'],
-                        ["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload"],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        bufsize=1  # line-buffered
-                    )
+
+                    if mcu_type['name'] != 'pico':
+                        process = subprocess.Popen(
+                            #["pio", "run", "--environment", mcu_type['name'], "--project-dir", mcu_folder],
+                            #["pio", "run", "--environment", mcu_type['name']+'', "--project-dir", mcu_folder, "--target", "upload"],
+                            #["pio", "run", "--environment", mcu_type['name']+'-o0', "--project-dir", mcu_folder, "--target", "upload"],
+                            #["pio", "run", "--environment", mcu_type['name']+'-o3', "--project-dir", mcu_folder, "--target", "upload"],
+                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallauto', "--project-dir", mcu_folder, "--target", "upload"],
+                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallforced', "--project-dir", mcu_folder, "--target", "upload"],
+                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallforced-selected', "--project-dir", mcu_folder, "--target", "upload"],
+                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unroll-selected', "--project-dir", mcu_folder, "--target", "upload"],
+                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm-espnn', "--project-dir", mcu_folder, "--target", "upload"],
+                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm', "--project-dir", mcu_folder, "--target", "upload"],
+                            #["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload", '-v'],
+                            ["pio", 
+                                "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload"],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            bufsize=1  # line-buffered
+                        )
+                    else: # if mcu_type['name'] == 'pico': 
+                        # Per il pico bisogna che sia windows a programmarlo, mentre linux legge da seriale, ma bisogna gestire il controllo da wsl a windows e viceversa
+
+                        # C:\Windows\System32\cmd.exe
+                        # C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+
+                        #out = subprocess.check_output(["/mnt/c/Program Files/usbipd-win/usbipd.exe", "list"], text=True)
+                        out = subprocess.check_output(["/mnt/c/Windows/System32/cmd.exe", "-Command", "usbipd list"], text=True)
+                        #out = subprocess.check_output(["/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe", "-Command", "usbipd list"], text=True)
+                        print(out)
+
+                        print("Detach pico")
+                        try:
+                            subprocess.run(["/mnt/c/Program Files/usbipd-win/usbipd.exe", "detach", "--busid", mcu_type['bus_id']], check=True, capture_output=True, text=True)
+                        except subprocess.CalledProcessError as e: # non blocca lo script
+                            print(f"[WARN] Detach fallito (codice {e.returncode}): {e.stderr.strip()}")
+
+                        mcu_folder_win_path = subprocess.check_output(["wslpath", "-w", mcu_folder]).decode().strip()
+                        print(f"Convert Unix path to Windows path: {mcu_folder_win_path}")
+
+                        print("Run pio on Windows")
+                        process = subprocess.Popen(
+                            #["cmd.exe", "/c", "/mnt/c/Users/Work/AppData/Local/Programs/Python/Python312/Scripts/pio.exe",
+                            #["/mnt/c/Windows/System32/cmd.exe", "/c", "C:\\Users\\Work\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\pio.exe",
+                            ["/mnt/c/Windows/System32/cmd.exe", "/c", 
+                            "C:\\Users\\Work\\miniconda3\\condabin\\conda.bat", "run", "-n", "pio",
+                            "pio.exe", "run", "--environment", env_name, "--project-dir", mcu_folder_win_path, "--target", "upload"],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            bufsize=1
+                        )
 
                     for line in process.stdout:
                         print(line, end="")       # scrive a terminale
                         logfile.write(line)       # scrive sul file
                         
-                    process.wait()
+                    process.wait() # <-- quando ritorna significa che pio è ritornato, cioè la programmazione è stata terminata
+
+                    if mcu_type['name'] == 'pico':
+                        print("Attach pico")
+                        try:
+                            subprocess.run(["/mnt/c/Program Files/usbipd-win/usbipd.exe", "attach", "--wsl", "--busid", mcu_type['bus_id']], check=True, capture_output=True, text=True)
+                        except subprocess.CalledProcessError as e:
+                            msg = f"[ERROR] Attach fallito (codice {e.returncode}): {e.stderr.strip()}"
+                            raise RuntimeError(msg) from e
 
             # Lancia il parser per recuperare RAM e ROM da compilation output
             # La Flash include non solo il modello perciò sarà maggiore di model_size_int8_mb
