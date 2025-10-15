@@ -94,13 +94,12 @@ def model_predict(xdataset, Y_dataset,
         YValidation_un = YValidation_un_val
     
 
-    filename_Indmax_OPT_py = os.path.join(network_folder_out_RateDLpy, 'Indmax_OPT_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
-    filename_Indmax_DL_py = os.path.join(network_folder_out_RateDLpy, 'Indmax_DL_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
-
-    filename_MaxR_OPT_py = os.path.join(network_folder_out_RateDLpy, 'MaxR_OPT_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
-    filename_MaxR_DL_py = os.path.join(network_folder_out_RateDLpy, 'MaxR_DL_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
-    filename_Rate_OPT_py = os.path.join(network_folder_out_RateDLpy, 'Rate_OPT_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
-    filename_Rate_DL_py = os.path.join(network_folder_out_RateDLpy, 'Rate_DL_py'+t + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
+    filename_Indmax_OPT_py = os.path.join(network_folder_out_RateDLpy, f"Indmax_OPT_py{t}{end_folder_Training_Size_dd_epochs}{model_name_suffix}.mat")
+    filename_Indmax_DL_py  = os.path.join(network_folder_out_RateDLpy, f"Indmax_DL_py{t}{end_folder_Training_Size_dd_epochs}{model_name_suffix}.mat")
+    filename_MaxR_OPT_py   = os.path.join(network_folder_out_RateDLpy, f"MaxR_OPT_py{t}{end_folder_Training_Size_dd_epochs}{model_name_suffix}.mat")
+    filename_MaxR_DL_py    = os.path.join(network_folder_out_RateDLpy, f"MaxR_DL_py{t}{end_folder_Training_Size_dd_epochs}{model_name_suffix}.mat")
+    filename_Rate_OPT_py   = os.path.join(network_folder_out_RateDLpy, f"Rate_OPT_py{t}{end_folder_Training_Size_dd_epochs}{model_name_suffix}.mat")
+    filename_Rate_DL_py    = os.path.join(network_folder_out_RateDLpy, f"Rate_DL_py{t}{end_folder_Training_Size_dd_epochs}{model_name_suffix}.mat")
 
     #print(f"\n### model_predict {t}")
     print(f"\n### Start DL prediction {t} ###")
@@ -475,9 +474,9 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
                 
         ## Load Dataset DL_input_reshaped
 
-        filename_DL_input_reshaped = DL_dataset_folder + 'DL_input_reshaped' + end_folder + '.mat'
-        filename_DL_output_reshaped = DL_dataset_folder + 'DL_output_reshaped' + end_folder + '.mat'
-        filename_RandP_all = DL_dataset_folder + 'RandP_all' + end_folder + '.mat'
+        filename_DL_input_reshaped = os.path.join(DL_dataset_folder, f"DL_input_reshaped{end_folder}.mat")
+        filename_DL_output_reshaped = os.path.join(DL_dataset_folder, f"DL_output_reshaped{end_folder}.mat")
+        filename_RandP_all = os.path.join(DL_dataset_folder, f"RandP_all{end_folder}.mat")
 
         # Load the data using h5py for MATLAB v7.3 files
         with h5py.File(filename_DL_input_reshaped, 'r') as f:
@@ -502,7 +501,7 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
 
         # Costruzione del nome file
         #filename_DL_output_un_reshaped = DL_dataset_folder + 'DL_output_un_reshaped' + end_folder + '.mat'
-        filename_DL_output_un_complete_reshaped= DL_dataset_folder + 'DL_output_un_complete_reshaped' + end_folder + '.mat'
+        filename_DL_output_un_complete_reshaped = os.path.join(DL_dataset_folder, f"DL_output_un_complete_reshaped{end_folder}.mat")
 
         # Load the data using h5py for MATLAB v7.3 files
         with h5py.File(filename_DL_output_un_complete_reshaped, 'r') as f:
@@ -612,10 +611,10 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
         X_test_normalized = np.array((X_test - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
         X_dataset_normalized = np.array((X_dataset - mean_array) / np.sqrt(variance_array), dtype=force_datatype)
         
-        xtest_npy_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + '.npy'
-        xtestnorm_npy_filename = mcu_profiling_folder_test_data_normalized + 'test_set_normalized' + end_folder_Training_Size_dd + '.npy'
-        xtestmean_npy_filename = mcu_profiling_folder_scaler + 'mean' + end_folder_Training_Size_dd + '.npy'
-        xtestvar_npy_filename = mcu_profiling_folder_scaler + 'variance' + end_folder_Training_Size_dd + '.npy'
+        xtest_npy_filename     = os.path.join(mcu_profiling_folder_test_data, f"test_set{end_folder_Training_Size_dd}.npy")
+        xtestnorm_npy_filename = os.path.join(mcu_profiling_folder_test_data_normalized, f"test_set_normalized{end_folder_Training_Size_dd}.npy")
+        xtestmean_npy_filename = os.path.join(mcu_profiling_folder_scaler, f"mean{end_folder_Training_Size_dd}.npy")
+        xtestvar_npy_filename  = os.path.join(mcu_profiling_folder_scaler, f"variance{end_folder_Training_Size_dd}.npy")
 
         if save_files_flag_master_once == 1:
 
@@ -993,12 +992,12 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
 
         if Training_Size_dd >= 10000 or Training_Size_dd == 2:
             
-            filename_Rate_OPT = network_folder_in + 'Rate_OPT' + end_folder_Training_Size_dd + '.mat'
+            filename_Rate_OPT = os.path.join(network_folder_in, f"Rate_OPT{end_folder_Training_Size_dd}.mat")
 
             with h5py.File(filename_Rate_OPT, 'r') as f:
                 Rate_OPT = f['Rate_OPT'][:][0][0]
 
-            filename_Rate_DL = network_folder_in + 'Rate_DL' + end_folder_Training_Size_dd + '.mat'
+            filename_Rate_DL = os.path.join(network_folder_in, f"Rate_DL{end_folder_Training_Size_dd}.mat")
 
             with h5py.File(filename_Rate_DL, 'r') as f:
                 Rate_DL_valOld = f['Rate_DL'][:][0][0]

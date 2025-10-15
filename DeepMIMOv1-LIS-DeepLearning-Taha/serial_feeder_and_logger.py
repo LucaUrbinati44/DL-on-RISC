@@ -103,7 +103,7 @@ def main(dummy,
                 ser.write(data)
                 ser.flush()
                 features_sent += chunk_size
-                #print(f"PYS: Inviate {features_sent}/{total_features} features ({features_sent/total_features*100}%)")
+                print(f"PYS: Inviate {features_sent}/{total_features} features ({features_sent/total_features*100}%)")
 
             while True: # Leggi output MCU
 
@@ -190,14 +190,14 @@ def main(dummy,
         mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast = compute_stats(tot_latency_fast_list)
 
         if dummy == '':
-            filename_Indmax_DL_py = os.path.join(network_folder_out_RateDLpy_TFLite_mcu, 'Indmax_DL_py_test' + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
+            filename_Indmax_DL_py = os.path.join(network_folder_out_RateDLpy_TFLite_mcu, f"Indmax_DL_py_test{end_folder_Training_Size_dd_epochs}{model_name_suffix}.mat")
             with h5py.File(filename_Indmax_DL_py, 'w') as f:
                 f.create_dataset('Indmax_DL_py_load_test_tflite_mcu', data=Indmax_DL_py_load_test_tflite_mcu)
                 print(f"\nIndmax_DL_py_load_test_tflite_mcu saved in {filename_Indmax_DL_py}")
             
             Rate_DL_py_load_test_tflite_mcu = get_rate_from_codebook(Indmax_DL_py_load_test_tflite_mcu, YValidation_un_test)
 
-            filename_Rate_DL_py = os.path.join(network_folder_out_RateDLpy_TFLite_mcu, 'Rate_DL_py_test' + end_folder_Training_Size_dd_epochs + model_name_suffix + '.mat')
+            filename_Rate_DL_py = os.path.join(network_folder_out_RateDLpy_TFLite_mcu, f"Rate_DL_py_test{end_folder_Training_Size_dd_epochs}{model_name_suffix}.mat")
             with h5py.File(filename_Rate_DL_py, 'w') as f:
                 f.create_dataset('Rate_DL_py_load_test_tflite_mcu', data=Rate_DL_py_load_test_tflite_mcu)
                 print(f"\nRate_DL_py_load_test_tflite_mcu saved in {filename_Rate_DL_py}")

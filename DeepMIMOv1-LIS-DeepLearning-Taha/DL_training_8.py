@@ -19,6 +19,10 @@ import time
 
 import serial_feeder_and_logger, DL_training_4_v3_test
 
+def is_windows():
+    return 1 if os.name == 'nt' else 0
+ISWINDOWS = is_windows()
+
 print("TensorFlow version:", tf.__version__)
 
 # Imposta il seed globale
@@ -98,14 +102,16 @@ else: # modello di Taha
     num_layers_list = [3]
 
 # TODO
-mcu_type = {'name': 'pico', 
-            'port': '/dev/ttyACM0',
-            'baud_rate': 115200,
-            'bus_id': '4-2'} 
+if ISWINDOWS:
+    mcu_type = {'name': 'pico', 
+                #'port': '/dev/ttyACM0',
+                'port': 'COM4',
+                'baud_rate': 115200,
+                'bus_id': '4-2'}
 
-#mcu_type = {'name': 'esp32-s2-saola-tflm', 
-#            'port': '/dev/ttyUSB0',
-#            'baud_rate': 1500000}
+mcu_type = {'name': 'esp32-s2-saola-tflm', 
+            'port': '/dev/ttyUSB0',
+            'baud_rate': 1500000}
 
 #mcu_type = {'name': 'nucleo-f446ze', 
 #            'port': '/dev/ttyACM1',
@@ -166,7 +172,7 @@ save_files_flag_master_once = 1
 load_model_flag = 1
 predict_loaded_model_flag = load_model_flag # deve essere uguale a load_model_flag
 profiling_flag = 1
-compile_and_upload_flag = 1 # TODO: RIATTIVARE
+compile_and_upload_flag = 0 # TODO: RIATTIVARE
 
 chunk_size_max = 128
 #chunk_size_max = 1024
@@ -179,16 +185,18 @@ chunk_size_max = 128
 # ------------------------------------------------------------------------------------------
 
 base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
+if ISWINDOWS:
+    base_folder = subprocess.check_output(["wslpath", "-w", base_folder]).decode().strip()
 
-input_folder = base_folder + 'Output Matlab/'
+input_folder = os.path.join(base_folder, 'Output Matlab')
 
-DL_dataset_folder = input_folder + 'DL Dataset/'
-network_folder_in = input_folder + 'Neural Network/'
+DL_dataset_folder = os.path.join(input_folder, 'DL Dataset')
+network_folder_in = os.path.join(input_folder, 'Neural Network')
 
 
-output_folder = base_folder + 'Output_Python/'
-network_folder_out = output_folder + 'Neural_Network/'
-figure_folder = output_folder + 'Figures/'
+output_folder = os.path.join(base_folder, 'Output_Python')
+network_folder_out = os.path.join(output_folder, 'Neural_Network')
+figure_folder = os.path.join(output_folder, 'Figures')
 
 datetime_dir = os.path.join(network_folder_out, datetime_str)
 network_folder_out_RateDLpy = os.path.join(datetime_dir, 'RateDLpy')
@@ -196,18 +204,22 @@ network_folder_out_RateDLpy_TFLite = os.path.join(datetime_dir, 'RateDLpy_TFLite
 network_folder_out_RateDLpy_TFLite_mcu = os.path.join(datetime_dir, 'RateDLpy_TFLite_mcu')
 saved_models_keras = os.path.join(datetime_dir, 'saved_models_keras')
 
-mcu_profiling_folder = output_folder + 'Profiling_Search_MCU/'
-mcu_profiling_folder_model = mcu_profiling_folder + 'model/'
-mcu_profiling_folder_scaler = mcu_profiling_folder + 'scaler/'
-mcu_profiling_folder_test_data = mcu_profiling_folder + 'test_data/'
-mcu_profiling_folder_test_data_normalized = mcu_profiling_folder + 'test_data_normalized/'
-mcu_profiling_folder_outputdata = mcu_profiling_folder + 'output_data/'
-mcu_profiling_folder_logfile = mcu_profiling_folder + 'logs/' 
+mcu_profiling_folder = os.path.join(output_folder, 'Profiling_Search_MCU')
+mcu_profiling_folder_model = os.path.join(mcu_profiling_folder, 'model')
+mcu_profiling_folder_scaler = os.path.join(mcu_profiling_folder, 'scaler')
+mcu_profiling_folder_test_data = os.path.join(mcu_profiling_folder, 'test_data')
+mcu_profiling_folder_test_data_normalized = os.path.join(mcu_profiling_folder, 'test_data_normalized')
+mcu_profiling_folder_outputdata = os.path.join(mcu_profiling_folder, 'output_data')
+mcu_profiling_folder_logfile = os.path.join(mcu_profiling_folder, 'logs') 
 mcu_profiling_logfile = os.path.join(mcu_profiling_folder_logfile, f'log_{mcu_type['name']}_{datetime_str}.txt')
 #pio_projects_folder = '/mnt/c/Users/Work/Documents/PlatformIO/Projects/'
-pio_projects_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/'
+pio_projects_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu'
+if ISWINDOWS:
+    pio_projects_folder = subprocess.check_output(["wslpath", "-w", pio_projects_folder]).decode().strip()
 
 header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
+if ISWINDOWS:
+    header_folder = subprocess.check_output(["wslpath", "-w", header_folder]).decode().strip()
 tensorboard_dir =  os.path.join(datetime_dir, "tensorboard_logs_test")
 training_history_dir = os.path.join(datetime_dir, "training_history")
 
@@ -322,12 +334,12 @@ def get_model_paths(dummy, end_folder_Training_Size_dd, max_epochs, num_layers, 
     
     model_name_suffix = f"_initlr{init_learning_rate}_minlr{min_learning_rate}_fact{factor}_pat{patience}_mindelta{min_delta}_nl{num_layers}_R{R}_in{input_features}{hidden}out{output_dim}"
     
-    end_folder_Training_Size_dd_epochs = end_folder_Training_Size_dd + '_ep' + str(max_epochs)
+    end_folder_Training_Size_dd_epochs = end_folder_Training_Size_dd + f"_ep{str(max_epochs)}"
 
     model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_epochs + model_name_suffix
-    model_path_tflite = mcu_profiling_folder_model + model_type_load + '_int8.tflite'    
+    model_path_tflite = os.path.join(mcu_profiling_folder_model, f"{model_type_load}_int8.tflite")    
 
-    model_path_keras = os.path.join(saved_models_keras, model_type_load + '.keras')
+    model_path_keras = os.path.join(saved_models_keras, f"{model_type_load}.keras")
     
     return end_folder_Training_Size_dd_epochs, model_name_suffix, model_type_load, model_path_tflite, model_path_keras
 
@@ -342,17 +354,24 @@ def mse_custom(y_true, y_pred):
     loss = 0.5 * tf.reduce_mean(sum_squared_error)  # scalar
     return loss
 
+def bin_to_c_array(bin_path, out_path, var_name):
+    with open(bin_path, "rb") as f:
+        data = f.read()
+    with open(out_path, "w") as f:
+        f.write(f"const unsigned char {var_name}[] = {{\n")
+        for i, b in enumerate(data):
+            f.write(f"0x{b:02x},")
+            if (i+1) % 16 == 0:
+                f.write("\n")
+        f.write("\n};\n")
+        
 # ----- Export TF-Lite INT8 model to C for TFLM -----
 def export_to_c(model_type_load, model_path_tflite, mcu_type):
     print('\n*** export_to_c')
 
     model_name = 'mlp'
-    if mcu_type['name'] == 'pico':
-        save_dir = mcu_lib_model_folder_windows
-    else:
-        save_dir = mcu_lib_model_folder
-    print("save_dir:", save_dir)
-    header_path = os.path.join(mcu_lib_model_folder, f"{model_name}_model_data.h")
+    header_path_relative = f"{model_name}_model_data.h"
+    header_path = os.path.join(mcu_lib_model_folder, header_path_relative)
     source_path = os.path.join(mcu_lib_model_folder, f"{model_name}_model_data.cc")
 
     #generate_header(header_path, model_name)
@@ -380,14 +399,17 @@ def export_to_c(model_type_load, model_path_tflite, mcu_type):
     # Usa xxd -i per creare il sorgente base
     #with open(xxd_output_temp, "w") as cc:
         #subprocess.run(["xxd", "-i", model_path_tflite], stdout=cc, check=True)
-    os.system("xxd -i " + model_path_tflite + " > " + xxd_output_temp)
+    if ISWINDOWS:
+        bin_to_c_array(model_path_tflite, xxd_output_temp, f"g_{model_name}_model_data")
+    else:
+        os.system("xxd -i " + model_path_tflite + " > " + xxd_output_temp)
 
     # Leggi e modifica il contenuto
     with open(xxd_output_temp, "r") as f:
         content = f.read()
     print(content[0:300])
     print(content[-300:-1])
-    os.system('rm ' + xxd_output_temp)
+    os.remove(xxd_output_temp)
 
     # Sostituisci i nomi delle variabili
     model_path_tflite_lowercase = model_path_tflite.replace('/', '_').replace('.', '_').replace('-', '_')
@@ -398,7 +420,7 @@ def export_to_c(model_type_load, model_path_tflite, mcu_type):
     first_line_old = f"unsigned char {model_path_tflite_lowercase}[] = {{"
     # Aggiungi include dell'header
     # PROGMEM serve per salvare il modello in Flash invece che in RAM
-    first_line_new = f"#include <config.h>\n#include \"{save_dir}{model_name}_model_data.h\"\nalignas(8) const uint8_t g_{var_name}_model_data[] PROGMEM = {{"
+    first_line_new = f"#include <config.h>\n#include \"{header_path_relative}\"\nalignas(8) const uint8_t g_{var_name}_model_data[] PROGMEM = {{"
     last_line_old = f"unsigned int {model_path_tflite_lowercase}_len"
     last_line_new = f"const unsigned int g_{model_name}_model_data_len"
     content = content.replace(first_line_old, first_line_new)
@@ -515,10 +537,10 @@ def change_lib_file_1(folder_path, input_features, output_dim):
 
     print('\n*** change_lib_file_1')
 
-    normalize_input_file_path = folder_path+'normalize_input.cc'
-    quantize_input_file_path = folder_path+'quantize_input.cc'
-    dequantize_output_file_path = folder_path+'dequantize_output.cc'
-    extract_codebook_index_fast_file_path = folder_path+'extract_codebook_index_fast.cc'
+    normalize_input_file_path = os.path.join(folder_path, 'normalize_input.cc')
+    quantize_input_file_path = os.path.join(folder_path, 'quantize_input.cc')
+    dequantize_output_file_path = os.path.join(folder_path ,'dequantize_output.cc')
+    extract_codebook_index_fast_file_path = os.path.join(folder_path, 'extract_codebook_index_fast.cc')
 
     file_path_list = [normalize_input_file_path, quantize_input_file_path, dequantize_output_file_path, extract_codebook_index_fast_file_path]
     
@@ -729,13 +751,13 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
         'Indmax_DL_py_load_test_tflite[0:5]', 'Indmax_DL_py_load_test_tflite_mcu[0:5]'
     ]
 
-    output_csv = mcu_profiling_folder + 'profiling' + dummy + end_folder_Training_Size_dd_epochs + '_' + mcu_type['name'] + '.csv'
+    output_csv = os.path.join(mcu_profiling_folder, f"profiling{dummy}{end_folder_Training_Size_dd_epochs}_{mcu_type['name']}.csv")
 
     if dummy == '':
-        filename_Indmax_OPT_py_load_test = mcu_profiling_folder_outputdata + 'Indmax_OPT_py_load_test' + end_folder_Training_Size_dd_epochs + '.txt'
-        filename_Indmax_DL_py_load_test = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test' + end_folder_Training_Size_dd_epochs + '.txt'
-        filename_Indmax_DL_py_load_test_tflite = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test_tflite' + end_folder_Training_Size_dd_epochs + '.txt'
-        filename_Indmax_DL_py_load_test_tflite_mcu = mcu_profiling_folder_outputdata + 'Indmax_DL_py_load_test_tflite_mcu' + end_folder_Training_Size_dd_epochs + '.txt'
+        filename_Indmax_OPT_py_load_test = os.path.join(mcu_profiling_folder_outputdata, f"Indmax_OPT_py_load_test{end_folder_Training_Size_dd_epochs}.txt")
+        filename_Indmax_DL_py_load_test = os.path.join(mcu_profiling_folder_outputdata, f"Indmax_DL_py_load_test{end_folder_Training_Size_dd_epochs}.txt")
+        filename_Indmax_DL_py_load_test_tflite = os.path.join(mcu_profiling_folder_outputdata, f"Indmax_DL_py_load_test_tflite{end_folder_Training_Size_dd_epochs}.txt")
+        filename_Indmax_DL_py_load_test_tflite_mcu = os.path.join(mcu_profiling_folder_outputdata, f"Indmax_DL_py_load_test_tflite_mcu{end_folder_Training_Size_dd_epochs}.txt")
 
         codebook_lists = [Indmax_OPT_py_load_test, Indmax_DL_py_load_test, Indmax_DL_py_load_test_tflite, Indmax_DL_py_load_test_tflite_mcu]
         filenames = [filename_Indmax_OPT_py_load_test, filename_Indmax_DL_py_load_test, filename_Indmax_DL_py_load_test_tflite, filename_Indmax_DL_py_load_test_tflite_mcu]
@@ -897,8 +919,8 @@ def run_experiment(dummy, data_csv, x_sample,
         print(f"\nModello già allenato: {model_path_keras}")
         return
     
-    tensorboard_logs = os.path.join(tensorboard_dir, 'tensorboard_logs_' + model_type_load)
-    training_history_json = os.path.join(training_history_dir, 'training_history_' + model_type_load + '.json')
+    tensorboard_logs = os.path.join(tensorboard_dir, f"tensorboard_logs_{model_type_load}")
+    training_history_json = os.path.join(training_history_dir, f"training_history_{model_type_load}.json")
     
     # %%
     # Allena o carica modello pre-allenato
@@ -1001,7 +1023,7 @@ def run_experiment(dummy, data_csv, x_sample,
 
         i = 1 # TODO: must be 1
         #while i <= 4:
-        while i <= 2: # TODO: must be 2
+        while i <= 1: # TODO: must be 2
             # prima provi con modello in ram
             # poi provi con modello in flash
             if i == 1:
@@ -1017,63 +1039,34 @@ def run_experiment(dummy, data_csv, x_sample,
             if compile_and_upload_flag == 1:
                 print(f"\n*** Lancio pio run {i})... Segui gli avanzamenti qui: {compilation_logfile}")
                     
-                if mcu_type['name'] != 'pico':
-                    with open(compilation_logfile, "a", encoding="utf-8") as logfile:
+                with open(compilation_logfile, "w", encoding="utf-8") as logfile:
 
-                        process = subprocess.Popen(
-                            #["pio", "run", "--environment", mcu_type['name'], "--project-dir", mcu_folder],
-                            #["pio", "run", "--environment", mcu_type['name']+'', "--project-dir", mcu_folder, "--target", "upload"],
-                            #["pio", "run", "--environment", mcu_type['name']+'-o0', "--project-dir", mcu_folder, "--target", "upload"],
-                            #["pio", "run", "--environment", mcu_type['name']+'-o3', "--project-dir", mcu_folder, "--target", "upload"],
-                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallauto', "--project-dir", mcu_folder, "--target", "upload"],
-                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallforced', "--project-dir", mcu_folder, "--target", "upload"],
-                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallforced-selected', "--project-dir", mcu_folder, "--target", "upload"],
-                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unroll-selected', "--project-dir", mcu_folder, "--target", "upload"],
-                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm-espnn', "--project-dir", mcu_folder, "--target", "upload"],
-                            #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm', "--project-dir", mcu_folder, "--target", "upload"],
-                            #["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload", '-v'],
-                            ["pio", 
-                                "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload"],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1  # line-buffered
-                        )
+                    process = subprocess.Popen(
+                        #["pio", "run", "--environment", mcu_type['name'], "--project-dir", mcu_folder],
+                        #["pio", "run", "--environment", mcu_type['name']+'', "--project-dir", mcu_folder, "--target", "upload"],
+                        #["pio", "run", "--environment", mcu_type['name']+'-o0', "--project-dir", mcu_folder, "--target", "upload"],
+                        #["pio", "run", "--environment", mcu_type['name']+'-o3', "--project-dir", mcu_folder, "--target", "upload"],
+                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallauto', "--project-dir", mcu_folder, "--target", "upload"],
+                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollallforced', "--project-dir", mcu_folder, "--target", "upload"],
+                        #["pio", "run", "--evironment", mcu_type['name']+'-o3-unrollallforced-selected', "--project-dir", mcu_folder, "--target", "upload"],
+                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unroll-selected', "--project-dir", mcu_folder, "--target", "upload"],
+                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm-espnn', "--project-dir", mcu_folder, "--target", "upload"],
+                        #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm', "--project-dir", mcu_folder, "--target", "upload"],
+                        #["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload", '-v'],
+                        ["pio", 
+                            "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1  # line-buffered
+                    )
 
-                        for line in process.stdout:
-                            print(line, end="")       # scrive a terminale
-                            logfile.write(line)       # scrive sul file
-                            
-                        ret = process.wait() # <-- è bloccante: quando ritorna significa che pio è ritornato, cioè la programmazione è stata terminata
-                        print(f"[INFO] Process exited with code {ret}") 
-
-                else: # if mcu_type['name'] == 'pico': 
-                    # Per il pico bisogna che sia windows a programmarlo, mentre linux legge da seriale, 
-                    # ma bisogna gestire il controllo da wsl a windows e viceversa
-
-                    #compilation_logfile_windows = subprocess.check_output(["wslpath", "-w", compilation_logfile]).decode().strip()
-                    usbipd_command_filename = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/pico/usbipd_command.txt"
-                    usbipd_log_filename = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/pico/usbipd_log.txt"
-                    usbipd_error_filename = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/pico/usbipd_error.txt"
-                    usbipd_done_filename = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu/pico/usbipd_done.txt"
-
-                    if os.path.exists(usbipd_done_filename):
-                        os.remove(usbipd_done_filename)
-                    if os.path.exists(compilation_logfile):
-                        os.remove(compilation_logfile)
-                    if os.path.exists(usbipd_error_filename):
-                        os.remove(usbipd_error_filename)
-
-                    print("Run pio upload in Windows")
-                    cmd = f'upload {env_name} "{mcu_folder_windows}" {mcu_type['bus_id']}'
-                    print(cmd)
-                    subprocess.run(['bash', '-c', f'echo {cmd} > {usbipd_command_filename}'], text=True)
-                    print("Attendo completamento upload...")
-                    while not os.path.exists(usbipd_done_filename):
-                        time.sleep(1)
-                    os.system(f"cat {usbipd_log_filename}")
-                    os.system(f'cp "{usbipd_log_filename}" "{compilation_logfile}"')
-                    print("Upload completato!")
+                    for line in process.stdout:
+                        print(line, end="")       # scrive a terminale
+                        logfile.write(line)       # scrive sul file
+                    
+                    ret = process.wait() # <-- è bloccante: quando ritorna significa che pio è ritornato, cioè la programmazione è stata terminata
+                    print(f"[INFO] Process exited with code {ret}") 
 
             # Lancia il parser per recuperare RAM e ROM da compilation output
             # La Flash include non solo il modello perciò sarà maggiore di model_size_int8_mb
@@ -1184,14 +1177,14 @@ if __name__ == "__main__":
 
     start_time = time.time()
 
-    mcu_folder = pio_projects_folder + mcu_type['name']
+    mcu_folder = os.path.join(pio_projects_folder, mcu_type['name'])
     mcu_folder_windows = subprocess.check_output(["wslpath", "-w", mcu_folder]).decode().strip()
-    mcu_include_config = os.path.join(mcu_folder, 'include/config.h') 
+    mcu_include_config = os.path.join(mcu_folder, 'include', 'config.h') 
     #mcu_include_config = os.path.join(mcu_folder, 'lib/lib-luca/config.cc') 
-    mcu_lib_libluca_folder = os.path.join(mcu_folder, 'lib/lib-luca/') 
-    mcu_lib_model_folder = os.path.join(mcu_folder, 'lib/model/')
-    mcu_lib_model_folder_windows = subprocess.check_output(["wslpath", "-w", mcu_lib_model_folder]).decode().strip()
-    print(mcu_lib_model_folder_windows)
+    mcu_lib_libluca_folder = os.path.join(mcu_folder, 'lib', 'lib-luca') 
+    mcu_lib_model_folder = os.path.join(mcu_folder, 'lib', 'model')
+    if ISWINDOWS:
+        mcu_lib_model_folder = subprocess.check_output(["wslpath", "-w", mcu_lib_model_folder]).decode().strip()
 
     #if not os.path.exists(mcu_folder):  # Controlla se la cartella esiste
     #    os.makedirs(mcu_folder, exist_ok=True)  # Crea la cartella se non esiste
@@ -1219,8 +1212,8 @@ if __name__ == "__main__":
                 
         input_features = M_bar * K_DL * 2 #    8 celle attive x 64 subcarriers x 2 (real/img) = 1024
 
-        mean_array_filepath = mcu_profiling_folder_scaler + dummy + 'mean' + end_folder_Training_Size_dd + '.npy'                    
-        variance_array_filepath = mcu_profiling_folder_scaler + dummy + 'variance' + end_folder_Training_Size_dd + '.npy'
+        mean_array_filepath = os.path.join(mcu_profiling_folder_scaler, f"{dummy}mean{end_folder_Training_Size_dd}.npy")
+        variance_array_filepath = os.path.join(mcu_profiling_folder_scaler, f"{dummy}variance{end_folder_Training_Size_dd}.npy")
 
         print("\n---------------------------------------------------------\n")
 
@@ -1235,7 +1228,7 @@ if __name__ == "__main__":
             mean_array = np.random.rand(1, 1).astype(np.float32)
             #variance_array = np.random.rand(1, input_features).astype(np.float32)
 
-            data_csv = mcu_profiling_folder_test_data + dummy + 'data.npy'
+            data_csv = os.path.join(mcu_profiling_folder_test_data, f"{dummy}data.npy")
 
             np.save(data_csv, x_sample)
             np.save(mean_array_filepath, mean_array)
@@ -1247,7 +1240,7 @@ if __name__ == "__main__":
 
             x_sample = 0
             data_csv = 0
-            xtest_npy_filename = mcu_profiling_folder_test_data + 'test_set' + end_folder_Training_Size_dd + '.npy'
+            xtest_npy_filename = os.path.join(mcu_profiling_folder_test_data, f"test_set{end_folder_Training_Size_dd}.npy")
 
         for output_dim in output_dims:
 
