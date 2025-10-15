@@ -53,6 +53,13 @@ namespace
   constexpr int kTensorArenaSize = 32 * 1024; // con valori superiori a 114KB non va su ESP32, confronti fatti con 114KB
   uint8_t tensor_arena[kTensorArenaSize];
 } // namespace
+// Con namespace { ... } (anonymous namespace). Tutte le variabili e funzioni dichiarate dentro hanno linkage interno → sono visibili solo all’interno di quel file .cpp.
+// È l’equivalente C++ di usare static su variabili globali in C.
+// Senza namespace { ... } (variabili globali pure), Le variabili diventano globali con linkage esterno.
+// Se il codice è solo questo file .ino/.cpp → puoi rimuovere tranquillamente il namespace {} e risparmiare 2 righe senza effetti collaterali.
+// Se pensi di integrare in un progetto più grande (più file .cpp) → meglio lasciare il namespace {} per evitare conflitti futuri.
+
+
 
 /*
 static inline bool in_range(uintptr_t a, uintptr_t start, uintptr_t len)
@@ -293,7 +300,7 @@ void loop()
       int r = Serial.readBytes(chunk_buf + bytes_received, chunk_size_in_bytes - bytes_received);
       if (r <= 0) { 
         Serial.println("ERR timeout or no data yet");
-        Serial.println("Sono STM32-H7");
+        Serial.println("Sono ESP32");
         Serial.print("Overhead ESP [us]: ");
         Serial.println(overhead_esp);
         //Serial.print("mean_array[0]: ");
