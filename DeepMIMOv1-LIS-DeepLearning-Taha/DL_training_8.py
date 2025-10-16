@@ -179,7 +179,7 @@ save_files_flag_master_once = 1
 load_model_flag = 1
 predict_loaded_model_flag = load_model_flag # deve essere uguale a load_model_flag
 profiling_flag = 1
-compile_and_upload_flag = 0 # TODO: RIATTIVARE
+compile_and_upload_flag = 1 # TODO: RIATTIVARE
 
 chunk_size_max = 128
 #chunk_size_max = 1024
@@ -740,7 +740,8 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
                     #model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
                     RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
                     mean_norm, perc50_norm, perc95_norm, std_norm,
-                    mean_int8, perc50_int8, perc95_int8, std_int8,
+                    mean_quant, perc50_quant, perc95_quant, std_quant,
+                    mean_normquant, perc50_normquant, perc95_normquant, std_normquant,
                     mean_invoke, perc50_invoke, perc95_invoke, std_invoke,
                     mean_dequant, perc50_dequant, perc95_dequant, std_dequant,
                     mean_extract, perc50_extract, perc95_extract, std_extract,
@@ -767,7 +768,9 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
         # normalize_input
         'mean_norm', 'perc50_norm', 'perc95_norm', 'std_norm',
         # quantize_input
-        'mean_int8', 'perc50_int8', 'perc95_int8', 'std_int8',
+        'mean_quant', 'perc50_quant', 'perc95_quant', 'std_quant',
+        # normalize_and_quantize_input
+        'mean_normquant', 'perc50_normquant', 'perc95_normquant', 'std_normquant',
         # interpreter_invoke
         'mean_invoke', 'perc50_invoke', 'perc95_invoke', 'std_invoke',
         # dequantize_output
@@ -854,10 +857,16 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
             'std_norm': f"{std_norm:.3f}",
 
             # quantize_input
-            'mean_int8': f"{mean_int8:.3f}",
-            'perc50_int8': f"{perc50_int8:.3f}",
-            'perc95_int8': f"{perc95_int8:.3f}",
-            'std_int8': f"{std_int8:.3f}",
+            'mean_quant': f"{mean_quant:.3f}",
+            'perc50_quant': f"{perc50_quant:.3f}",
+            'perc95_quant': f"{perc95_quant:.3f}",
+            'std_quant': f"{std_quant:.3f}",
+
+            # normalize_and_quantize_input
+            'mean_normquant': f"{mean_normquant:.3f}",
+            'perc50_normquant': f"{perc50_normquant:.3f}",
+            'perc95_normquant': f"{perc95_normquant:.3f}",
+            'std_normquant': f"{std_normquant:.3f}",
 
             # interpreter_invoke
             'mean_invoke': f"{mean_invoke:.3f}",
@@ -1144,7 +1153,8 @@ def run_experiment(dummy, data_csv, x_sample,
                 start_time = time.time()
                 # Lancia serial feeded and logger per calcolare la latenza
                 mean_norm, perc50_norm, perc95_norm, std_norm, \
-                mean_int8, perc50_int8, perc95_int8, std_int8, \
+                mean_quant, perc50_quant, perc95_quant, std_quant, \
+                mean_normquant, perc50_normquant, perc95_normquant, std_normquant, \
                 mean_invoke, perc50_invoke, perc95_invoke, std_invoke, \
                 mean_dequant, perc50_dequant, perc95_dequant, std_dequant, \
                 mean_extract, perc50_extract, perc95_extract, std_extract, \
@@ -1178,10 +1188,14 @@ def run_experiment(dummy, data_csv, x_sample,
                 perc50_norm = 0
                 perc95_norm = 0
                 std_norm = 0                                            
-                mean_int8 = 0
-                perc50_int8 = 0
-                perc95_int8 = 0
-                std_int8 = 0                                      
+                mean_quant = 0
+                perc50_quant = 0
+                perc95_quant = 0
+                std_quant = 0
+                mean_normquant = 0
+                perc50_normquant = 0
+                perc95_normquant = 0
+                std_normquant = 0
                 mean_invoke = 0
                 perc50_invoke = 0
                 perc95_invoke = 0
@@ -1222,7 +1236,8 @@ def run_experiment(dummy, data_csv, x_sample,
                             #model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb,
                             RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, env_name,
                             mean_norm, perc50_norm, perc95_norm, std_norm,
-                            mean_int8, perc50_int8, perc95_int8, std_int8,
+                            mean_quant, perc50_quant, perc95_quant, std_quant,
+                            mean_normquant, perc50_normquant, perc95_normquant, std_normquant,
                             mean_invoke, perc50_invoke, perc95_invoke, std_invoke,
                             mean_dequant, perc50_dequant, perc95_dequant, std_dequant,
                             mean_extract, perc50_extract, perc95_extract, std_extract,

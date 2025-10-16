@@ -42,6 +42,7 @@ def main(dummy,
     # Liste per accumulare i tempi
     normalize_input_list = []
     quantize_input_list = []
+    normalize_and_quantize_input_list = []
     interpreter_invoke_list = []
     dequantize_output_list = []
     extract_codebook_index_time_list = []
@@ -127,6 +128,12 @@ def main(dummy,
                     #print("PYS: MATCH 2")
                     if idx > (warmup_samples_for_statistics - 1):
                         quantize_input_list.append(int(match.group(1)))
+                
+                match = re.match(r"normalize_and_quantize_input \[us\]: (\d+)", line)
+                if match:
+                    #print("PYS: MATCH 2b")
+                    if idx > (warmup_samples_for_statistics - 1):
+                        normalize_and_quantize_input_list.append(int(match.group(1)))
 
                 match = re.match(r"interpreter_invoke \[us\]: (\d+)", line)
                 if match:
@@ -156,7 +163,7 @@ def main(dummy,
 
                         # Quando si arriva all'ultima print da rilevare
                         tot_latency      = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + dequantize_output_list[-1] + extract_codebook_index_time_list[-1]
-                        tot_latency_fast = normalize_input_list[-1] + quantize_input_list[-1] + interpreter_invoke_list[-1] + extract_codebook_index_fast_time_list[-1]
+                        tot_latency_fast = normalize_and_quantize_input_list[-1] + interpreter_invoke_list[-1] + extract_codebook_index_fast_time_list[-1]
                         tot_latency_list.append(tot_latency)
                         tot_latency_fast_list.append(tot_latency_fast)
 
@@ -182,6 +189,7 @@ def main(dummy,
         #tot_latency_fast_us = avg_normalize_input_us +  avg_quantize_input_us +  avg_interpreter_invoke_us + avg_extract_codebook_index_fast_us
         mean_norm, perc50_norm, perc95_norm, std_norm                                                 = compute_stats(normalize_input_list)
         mean_quant, perc50_quant, perc95_quant, std_quant                                             = compute_stats(quantize_input_list)
+        mean_normquant, perc50_normquant, perc95_normquant, std_normquant                             = compute_stats(normalize_and_quantize_input_list)
         mean_invoke, perc50_invoke, perc95_invoke, std_invoke                                         = compute_stats(interpreter_invoke_list)
         mean_dequant, perc50_dequant, perc95_dequant, std_dequant                                     = compute_stats(dequantize_output_list)
         mean_extract, perc50_extract, perc95_extract, std_extract                                     = compute_stats(extract_codebook_index_time_list)
@@ -213,6 +221,10 @@ def main(dummy,
         perc50_quant = 0
         perc95_quant = 0
         std_quant = 0                                      
+        mean_normquant = 0
+        perc50_normquant = 0
+        perc95_normquant = 0
+        std_normquant = 0                                      
         mean_invoke = 0
         perc50_invoke = 0
         perc95_invoke = 0
@@ -243,6 +255,7 @@ def main(dummy,
     #return avg_normalize_input_us, avg_quantize_input_us, avg_interpreter_invoke_us, avg_dequantize_output_us, avg_extract_codebook_index_us, avg_extract_codebook_index_fast_us, tot_latency_us, tot_latency_fast_us, extract_codebook_index_list, Indmax_DL_py_load_test_tflite_mcu, Error
     return mean_norm, perc50_norm, perc95_norm, std_norm, \
            mean_quant, perc50_quant, perc95_quant, std_quant, \
+           mean_normquant, perc50_normquant, perc95_normquant, std_normquant, \
            mean_invoke, perc50_invoke, perc95_invoke, std_invoke, \
            mean_dequant, perc50_dequant, perc95_dequant, std_dequant, \
            mean_extract, perc50_extract, perc95_extract, std_extract, \

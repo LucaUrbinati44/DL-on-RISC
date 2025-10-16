@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#define DEBUG_QUANTIZE
 #define DEBUG_DEQUANTIZE
 
 #define BAUD_RATE 921600

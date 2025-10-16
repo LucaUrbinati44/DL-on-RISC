@@ -8,8 +8,10 @@
 #endif
 #include <extract_codebook_index_fast.h>
 
+#ifdef DEBUG_QUANTIZE
 #include <normalize_input.h>
 #include <quantize_input.h>
+#endif
 
 #include <tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h> // outputs debug information.
 // #include <tensorflow/lite/micro/micro_error_reporter.h>      // outputs debug information.
@@ -33,7 +35,7 @@ namespace
   TfLiteTensor *model_output = nullptr;
 
   // unsigned long overhead; // TODO: da togliere
-  unsigned long overhead_esp;
+  unsigned long overhead;
 
   float input_scale;
   int input_zero_point;
@@ -149,9 +151,9 @@ void setup()
 
   int64_t ta = micros();
   int64_t tb = micros();
-  overhead_esp = tb - ta;
+  overhead = tb - ta;
   Serial.print("Overhead ESP [us]: ");
-  Serial.println(overhead_esp);
+  Serial.println(overhead);
 
   // Set up logging. Google style is to avoid globals or statics because of
   // lifetime uncertainty, but since this has a trivial destructor it's okay.
@@ -269,12 +271,7 @@ void setup()
   // printModelAndActivationsPlacement();
 
   Serial.print("CPU Frequency: ");
-   // CPU Clock (F_CPU) → frequenza a cui gira il core ARM
   Serial.print(F_CPU / 1000000);
-  //Serial.print(" MHz, HCLK: ");
-  // HCLK → frequenza del bus AHB e accesso alla memoria (nel tuo caso 240 MHz)
-  // quindi la frequenza effettiva vista da RAM, DMA e periferiche principali
-  //Serial.print(HAL_RCC_GetHCLKFreq() / 1000000); 
   Serial.println(" MHz");
 }
 
@@ -355,18 +352,38 @@ void loop()
 
   // ------------------------------------------------------------------------
 
+#ifdef DEBUG_QUANTIZE
+  //int64_t ta = esp_timer_get_time();
   int64_t ta = micros();
   normalize_input(float_input, float_input_normalized);
   int64_t tb = micros();
   Serial.print("normalize_input [us]: ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 
   ta = micros();
   // quantize_input(float_input_normalized, input_scale, input_zero_point, model_input->data.int8);
   quantize_input(float_input_normalized, input_scale_inv, input_zero_point, model_input->data.int8);
   tb = micros();
   Serial.print("quantize_input [us]: ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
+#endif
+
+  int64_t ta = micros();
+  #ifdef ENABLE_UNROLL_NORMALIZE
+  #pragma GCC unroll 1024
+  #endif
+  for (int i = 0; i < INPUT_FEATURE_SIZE; ++i)
+  {    
+    int32_t q = static_cast<int32_t>(roundf((float_input[i] - MEAN) * input_scale_inv)) + input_zero_point;
+    if (q > 127)
+      q = 127;
+    if (q < -128)
+      q = -128;
+    model_input->data.int8[i] = static_cast<int8_t>(q);
+  }
+  int64_t tb = micros();
+  Serial.print("normalize_and_quantize_input [us]: ");
+  Serial.println(tb - ta - overhead);
 
   ta = micros();
   TfLiteStatus invoke_status = interpreter->Invoke();
@@ -385,7 +402,7 @@ void loop()
   dequantize_output(model_output->data.int8, output_scale, output_zero_point, dequantized_output);
   tb = micros();
   Serial.print("dequantize_output [us]: ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 
   ta = micros();
   int codebook_index = extract_codebook_index(dequantized_output);
@@ -393,7 +410,7 @@ void loop()
   Serial.print("extract_codebook_index [#] [us]: ");
   Serial.print(codebook_index);
   Serial.print(" ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 #endif
 
   ta = micros();
@@ -402,6 +419,6 @@ void loop()
   Serial.print("extract_codebook_index_fast [#] [us]: ");
   Serial.print(codebook_index_fast);
   Serial.print(" ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 
 }

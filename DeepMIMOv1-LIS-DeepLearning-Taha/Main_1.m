@@ -75,6 +75,7 @@ plot_test_only = 0;
 plot_threshold = 0;
 threshold      = 3; % [bps/Hz], only if plot_threshold == 1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
+% COPERTURA
 plot_figD = 0; % Richiede di impostare My_ar=[32 64]; Mz_ar=[32 64];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Settings condivise tra i vari plot
