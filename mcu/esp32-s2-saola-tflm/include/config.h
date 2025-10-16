@@ -4,9 +4,9 @@
 #define DEBUG_DEQUANTIZE
 
 #define BAUD_RATE 1500000
-#define CHUNK_SIZE_MAX 128
+#define CHUNK_SIZE_MAX 1024
 
 #define INPUT_FEATURE_SIZE 1024
 #define OUTPUT_FEATURE_SIZE 1024
 
-const float mean_array PROGMEM = -5.190452156966785e-06;
+const float mean_array = -5.190452156966785e-06;

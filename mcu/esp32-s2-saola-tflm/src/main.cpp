@@ -33,7 +33,7 @@ namespace
   TfLiteTensor *model_output = nullptr;
 
   // unsigned long overhead; // TODO: da togliere
-  unsigned long overhead_esp;
+  unsigned long overhead;
 
   float input_scale;
   int input_zero_point;
@@ -154,11 +154,11 @@ void setup()
   // Serial.print("Overhead [us]: ");
   // Serial.println(overhead);
 
-  int64_t ta = esp_timer_get_time();
-  int64_t tb = esp_timer_get_time();
-  overhead_esp = tb - ta;
+  int64_t ta = micros();
+  int64_t tb = micros();
+  overhead = tb - ta;
   Serial.print("Overhead ESP [us]: ");
-  Serial.println(overhead_esp);
+  Serial.println(overhead);
 
   // Set up logging. Google style is to avoid globals or statics because of
   // lifetime uncertainty, but since this has a trivial destructor it's okay.
@@ -302,7 +302,7 @@ void loop()
         Serial.println("ERR timeout or no data yet");
         Serial.println("Sono ESP32");
         Serial.print("Overhead ESP [us]: ");
-        Serial.println(overhead_esp);
+        Serial.println(overhead);
         //Serial.print("mean_array[0]: ");
         //Serial.println((double)mean_array[0], 22);
         Serial.print("mean_array: ");
@@ -357,24 +357,25 @@ void loop()
 
   // ------------------------------------------------------------------------
 
-  int64_t ta = esp_timer_get_time();
+  //int64_t ta = esp_timer_get_time();
+  int64_t ta = micros();
   normalize_input(float_input, float_input_normalized);
-  int64_t tb = esp_timer_get_time();
+  int64_t tb = micros();
   Serial.print("normalize_input [us]: ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 
-  ta = esp_timer_get_time();
+  ta = micros();
   // quantize_input(float_input_normalized, input_scale, input_zero_point, model_input->data.int8);
   quantize_input(float_input_normalized, input_scale_inv, input_zero_point, model_input->data.int8);
-  tb = esp_timer_get_time();
+  tb = micros();
   Serial.print("quantize_input [us]: ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 
-  ta = esp_timer_get_time();
+  ta = micros();
   TfLiteStatus invoke_status = interpreter->Invoke();
-  tb = esp_timer_get_time();
+  tb = micros();
   Serial.print("interpreter_invoke [us]: ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 
   if (invoke_status != kTfLiteOk) // The possible values of TfLiteStatus, defined in common.h, are kTfLiteOk and kTfLiteError
   {
@@ -383,27 +384,27 @@ void loop()
   }
 
 #ifdef DEBUG_DEQUANTIZE
-  ta = esp_timer_get_time();
+  ta = micros();
   dequantize_output(model_output->data.int8, output_scale, output_zero_point, dequantized_output);
-  tb = esp_timer_get_time();
+  tb = micros();
   Serial.print("dequantize_output [us]: ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 
-  ta = esp_timer_get_time();
+  ta = micros();
   int codebook_index = extract_codebook_index(dequantized_output);
-  tb = esp_timer_get_time();
+  tb = micros();
   Serial.print("extract_codebook_index [#] [us]: ");
   Serial.print(codebook_index);
   Serial.print(" ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 #endif
 
-  ta = esp_timer_get_time();
+  ta = micros();
   int codebook_index_fast = extract_codebook_index_fast(model_output->data.int8);
-  tb = esp_timer_get_time();
+  tb = micros();
   Serial.print("extract_codebook_index_fast [#] [us]: ");
   Serial.print(codebook_index_fast);
   Serial.print(" ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 
 }

@@ -20,8 +20,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Dense, Dropout, ReLU #, BatchNormalization
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.regularizers import l2
-# Load the LiteRT model and allocate tensors.
-from ai_edge_litert.interpreter import Interpreter # LiteRT (Lite Runtime) successore del runtime tflite_runtime
 
 import h5py
 import time
@@ -29,7 +27,13 @@ import time
 import math
 import json
 
+def is_windows():
+    return 1 if os.name == 'nt' else 0
+ISWINDOWS = is_windows()
 
+if not(ISWINDOWS):
+    # Load the LiteRT model and allocate tensors.
+    from ai_edge_litert.interpreter import Interpreter # LiteRT (Lite Runtime) successore del runtime tflite_runtime
 
 labels = [str(i) for i in range(1024)]
 num_classes = len(labels)
@@ -115,7 +119,7 @@ def model_predict(xdataset, Y_dataset,
 
     if test == 0 or test == 1 or test == 2:
         YPredicted = model_py.predict(x, verbose=1, batch_size=128)
-    else:
+    elif not(ISWINDOWS):
         ## Gets metadata from the model file.
         # Load scalers
         #mean_array_filepath = mcu_profiling_folder_scaler + 'mean' + end_folder_Training_Size_dd + '.npy'
@@ -222,6 +226,9 @@ def model_predict(xdataset, Y_dataset,
             #print(f"\ncodebook_index {i+1}: {np.argmax(output_deq[0])}\n")
 
         YPredicted = np.stack(output_float, axis=0)  # shape: (3100, 1024)
+    elif ISWINDOWS:
+        # IT IS FAKE BUT I NEED IT TO RUN THIS SCRIPT ON WINDOWS since litert is not available on Windows
+        YPredicted = model_py.predict(x, verbose=1, batch_size=128)
 
     #print(f'x.shape: {x.shape}')  # (3100, 1024)
     #print(f'YPredicted.shape: {YPredicted.shape}')
@@ -712,15 +719,20 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
                 #                                                  network_folder_out_RateDLpy, end_folder_Training_Size_dd_epochs, model_name_suffix,
                 #                                                  test=test, save_files=save_files_flag)
                 #save_files_flag = 0
-                test = 3 # Predict with TF-Lite Model
-                _, Indmax_DL_py_load_test_tflite, _, Rate_DL_py_load_test_tflite = model_predict(xdataset, Y_dataset, 
-                                                                                          xval, Y_val, 
-                                                                                          xtest, Y_test, 
-                                                                                          YValidation_un_val, YValidation_un_test, 
-                                                                                          tflite_int8_model, 
-                                                                                          network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_epochs, model_name_suffix,
-                                                                                          mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
-                                                                                          test=test, save_files=save_files_flag)
+                if not(ISWINDOWS):
+                    test = 3 # Predict with TF-Lite Model
+                    _, Indmax_DL_py_load_test_tflite, _, Rate_DL_py_load_test_tflite = model_predict(xdataset, Y_dataset, 
+                                                                                            xval, Y_val, 
+                                                                                            xtest, Y_test, 
+                                                                                            YValidation_un_val, YValidation_un_test, 
+                                                                                            tflite_int8_model, 
+                                                                                            network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_epochs, model_name_suffix,
+                                                                                            mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
+                                                                                            test=test, save_files=save_files_flag)
+                else:
+                    Indmax_DL_py_load_test_tflite = [0, 0, 0, 0, 0]
+                    Rate_DL_py_load_test_tflite = 0
+                    
                 #save_files_flag = 1
                 #test = 4 # Predict with TF-Lite Model with all dataset
                 #_, _, Rate_OPT_py_load_tflite, Rate_DL_py_load_tflite = model_predict(xdataset, Y_dataset, 
@@ -976,18 +988,22 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
             if convert_model_flag == 1:
                 tflite_int8_model = convert_model_to_tflite(model_py, xval, model_path_tflite, save_files_flag_master)
 
-                test = 3 # Predict with TF-Lite Model
-                _, Indmax_DL_py_test_tflite, _, Rate_DL_py_test_tflite = model_predict(xdataset, Y_dataset, 
-                                                                    xval, Y_val, 
-                                                                    xtest, Y_test, 
-                                                                    YValidation_un_val, YValidation_un_test, 
-                                                                    tflite_int8_model, 
-                                                                    network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs, model_name_suffix,
-                                                                    mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
-                                                                    test=test, save_files=save_files_flag)
+                if not(ISWINDOWS):
+                    test = 3 # Predict with TF-Lite Model
+                    _, Indmax_DL_py_test_tflite, _, Rate_DL_py_test_tflite = model_predict(xdataset, Y_dataset, 
+                                                                        xval, Y_val, 
+                                                                        xtest, Y_test, 
+                                                                        YValidation_un_val, YValidation_un_test, 
+                                                                        tflite_int8_model, 
+                                                                        network_folder_out_RateDLpy_TFLite, end_folder_Training_Size_dd_max_epochs, model_name_suffix,
+                                                                        mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
+                                                                        test=test, save_files=save_files_flag)
+                else:
+                    Indmax_DL_py_test_tflite = [0, 0, 0, 0, 0]
+                    Rate_DL_py_test_tflite = 0
                 
             else:
-                Indmax_DL_py_test_tflite = 0
+                Indmax_DL_py_test_tflite = [0, 0, 0, 0, 0]
                 Rate_DL_py_test_tflite = 0
 
         if Training_Size_dd >= 10000 or Training_Size_dd == 2:

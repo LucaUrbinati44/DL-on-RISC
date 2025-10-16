@@ -65,7 +65,7 @@ def main(dummy,
     print("x.shape:", x.shape)
 
     with serial.Serial(mcu_serial_port, baud_rate, timeout=10) as ser, \
-        open(mcu_profiling_logfile, 'w') as log:
+        open(mcu_profiling_logfile, 'w', encoding='utf-8') as log:
         print("Avviato logger + feeder su", mcu_serial_port)
 
         while True:

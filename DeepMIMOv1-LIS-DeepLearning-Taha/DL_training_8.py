@@ -16,6 +16,7 @@ import subprocess
 import signal
 import datetime
 import time
+import serial.tools.list_ports
 
 import serial_feeder_and_logger, DL_training_4_v3_test
 
@@ -105,20 +106,26 @@ else: # modello di Taha
 if ISWINDOWS:
     mcu_type = {'name': 'pico', 
                 #'port': '/dev/ttyACM0',
-                'port': 'COM4',
-                'baud_rate': 115200,
-                'bus_id': '4-2'}
-
-mcu_type = {'name': 'esp32-s2-saola-tflm', 
-            'port': '/dev/ttyUSB0',
-            'baud_rate': 1500000}
+                'serial_number': "458064E633287E4F",
+                'baud_rate': 115200}
+    
+    #mcu_type = {'name': 'esp32-s2-saola-tflm', 
+    #            'port': 'COM9',
+    #            'baud_rate': 1500000}
+else:    
+    mcu_type = {'name': 'esp32-s2-saola-tflm', 
+                #'port': '/dev/ttyUSB0',
+                'serial_number': "2017651D8BD2EB11B8CCC149E93FD3F1",
+                'baud_rate': 1500000}
 
 #mcu_type = {'name': 'nucleo-f446ze', 
-#            'port': '/dev/ttyACM1',
+#            #'port': '/dev/ttyACM1',
+#            'serial_number': "066FFF485570854967101750",
 #            'baud_rate': 921600}
 
 #mcu_type = {'name': 'nucleo-h753zi',
-#            'port': '/dev/ttyACM0',
+#            #'port': '/dev/ttyACM0',
+#            'serial_number': "0024002F3234510737333934",
 #            'baud_rate': 921600}
 
 # ------------------------------------------------------------------------------------------
@@ -186,7 +193,9 @@ chunk_size_max = 128
 
 base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
 if ISWINDOWS:
-    base_folder = subprocess.check_output(["wslpath", "-w", base_folder]).decode().strip()
+    #base_folder = subprocess.check_output(["wslpath", "-w", base_folder]).decode().strip()
+    base_folder = subprocess.check_output(["wsl", "wslpath", "-w", base_folder]).decode().strip()
+    print(base_folder)
 
 input_folder = os.path.join(base_folder, 'Output Matlab')
 
@@ -215,11 +224,15 @@ mcu_profiling_logfile = os.path.join(mcu_profiling_folder_logfile, f'log_{mcu_ty
 #pio_projects_folder = '/mnt/c/Users/Work/Documents/PlatformIO/Projects/'
 pio_projects_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu'
 if ISWINDOWS:
-    pio_projects_folder = subprocess.check_output(["wslpath", "-w", pio_projects_folder]).decode().strip()
+    #pio_projects_folder = subprocess.check_output(["wslpath", "-w", pio_projects_folder]).decode().strip()
+    pio_projects_folder = subprocess.check_output(["wsl", "wslpath", "-w", pio_projects_folder]).decode().strip()
+    print(pio_projects_folder)
 
-header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
-if ISWINDOWS:
-    header_folder = subprocess.check_output(["wslpath", "-w", header_folder]).decode().strip()
+#header_folder = 'tensorflow/lite/micro/examples/ml_on_risc/c_models'
+#if ISWINDOWS:
+#    #header_folder = subprocess.check_output(["wslpath", "-w", header_folder]).decode().strip()
+#    header_folder = subprocess.check_output(["wsl", "wslpath", "-w", header_folder]).decode().strip()
+#    print(header_folder)
 tensorboard_dir =  os.path.join(datetime_dir, "tensorboard_logs_test")
 training_history_dir = os.path.join(datetime_dir, "training_history")
 
@@ -240,7 +253,7 @@ folders = [
     mcu_profiling_folder_outputdata,
     mcu_profiling_folder_logfile,
     pio_projects_folder,
-    header_folder,
+    #header_folder,
     tensorboard_dir,
     training_history_dir
 ]
@@ -308,7 +321,7 @@ def convert_to_tflite_int8(model, x_sample, model_path_tflite):
     converter.inference_output_type = tf.int8
     tflite_int8_model = converter.convert()
 
-    with open(model_path_tflite, 'wb') as f:
+    with open(model_path_tflite, 'wb', encoding='utf-8') as f:
         f.write(tflite_int8_model)
 
 def get_model_paths(dummy, end_folder_Training_Size_dd, max_epochs, num_layers, R, input_features, hidden_units_list, output_dim):
@@ -353,34 +366,25 @@ def mse_custom(y_true, y_pred):
     # Media su tutto il batch
     loss = 0.5 * tf.reduce_mean(sum_squared_error)  # scalar
     return loss
-
-def bin_to_c_array(bin_path, out_path, var_name):
-    with open(bin_path, "rb") as f:
-        data = f.read()
-    with open(out_path, "w") as f:
-        f.write(f"const unsigned char {var_name}[] = {{\n")
-        for i, b in enumerate(data):
-            f.write(f"0x{b:02x},")
-            if (i+1) % 16 == 0:
-                f.write("\n")
-        f.write("\n};\n")
+  
         
 # ----- Export TF-Lite INT8 model to C for TFLM -----
-def export_to_c(model_type_load, model_path_tflite, mcu_type):
+def export_to_c(model_path_tflite):
     print('\n*** export_to_c')
 
     model_name = 'mlp'
-    header_path_relative = f"{model_name}_model_data.h"
-    header_path = os.path.join(mcu_lib_model_folder, header_path_relative)
-    source_path = os.path.join(mcu_lib_model_folder, f"{model_name}_model_data.cc")
+    model_name_lowercase = model_name.replace('/', '_').replace('.', '_').replace('-', '_')
+    model_name_model_data = f"{model_name_lowercase}_model_data"
+    header_path = os.path.join(mcu_lib_model_folder, f"{model_name_model_data}.h")
+    source_path = os.path.join(mcu_lib_model_folder, f"{model_name_model_data}.cc")
 
     #generate_header(header_path, model_name)
     guard = f"{model_name.upper()}_H_".replace(".", "_")
-    with open(header_path, "w") as f:
+    with open(header_path, "w", encoding='utf-8') as f:
         f.write(f"#ifndef {guard}\n")
         f.write(f"#define {guard}\n\n")
-        f.write(f"extern const uint8_t g_{model_name}_model_data[] PROGMEM;\n")
-        f.write(f"extern const unsigned int g_{model_name}_model_data_len;\n\n")
+        f.write(f"extern const uint8_t g_{model_name_model_data}[] PROGMEM;\n")
+        f.write(f"extern const unsigned int g_{model_name_model_data}_len;\n\n")
         f.write(f"#endif  // {guard}\n")
 
     #generate_source(source_path, model_path_tflite, model_name)
@@ -396,56 +400,69 @@ def export_to_c(model_type_load, model_path_tflite, mcu_type):
     """
     xxd_output_temp = os.path.join(mcu_lib_model_folder, f"xxd_output_temp.h")
 
-    # Usa xxd -i per creare il sorgente base
-    #with open(xxd_output_temp, "w") as cc:
-        #subprocess.run(["xxd", "-i", model_path_tflite], stdout=cc, check=True)
     if ISWINDOWS:
-        bin_to_c_array(model_path_tflite, xxd_output_temp, f"g_{model_name}_model_data")
+        with open(model_path_tflite, "rb") as f:
+            data = f.read()
+        print(data[0:300])
+        print(data[-300:-1])
+
+        # Effettua sostituzioni
+        with open(xxd_output_temp, "w", encoding='utf-8') as f:
+            f.write(f"#include <config.h>\n")
+            f.write(f"#include \"{header_path}\"\n")
+            f.write(f"alignas(8) const uint8_t g_{model_name_model_data}[] PROGMEM = {{\n")        
+            for i, b in enumerate(data):
+                f.write(f"0x{b:02x},")
+                if (i+1) % 16 == 0:
+                    f.write("\n")
+            f.write("\n};\n")
+            f.write(f"const unsigned int g_{model_name_model_data}_len = {i+1};")
     else:
         os.system("xxd -i " + model_path_tflite + " > " + xxd_output_temp)
 
-    # Leggi e modifica il contenuto
-    with open(xxd_output_temp, "r") as f:
-        content = f.read()
-    print(content[0:300])
-    print(content[-300:-1])
-    os.remove(xxd_output_temp)
+        # Leggi e modifica il contenuto
+        with open(xxd_output_temp, "r", encoding='utf-8') as f:
+            content = f.read()
+        print(content[0:300])
+        print(content[-300:-1])
 
-    # Sostituisci i nomi delle variabili
-    model_path_tflite_lowercase = model_path_tflite.replace('/', '_').replace('.', '_').replace('-', '_')
-    model_name_lowercase = model_name.replace('/', '_').replace('.', '_').replace('-', '_')
-    #var_name = "g_model_data" # default
-    var_name = model_name_lowercase # default
-    #print(model_path_tflite_lowercase)
-    first_line_old = f"unsigned char {model_path_tflite_lowercase}[] = {{"
-    # Aggiungi include dell'header
-    # PROGMEM serve per salvare il modello in Flash invece che in RAM
-    first_line_new = f"#include <config.h>\n#include \"{header_path_relative}\"\nalignas(8) const uint8_t g_{var_name}_model_data[] PROGMEM = {{"
-    last_line_old = f"unsigned int {model_path_tflite_lowercase}_len"
-    last_line_new = f"const unsigned int g_{model_name}_model_data_len"
-    content = content.replace(first_line_old, first_line_new)
-    content = content.replace(last_line_old, last_line_new)
-    print(content[0:300])
-    print(content[-300:-1])
+        # Effettua sostituzioni
+        model_path_tflite_lowercase = model_path_tflite.replace('/', '_').replace('.', '_').replace('-', '_')
+        #print(model_path_tflite_lowercase)
+        first_line_old = f"unsigned char {model_path_tflite_lowercase}[] = {{"
+        # Aggiungi include dell'header
+        # PROGMEM serve per salvare il modello in Flash invece che in RAM
+        first_line_new = f"#include <config.h>\n#include \"{f"{model_name_model_data}.h"}\"\nalignas(8) const uint8_t g_{model_name_model_data}[] PROGMEM = {{"
+        last_line_old = f"unsigned int {model_path_tflite_lowercase}_len"
+        last_line_new = f"const unsigned int g_{model_name_model_data}_len"
+        content = content.replace(first_line_old, first_line_new)
+        content = content.replace(last_line_old, last_line_new)
+        print(content[0:300])
+        print(content[-300:-1])
 
-    #print("Scrittura su:", source_path)
     try:
         os.remove(source_path)
-        print("File eliminato con successo")
+        print(f"File {source_path} eliminato con successo")
     except PermissionError:
         print("Errore permessi: file bloccato o senza permessi")
     except FileNotFoundError:
         print("File già inesistente")
     except Exception as e:
         print(f"Errore sconosciuto: {e}")
-    with open(source_path, "w") as f:
+    
+    with open(source_path, "w", encoding='utf-8') as f:
         #f.write(f'#include "{header_path.name}"\n\n')
         print("Scrivo contenuto modificato")
-        f.write(content)
+        if ISWINDOWS:
+            cmd = f'copy "{xxd_output_temp}" "{source_path}"'
+            os.system(cmd)
+        else:
+            f.write(content)
         f.flush()
         os.fsync(f.fileno())
 
-    #return model_name
+    os.remove(xxd_output_temp)
+    print(f"File {xxd_output_temp} eliminato con successo")
 
 # ----- Stima delle MAC operations e della dimensione del modello -----
 def get_model_info_precise(model, model_path_tflite, save_dir='./'):
@@ -574,8 +591,10 @@ def change_config_file_2(mcu_include_config, mean_array_filepath, variance_array
         content = f.read()
 
     # Versione con mean array e variance array
-    pattern_mean = re.compile(r"(const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
-    pattern_variance = re.compile(r"(const float variance_array_sqrt_inv\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    #pattern_mean = re.compile(r"(const float mean_array\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    #pattern_variance = re.compile(r"(const float variance_array_sqrt_inv\[INPUT_FEATURE_SIZE\] PROGMEM = \{)([\s\S]*?)(\};)")
+    pattern_mean = re.compile(r"(const float mean_array\[INPUT_FEATURE_SIZE\] = \{)([\s\S]*?)(\};)")
+    pattern_variance = re.compile(r"(const float variance_array_sqrt_inv\[INPUT_FEATURE_SIZE\] = \{)([\s\S]*?)(\};)")
      
     mean_array = np.load(mean_array_filepath)      
     array_str = ", ".join(f"{v}f" for v in mean_array)
@@ -597,7 +616,8 @@ def change_config_file_3(mcu_include_config, mean_array_filepath):
         content = f.read()
 
     # Versione con solo mean scalar
-    pattern_mean = re.compile(r"(const float mean_array PROGMEM = )([0-9eE\+\-\.]+)(;)")
+    #pattern_mean = re.compile(r"(const float mean_array PROGMEM = )([0-9eE\+\-\.]+)(;)")
+    pattern_mean = re.compile(r"(const float mean_array = )([0-9eE\+\-\.]+)(;)")
      
     mean_array = np.load(mean_array_filepath)
     content = re.sub(pattern_mean, rf"\g<1>{mean_array}\3", content)
@@ -694,6 +714,24 @@ def parse_compilation_logfile(file_path):
     return RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, Error_does_not_fit
 
 
+#def find_com_port_by_vid_pid(DEVICE_VID, DEVICE_PID):
+#    for port in serial.tools.list_ports.comports():
+#        if f"VID:PID={DEVICE_VID}:{DEVICE_PID}" in port.hwid:
+#            com_port = port.device
+#            print(f"Dispositivo trovato su {com_port}")
+#            return com_port
+#    print(f"Dispositivo VID:PID={DEVICE_VID}:{DEVICE_PID} non trovato!")
+#    return -1
+
+def find_com_port_by_serial_number(SERIAL_NUMBER):
+    for port in serial.tools.list_ports.comports():
+        if port.serial_number == SERIAL_NUMBER:
+            com_port = port.device
+            print(f"Dispositivo trovato su {com_port}")
+            return com_port
+    print(f"Dispositivo SERIAL_NUMBER={SERIAL_NUMBER} non trovato!")
+    return -1
+                    
 # ----- Salva risultati del profiling su file -----
 def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
                     Error_does_not_fit, Error_model_in_ram,
@@ -763,16 +801,26 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
         filenames = [filename_Indmax_OPT_py_load_test, filename_Indmax_DL_py_load_test, filename_Indmax_DL_py_load_test_tflite, filename_Indmax_DL_py_load_test_tflite_mcu]
 
         for filename, codebook_list in zip(filenames, codebook_lists):
-            with open(filename, 'w') as f:
+            with open(filename, 'w', encoding='utf-8') as f:
                 for codebook in codebook_list:
                     f.write(str(codebook) + "\n")
 
     write_header = not os.path.exists(output_csv)
 
-    with open(output_csv, 'a', newline='') as f:
+    with open(output_csv, 'a', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         if write_header:
             writer.writeheader()
+
+        try:
+            rate_dl_py_load_test_tflite_str = f"{Rate_DL_py_load_test_tflite.item():.6f}"
+        except Exception:
+            rate_dl_py_load_test_tflite_str = f"{Rate_DL_py_load_test_tflite:.6f}"
+
+        try:
+            Indmax_DL_py_load_test_tflite_str = Indmax_DL_py_load_test_tflite.tolist()[0:5], 
+        except Exception:
+            Indmax_DL_py_load_test_tflite_str = Indmax_DL_py_load_test_tflite[0:5], 
 
         row = {
             'timestamp': datetime.datetime.now().strftime("%d-%m-%y--%H:%M"),
@@ -850,13 +898,13 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
             'Rate_DL_py_load_val': f"{Rate_DL_py_load_val.item():.3f}", # serve per capire se c'è stato overfitting del modello sul test set
             'Rate_OPT_py_load_test': f"{Rate_OPT_py_load_test.item():.6f}",
             'Rate_DL_py_load_test': f"{Rate_DL_py_load_test.item():.6f}",
-            'Rate_DL_py_load_test_tflite': f"{Rate_DL_py_load_test_tflite.item():.6f}",
+            'Rate_DL_py_load_test_tflite': rate_dl_py_load_test_tflite_str,
             'Rate_DL_py_load_test_tflite_mcu': f"{Rate_DL_py_load_test_tflite_mcu:.6f}",
             
             # subset
             'Indmax_OPT_py_load_test[0:5]': Indmax_OPT_py_load_test.tolist()[0:5], 
             'Indmax_DL_py_load_test[0:5]': Indmax_DL_py_load_test.tolist()[0:5], 
-            'Indmax_DL_py_load_test_tflite[0:5]': Indmax_DL_py_load_test_tflite.tolist()[0:5], 
+            'Indmax_DL_py_load_test_tflite[0:5]': Indmax_DL_py_load_test_tflite_str,
             'Indmax_DL_py_load_test_tflite_mcu[0:5]': Indmax_DL_py_load_test_tflite_mcu[0:5]
         }
 
@@ -1006,7 +1054,7 @@ def run_experiment(dummy, data_csv, x_sample,
     # %%
     if profiling_flag == 1 and train_model_flag == 0:
         # Esporta il modello in formato header file per TFLM
-        export_to_c(model_type_load, model_path_tflite, mcu_type)
+        export_to_c(model_path_tflite)
         
         #if load_model_flag == 1:
         #    model_h_size_int8_kb, model_file_size_int8_kb, model_file_size_int8_mb = get_model_info_precise(model_py, model_path_tflite, save_dir=mcu_lib_model_folder)
@@ -1023,13 +1071,21 @@ def run_experiment(dummy, data_csv, x_sample,
 
         i = 1 # TODO: must be 1
         #while i <= 4:
-        while i <= 1: # TODO: must be 2
+        while i <= 2: # TODO: must be 2
             # prima provi con modello in ram
             # poi provi con modello in flash
             if i == 1:
+                #if ISWINDOWS:
+                #    env_name = mcu_type['name']+'-o3-windows'
+                #else:
+                #    env_name = mcu_type['name']+'-o3'
                 env_name = mcu_type['name']+'-o3'
             elif i == 2:
-                #env_name = mcu_type['name']+'-o3-unrollnorm'
+                #if ISWINDOWS:
+                #    env_name = mcu_type['name']+'-o3-modelinram-windows'
+                #else:
+                #    #env_name = mcu_type['name']+'-o3-modelinram'
+                #    env_name = mcu_type['name']+'-o3-modelinram'
                 env_name = mcu_type['name']+'-o3-modelinram'
             #elif i == 3:
             #    env_name = mcu_type['name']+'-o3-modelinram'
@@ -1038,6 +1094,10 @@ def run_experiment(dummy, data_csv, x_sample,
 
             if compile_and_upload_flag == 1:
                 print(f"\n*** Lancio pio run {i})... Segui gli avanzamenti qui: {compilation_logfile}")
+
+                com_port = find_com_port_by_serial_number(mcu_type['serial_number'])
+                if com_port == -1:
+                    return
                     
                 with open(compilation_logfile, "w", encoding="utf-8") as logfile:
 
@@ -1054,7 +1114,8 @@ def run_experiment(dummy, data_csv, x_sample,
                         #["pio", "run", "--environment", mcu_type['name']+'-o3-unrollnorm', "--project-dir", mcu_folder, "--target", "upload"],
                         #["pio", "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload", '-v'],
                         ["pio", 
-                            "run", "--environment", env_name, "--project-dir", mcu_folder, "--target", "upload"],
+                            "run", "--environment", env_name,  "--project-dir",  mcu_folder, "--target", "upload", 
+                                   "--upload-port", com_port,  "--monitor-port", com_port],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
                         text=True,
@@ -1074,6 +1135,12 @@ def run_experiment(dummy, data_csv, x_sample,
 
             if Error_does_not_fit == 0:
 
+                time.sleep(10)
+
+                com_port = find_com_port_by_serial_number(mcu_type['serial_number'])
+                if com_port == -1:
+                    return
+
                 start_time = time.time()
                 # Lancia serial feeded and logger per calcolare la latenza
                 mean_norm, perc50_norm, perc95_norm, std_norm, \
@@ -1085,7 +1152,7 @@ def run_experiment(dummy, data_csv, x_sample,
                 mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
                 mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
                 Indmax_DL_py_load_test_tflite_mcu, Rate_DL_py_load_test_tflite_mcu, Error_model_in_ram = serial_feeder_and_logger.main(dummy,
-                                                                                                                           mcu_type['port'], mcu_type['baud_rate'], chunk_size_max,
+                                                                                                                           com_port, mcu_type['baud_rate'], chunk_size_max,
                                                                                                                            data_csv, test_set_size, small_samples,
                                                                                                                            warmup_samples_for_statistics, 
                                                                                                                            YValidation_un_test, 
@@ -1178,13 +1245,10 @@ if __name__ == "__main__":
     start_time = time.time()
 
     mcu_folder = os.path.join(pio_projects_folder, mcu_type['name'])
-    mcu_folder_windows = subprocess.check_output(["wslpath", "-w", mcu_folder]).decode().strip()
     mcu_include_config = os.path.join(mcu_folder, 'include', 'config.h') 
     #mcu_include_config = os.path.join(mcu_folder, 'lib/lib-luca/config.cc') 
     mcu_lib_libluca_folder = os.path.join(mcu_folder, 'lib', 'lib-luca') 
     mcu_lib_model_folder = os.path.join(mcu_folder, 'lib', 'model')
-    if ISWINDOWS:
-        mcu_lib_model_folder = subprocess.check_output(["wslpath", "-w", mcu_lib_model_folder]).decode().strip()
 
     #if not os.path.exists(mcu_folder):  # Controlla se la cartella esiste
     #    os.makedirs(mcu_folder, exist_ok=True)  # Crea la cartella se non esiste

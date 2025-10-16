@@ -9,4 +9,4 @@
 #define INPUT_FEATURE_SIZE 1024
 #define OUTPUT_FEATURE_SIZE 1024
 
-const float mean_array PROGMEM = -5.190452156966785e-06;
+const float mean_array = -5.190452156966785e-06;
