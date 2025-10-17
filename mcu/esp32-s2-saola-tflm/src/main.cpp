@@ -147,6 +147,7 @@ void setup()
   // pinMode(LED_BUILTIN, OUTPUT);
   // digitalWrite(LED_BUILTIN, LOW);
   Serial.begin(BAUD_RATE);
+  Serial.setTimeout(10000);
   //delay(3000);
   while (!Serial); // Wait until someone opens the serial communication
 
@@ -159,7 +160,7 @@ void setup()
   int64_t ta = micros();
   int64_t tb = micros();
   overhead = tb - ta;
-  Serial.print("Overhead ESP [us]: ");
+  Serial.print("Overhead [us]: ");
   Serial.println(overhead);
 
   // Set up logging. Google style is to avoid globals or statics because of
@@ -299,6 +300,7 @@ void loop()
     // Il secondo argomento (chunk_size_in_bytes - bytes_received) è il numero di byte da leggere (quanti ne mancano per completare il chunk).
     uint32_t bytes_received = 0;
     while (bytes_received < chunk_size_in_bytes) {
+      while (Serial.available()) Serial.read(); // azzera il buffer seriale da residui
       int r = Serial.readBytes(chunk_buf + bytes_received, chunk_size_in_bytes - bytes_received);
       if (r <= 0) { 
         Serial.println("ERR timeout or no data yet");
@@ -323,8 +325,11 @@ void loop()
         Serial.print(getCpuFrequencyMhz());
         Serial.println(" MHz");
         Serial.println("NEXT");
+        Serial.flush();
+        delay(250);
         return;
       }
+      Serial.println("ACK");
       bytes_received += r;
     }
     
@@ -375,20 +380,28 @@ void loop()
   Serial.println(tb - ta - overhead);
 #endif
 
+#ifdef DEBUG_QUANTIZE
+  ta = micros();
+#else
   int64_t ta = micros();
+#endif
   #ifdef ENABLE_UNROLL_NORMALIZE
   #pragma GCC unroll 1024
   #endif
   for (int i = 0; i < INPUT_FEATURE_SIZE; ++i)
   {    
-    int32_t q = static_cast<int32_t>(roundf((float_input[i] - MEAN) * input_scale_inv)) + input_zero_point;
+    int32_t q = static_cast<int32_t>(roundf((float_input[i] - mean_array) * input_scale_inv)) + input_zero_point;
     if (q > 127)
       q = 127;
     if (q < -128)
       q = -128;
     model_input->data.int8[i] = static_cast<int8_t>(q);
   }
+#ifdef DEBUG_QUANTIZE
+  tb = micros();
+#else
   int64_t tb = micros();
+#endif
   Serial.print("normalize_and_quantize_input [us]: ");
   Serial.println(tb - ta - overhead);
 

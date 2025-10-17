@@ -23,57 +23,17 @@ Dependency Graph
 |-- model
 |-- tflite-micro
 Building in release mode
-Compiling .pio/build/nucleo-f446ze-o3-modelinram/src/main.cpp.o
-lib/tflite-micro/tensorflow/compiler/mlir/lite/core/api/error_reporter.h:37:11: optimized:  Inlining tflite::ErrorReporter::~ErrorReporter()/1896 into virtual tflite::ErrorReporter::~ErrorReporter()/1898.
-lib/tflite-micro/tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h:28:35: optimized:  Inlining tflite::ErrorReporter::~ErrorReporter()/1896 into tflite::MicroErrorReporter::~MicroErrorReporter()/1900.
-src/main.cpp:158:37: optimized:  Inlining tflite::MicroErrorReporter::~MicroErrorReporter()/1900 into void __tcf_0()/8315.
-lib/tflite-micro/tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h:28:35: optimized:  Inlining tflite::MicroErrorReporter::~MicroErrorReporter()/1900 into virtual tflite::MicroErrorReporter::~MicroErrorReporter()/1902.
-lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:50:9: optimized:  Inlining tflite::MicroOpResolver::~MicroOpResolver()/8140 into tflite::MicroMutableOpResolver<1>::~MicroMutableOpResolver()/22322.
-src/main.cpp:197:44: optimized:  Inlining tflite::MicroMutableOpResolver<1>::~MicroMutableOpResolver()/22322 into void __tcf_1()/8318.
-lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:50:9: optimized:  Inlining tflite::MicroMutableOpResolver<1>::~MicroMutableOpResolver()/22322 into virtual tflite::MicroMutableOpResolver<1>::~MicroMutableOpResolver()/22324.
-lib/tflite-micro/tensorflow/lite/micro/micro_op_resolver.h:50:31: optimized:  Inlining tflite::MicroOpResolver::~MicroOpResolver()/8140 into virtual tflite::MicroOpResolver::~MicroOpResolver()/8142.
-src/main.cpp:283:30: optimized:  Inlining constexpr const _Tp& std::min(const _Tp&, const _Tp&) [with _Tp = long unsigned int]/2341 into void loop()/8323.
-lib/tflite-micro/third_party/flatbuffers/base.h:437:22: optimized:  Inlining T flatbuffers::EndianScalar(T) [with T = long unsigned int]/8652 into T flatbuffers::ReadScalar(const void*) [with T = long unsigned int]/8699.
-lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:55:39: optimized:  Inlining constexpr tflite::MicroOpResolver::MicroOpResolver()/12254 into tflite::MicroMutableOpResolver<tOpCount>::MicroMutableOpResolver() [with unsigned int tOpCount = 1]/12257.
-lib/tflite-micro/third_party/flatbuffers/base.h:437:22: optimized:  Inlining T flatbuffers::EndianScalar(T) [with T = long int]/12429 into T flatbuffers::ReadScalar(const void*) [with T = long int]/8657.
-lib/tflite-micro/third_party/flatbuffers/table.h:30:41: optimized:  Inlining T flatbuffers::ReadScalar(const void*) [with T = long int]/8657 into const uint8_t* flatbuffers::Table::GetVTable() const/2415.
-lib/tflite-micro/third_party/flatbuffers/base.h:437:22: optimized:  Inlining T flatbuffers::EndianScalar(T) [with T = short unsigned int]/12430 into T flatbuffers::ReadScalar(const void*) [with T = short unsigned int]/8659.
-lib/tflite-micro/third_party/flatbuffers/table.h:42:50: optimized:  Inlining T flatbuffers::ReadScalar(const void*) [with T = short unsigned int]/8659 into flatbuffers::voffset_t flatbuffers::Table::GetOptionalFieldOffset(flatbuffers::voffset_t) const/2416.
-lib/tflite-micro/third_party/flatbuffers/table.h:39:40: optimized:  Inlining T flatbuffers::ReadScalar(const void*) [with T = short unsigned int]/8659 into flatbuffers::voffset_t flatbuffers::Table::GetOptionalFieldOffset(flatbuffers::voffset_t) const/2416.
-lib/tflite-micro/third_party/flatbuffers/table.h:37:28: optimized:  Inlining const uint8_t* flatbuffers::Table::GetVTable() const/2415 into flatbuffers::voffset_t flatbuffers::Table::GetOptionalFieldOffset(flatbuffers::voffset_t) const/2416.
-lib/tflite-micro/third_party/flatbuffers/table.h:47:40: optimized:  Inlining T flatbuffers::ReadScalar(const void*) [with T = long unsigned int]/8699 into T flatbuffers::Table::GetField(flatbuffers::voffset_t, T) const [with T = long unsigned int]/9038.
-lib/tflite-micro/third_party/flatbuffers/buffer.h:180:19: optimized:  Inlining T flatbuffers::EndianScalar(T) [with T = long unsigned int]/8652 into T* flatbuffers::GetMutableRoot(void*) [with T = tflite::Model]/15145.
-lib/tflite-micro/third_party/flatbuffers/buffer.h:177:14: optimized:  Inlining void flatbuffers::EndianCheck()/2340 into T* flatbuffers::GetMutableRoot(void*) [with T = tflite::Model]/15145.
-lib/tflite-micro/tensorflow/lite/schema/schema_generated.h:25246:47: optimized:  Inlining const T* flatbuffers::GetRoot(const void*) [with T = tflite::Model]/12205 into const tflite::Model* tflite::GetModel(const void*)/8089.
-src/main.cpp:197:44: optimized:  Inlining tflite::MicroMutableOpResolver<tOpCount>::MicroMutableOpResolver() [with unsigned int tOpCount = 1]/12257 into void setup()/8322.
-src/main.cpp:174:27: optimized:  Inlining const tflite::Model* tflite::GetModel(const void*)/8089 into void setup()/8322.
-src/main.cpp:142:11: optimized:  Inlining HardwareSerial::operator bool()/1882 into void setup()/8322.
-src/main.cpp:158:37: optimized: Semantic equality hit:void __tcf_0()/8315->void __tcf_1()/8318
-src/main.cpp:158:37: optimized: Assembler symbol names:__tcf_0/8315->__tcf_1/8318
-optimized:  Inlined void __tcf_0()/22870 into void __tcf_1()/8318 which now has time 2.000000 and size 3, net change of +0.
-optimized:  Inlined const TFLMRegistration* tflite::MicroMutableOpResolver<tOpCount>::FindOp(tflite::BuiltinOperator) const [with unsigned int tOpCount = 1]/22855 into const TFLMRegistration* tflite::MicroMutableOpResolver<tOpCount>::FindOp(tflite::BuiltinOperator) const [with unsigned int tOpCount = 1]/17132 which now has time 60.510528 and size 12, net change of +0.
-lib/tflite-micro/tensorflow/lite/schema/schema_generated.h:16808:30: optimized:  Inlined T flatbuffers::Table::GetField(flatbuffers::voffset_t, T) const [with T = long unsigned int]/9038 into uint32_t tflite::Model::version() const/5452 which now has time 18.000000 and size 11, net change of +0.
-/home/work_wsl/.platformio/packages/framework-arduinoststm32/cores/arduino/Stream.h:119:23: optimized: converting indirect call in size_t Stream::readBytes(uint8_t*, size_t)/1873 to direct call to virtual size_t Stream::readBytes(char*, size_t)/22854
-src/main.cpp:291:31: optimized:  Inlined size_t Stream::readBytes(uint8_t*, size_t)/1873 into void loop()/8323 which now has time 492.284238 and size 191, net change of +0.
-lib/tflite-micro/third_party/flatbuffers/table.h:46:47: optimized:  Inlined flatbuffers::voffset_t flatbuffers::Table::GetOptionalFieldOffset(flatbuffers::voffset_t) const/2416 into T flatbuffers::Table::GetField(flatbuffers::voffset_t, T) const [with T = long unsigned int]/9038 which now has time 11.500000 and size 11, net change of +0.
-optimized:  Inlined TfLiteStatus tflite::MicroMutableOpResolver<tOpCount>::AddBuiltin(tflite::BuiltinOperator, const TFLMRegistration&, tflite::TfLiteBridgeBuiltinParseFunction) [with unsigned int tOpCount = 1]/22867 into AddBuiltin.isra/22868 which now has time 42.360325 and size 43, net change of +0.
-src/main.cpp:140:15: optimized:  Inlined void HardwareSerial::begin(long unsigned int)/1877 into void setup()/8322 which now has time 266.205450 and size 266, net change of +0.
-lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:389:24: optimized:  Inlined AddBuiltin.isra/22868 into AddFullyConnected.isra/22869 which now has time 37.097179 and size 36, net change of +0.
-lib/tflite-micro/third_party/flatbuffers/buffer.h:189:27: optimized:  Inlined T* flatbuffers::GetMutableRoot(void*) [with T = tflite::Model]/15145 into void setup()/8322 which now has time 257.584849 and size 267, net change of +0.
-src/main.cpp:181:21: optimized:  Inlined uint32_t tflite::Model::version() const/5452 into void setup()/8322 which now has time 255.085850 and size 275, net change of +0.
-lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:815:17: optimized: converting indirect call in AddBuiltin.isra/22868 to direct call to const TFLMRegistration* tflite::MicroMutableOpResolver<tOpCount>::FindOp(tflite::BuiltinOperator) const [with unsigned int tOpCount = 1]/17132
-src/main.cpp:200:38: optimized:  Inlined AddFullyConnected.isra/22869 into void setup()/8322 which now has time 267.297059 and size 303, net change of +0.
-lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:91:34: optimized: loop with 1 iterations completely unrolled (header execution count 102576008)
-lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:57:29: optimized: loop with 1 iterations completely unrolled (header execution count 102576008)
-src/main.cpp:303:23: optimized: Loop 3 distributed: split to 0 loops and 1 library calls.
+Compiling .pio/build/nucleo-f446ze-o3-modelinram/lib7b1/model/mlp_model_data.cc.o
+Archiving .pio/build/nucleo-f446ze-o3-modelinram/lib7b1/libmodel.a
+Indexing .pio/build/nucleo-f446ze-o3-modelinram/lib7b1/libmodel.a
 Linking .pio/build/nucleo-f446ze-o3-modelinram/firmware.elf
 /home/work_wsl/.platformio/packages/toolchain-gccarmnoneeabi/bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/bin/ld: .pio/build/nucleo-f446ze-o3-modelinram/firmware.elf section `.rodata' will not fit in region `FLASH'
-/home/work_wsl/.platformio/packages/toolchain-gccarmnoneeabi/bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/bin/ld: region `FLASH' overflowed by 608888 bytes
+/home/work_wsl/.platformio/packages/toolchain-gccarmnoneeabi/bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/bin/ld: region `FLASH' overflowed by 601136 bytes
 collect2: error: ld returned 1 exit status
 *** [.pio/build/nucleo-f446ze-o3-modelinram/firmware.elf] Error 1
-========================= [FAILED] Took 54.80 seconds =========================
+========================= [FAILED] Took 55.69 seconds =========================
 
 Environment                  Status    Duration
 ---------------------------  --------  ------------
-nucleo-f446ze-o3-modelinram  FAILED    00:00:54.799
-==================== 1 failed, 0 succeeded in 00:00:54.799 ====================
+nucleo-f446ze-o3-modelinram  FAILED    00:00:55.685
+==================== 1 failed, 0 succeeded in 00:00:55.685 ====================

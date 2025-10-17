@@ -140,6 +140,7 @@ void setup()
   // pinMode(LED_BUILTIN, OUTPUT);
   // digitalWrite(LED_BUILTIN, LOW);
   Serial.begin(BAUD_RATE);
+  Serial.setTimeout(10000);
   //delay(3000);
   while (!Serial); // Wait until someone opens the serial communication
 
@@ -152,7 +153,7 @@ void setup()
   int64_t ta = micros();
   int64_t tb = micros();
   overhead = tb - ta;
-  Serial.print("Overhead ESP [us]: ");
+  Serial.print("Overhead [us]: ");
   Serial.println(overhead);
 
   // Set up logging. Google style is to avoid globals or statics because of
@@ -297,7 +298,7 @@ void loop()
         Serial.println("ERR timeout or no data yet");
         Serial.println("Sono STM32-F4");
         Serial.print("Overhead ESP [us]: ");
-        Serial.println(overhead_esp);
+        Serial.println(overhead);
         //Serial.print("mean_array[0]: ");
         //Serial.println((double)mean_array[0], 22);
         Serial.print("mean_array: ");
@@ -368,20 +369,28 @@ void loop()
   Serial.println(tb - ta - overhead);
 #endif
 
+#ifdef DEBUG_QUANTIZE
+  ta = micros();
+#else
   int64_t ta = micros();
+#endif
   #ifdef ENABLE_UNROLL_NORMALIZE
   #pragma GCC unroll 1024
   #endif
   for (int i = 0; i < INPUT_FEATURE_SIZE; ++i)
   {    
-    int32_t q = static_cast<int32_t>(roundf((float_input[i] - MEAN) * input_scale_inv)) + input_zero_point;
+    int32_t q = static_cast<int32_t>(roundf((float_input[i] - mean_array) * input_scale_inv)) + input_zero_point;
     if (q > 127)
       q = 127;
     if (q < -128)
       q = -128;
     model_input->data.int8[i] = static_cast<int8_t>(q);
   }
+#ifdef DEBUG_QUANTIZE
+  tb = micros();
+#else
   int64_t tb = micros();
+#endif
   Serial.print("normalize_and_quantize_input [us]: ");
   Serial.println(tb - ta - overhead);
 
@@ -389,7 +398,7 @@ void loop()
   TfLiteStatus invoke_status = interpreter->Invoke();
   tb = micros();
   Serial.print("interpreter_invoke [us]: ");
-  Serial.println(tb - ta - overhead_esp);
+  Serial.println(tb - ta - overhead);
 
   if (invoke_status != kTfLiteOk) // The possible values of TfLiteStatus, defined in common.h, are kTfLiteOk and kTfLiteError
   {

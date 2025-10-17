@@ -17,8 +17,19 @@ import signal
 import datetime
 import time
 import serial.tools.list_ports
+import argparse
 
 import serial_feeder_and_logger, DL_training_4_v3_test
+
+# Read mcu name from user
+parser = argparse.ArgumentParser()
+parser.add_argument('--mcu', type=str, default='pico', help='MCU name (pico, esp32, stm32f4, stm32h7)')
+args = parser.parse_args()
+mcu_name = args.mcu
+allowed_mcus = ['pico', 'esp32', 'stm32f4', 'stm32h7']
+if mcu_name not in allowed_mcus:
+    print(f"Errore: --mcu deve essere uno tra {allowed_mcus}.")
+    os._exit(1)
 
 def is_windows():
     return 1 if os.name == 'nt' else 0
@@ -62,13 +73,13 @@ Training_Size_dd = Training_Size[0]
 
 # ------------------------------------------------------------------------------------------
 
-debug = 2            # 0: production mode,  2: dummy mode
+debug = 1            # 0: production mode, 1: production mode for one case, 2: debug mode
 
 #dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
 dummy = ''
 
-test_set_size = 'small' # 'full' in prodcution
-#test_set_size = 'full'
+#test_set_size = 'small' # 'full' in prodcution
+test_set_size = 'full'
 
 if test_set_size == 'small':
     small_samples = 5 # even and greater than or equal to 2
@@ -95,38 +106,62 @@ elif debug == 2:
     num_layers_list = [0]
     #num_layers_list = [0,1]
     #num_layers_list = [2,3]
-    R_list = [32, 8, 1]
+    R_list = [32, 8, 1] # indifferente il valore di R se num_layers_list = [0]. Verrà eseguita una sola iterazione
 else: # modello di Taha
     #input_featuress = [1024]
     active_cells = [8]
     output_dims = [1024]
     num_layers_list = [3]
 
-# TODO
+# These boards must run on Windows
 if ISWINDOWS:
-    mcu_type = {'name': 'pico', 
-                #'port': '/dev/ttyACM0',
-                'serial_number': "458064E633287E4F",
-                'baud_rate': 115200}
+    if mcu_name == 'pico':
+        mcu_type = {'name': 'pico', 
+                    #'port': '/dev/ttyACM0',
+                    #'serial_number': "458064E633287E4F", # when using ArduinoCore-mbed
+                    'serial_number': "E66480454F7E2833", # when using earlephilhower/arduino-pico
+                    #'baud_rate': 9600}
+                    #'baud_rate': 115200}
+                    'baud_rate': 921600}
+    elif mcu_name == 'esp32':
+        mcu_type = {'name': 'esp32-s2-saola-tflm', 
+                    #'port': '/dev/ttyUSB0',
+                    'serial_number': "2017651D8BD2EB11B8CCC149E93FD3F1",
+                    'baud_rate': 921600}
+    else:
+        print("Run this board on Linux")
+        os._exit(1)
+
+    # Non riesce a scaricare le librerie per STM32 su Windows. Serve attach per lavorare su Linux
+    #mcu_type = {'name': 'nucleo-f446ze', 
+    #            #'port': '/dev/ttyACM1',
+    #            'serial_number': "066FFF485570854967101750",
+    #            'baud_rate': 921600}
+    #
+    #mcu_type = {'name': 'nucleo-h753zi',
+    #            #'port': '/dev/ttyACM0',
+    #            'serial_number': "0024002F3234510737333934",
+    #            'baud_rate': 921600}
+else: # These boards must run on Linux
     
-    #mcu_type = {'name': 'esp32-s2-saola-tflm', 
-    #            'port': 'COM9',
-    #            'baud_rate': 1500000}
-else:    
-    mcu_type = {'name': 'esp32-s2-saola-tflm', 
-                #'port': '/dev/ttyUSB0',
-                'serial_number': "2017651D8BD2EB11B8CCC149E93FD3F1",
-                'baud_rate': 1500000}
-
-#mcu_type = {'name': 'nucleo-f446ze', 
-#            #'port': '/dev/ttyACM1',
-#            'serial_number': "066FFF485570854967101750",
-#            'baud_rate': 921600}
-
-#mcu_type = {'name': 'nucleo-h753zi',
-#            #'port': '/dev/ttyACM0',
-#            'serial_number': "0024002F3234510737333934",
-#            'baud_rate': 921600}
+    if mcu_name == 'stm32f4':
+        mcu_type = {'name': 'nucleo-f446ze', 
+                    #'port': '/dev/ttyACM1',
+                    'serial_number': "066FFF485570854967101750",
+                    'baud_rate': 921600}
+    elif mcu_name == 'stm32h7':
+        mcu_type = {'name': 'nucleo-h753zi',
+                    #'port': '/dev/ttyACM0',
+                    'serial_number': "0024002F3234510737333934",
+                    'baud_rate': 921600}
+    #elif mcu_name == 'esp32':
+    #    mcu_type = {'name': 'esp32-s2-saola-tflm', 
+    #                #'port': '/dev/ttyUSB0',
+    #                'serial_number': "2017651D8BD2EB11B8CCC149E93FD3F1",
+    #                'baud_rate': 921600}
+    else: 
+        print("Run this board on Windows")
+        os._exit(1)
 
 # ------------------------------------------------------------------------------------------
 
@@ -181,8 +216,7 @@ predict_loaded_model_flag = load_model_flag # deve essere uguale a load_model_fl
 profiling_flag = 1
 compile_and_upload_flag = 1 # TODO: RIATTIVARE
 
-chunk_size_max = 128
-#chunk_size_max = 1024
+chunk_size_max = 1024
 
 # ------------------------------------------------------------------------------------------
 
@@ -1059,6 +1093,8 @@ def run_experiment(dummy, data_csv, x_sample,
                                             mcu_profiling_folder_test_data, mcu_profiling_folder_test_data_normalized, mcu_profiling_folder_scaler, 
                                             tensorboard_logs, training_history_json,
                                             save_files_flag_master, save_files_flag_master_once)
+
+        #model_py.summary()
             
     # %%
     if profiling_flag == 1 and train_model_flag == 0:
@@ -1162,7 +1198,7 @@ def run_experiment(dummy, data_csv, x_sample,
                 mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
                 mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
                 Indmax_DL_py_load_test_tflite_mcu, Rate_DL_py_load_test_tflite_mcu, Error_model_in_ram = serial_feeder_and_logger.main(dummy,
-                                                                                                                           com_port, mcu_type['baud_rate'], chunk_size_max,
+                                                                                                                           com_port, mcu_type, chunk_size_max,
                                                                                                                            data_csv, test_set_size, small_samples,
                                                                                                                            warmup_samples_for_statistics, 
                                                                                                                            YValidation_un_test, 
@@ -1311,7 +1347,7 @@ if __name__ == "__main__":
 
             np.save(data_csv, x_sample)
             np.save(mean_array_filepath, mean_array)
-            np.save(variance_array_filepath, variance_array)    
+            #np.save(variance_array_filepath, variance_array)    
 
             xtest_npy_filename = ''
         else:

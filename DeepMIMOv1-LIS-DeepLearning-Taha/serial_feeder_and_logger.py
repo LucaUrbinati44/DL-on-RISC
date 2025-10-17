@@ -31,7 +31,7 @@ def get_rate_from_codebook(codebook_index_list, YValidation_un_test):
 
 
 def main(dummy,
-         mcu_serial_port, baud_rate, chunk_size_max,
+         mcu_serial_port, mcu_type, chunk_size_max,
          data_csv, test_set_size,
          small_samples, warmup_samples_for_statistics, 
          YValidation_un_test, 
@@ -51,6 +51,10 @@ def main(dummy,
     tot_latency_list = []
     tot_latency_fast_list = []
     Error_model_in_ram = 0
+    #inter_chunk_delay = 0.005     # 5 ms (aumentare se necessario)
+    inter_chunk_delay = 0.002     # 2 ms (aumentare se necessario)
+
+    baud_rate = mcu_type['baud_rate']
 
     if dummy == 'dummy_':
         xtest = np.load(data_csv)
@@ -105,6 +109,21 @@ def main(dummy,
                 ser.flush()
                 features_sent += chunk_size
                 print(f"PYS: Inviate {features_sent}/{total_features} features ({features_sent/total_features*100}%)")
+                
+                # piccolo delay per non saturare USB
+                if mcu_type['name'] == 'pico' or mcu_type['name'] == 'esp32-s2-saola-tflm':
+                    time.sleep(inter_chunk_delay)
+
+                    # Attendi ACK dal MCU prima di continuare
+                    while True:
+                        line = ser.readline().decode('utf-8', errors='ignore').strip()
+                        log.write(f"{line}\n")
+                        #print(f"MCU: {line}")
+                        if line == "ACK":
+                            break
+                        else:
+                            #print("PSY: Waiting ACK from MCU")
+                            time.sleep(inter_chunk_delay)
 
             while True: # Leggi output MCU
 
@@ -174,6 +193,10 @@ def main(dummy,
                 if LOOP_PATTERN.search(line):
                     Error_model_in_ram = 1
                     break # Esci dal while
+
+                if line == "STOP":
+                    Error_model_in_ram = 1
+                    break # Esci dal while  
 
             if Error_model_in_ram == 1:
                 break # Esci dal for

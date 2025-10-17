@@ -58,11 +58,19 @@ mcu/esp32-s2-saola-blink/no
 mcu/esp32-s2-saola-tflm/.pio
 mcu/esp32-s2-saola-tflm/.vscode
 mcu/esp32-s2-saola-tflm/lib/model
-mcu/esp32-s2-saola-tflm/no
 
-mcu/rp2040_windows/.pio
-mcu/rp2040_windows/.vscode
-mcu/rp2040_windows/lib/model
-mcu/rp2040_windows/no
+mcu/nucleo-f446ze/.pio
+mcu/nucleo-f446ze/.vscode
+mcu/nucleo-f446ze/lib/model
 
-logs
+mcu/nucleo-h753zi/.pio
+mcu/nucleo-h753zi/.vscode
+mcu/nucleo-h753zi/lib/model
+
+mcu/pico/.pio
+mcu/pico/.vscode
+mcu/pico/lib/model
+
+mcu/stm32-test/.pio
+mcu/stm32-test/.vscode
+mcu/stm32-test/lib/model
