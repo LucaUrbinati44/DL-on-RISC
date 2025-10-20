@@ -73,7 +73,7 @@ Training_Size_dd = Training_Size[0]
 
 # ------------------------------------------------------------------------------------------
 
-debug = 1            # 0: production mode, 1: production mode for one case, 2: debug mode
+debug = 2            # 0: production mode, 1: production mode for one case, 2: debug mode
 
 #dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
 dummy = ''
@@ -103,10 +103,8 @@ elif debug == 1: # (9x9+1)x2 x 8min ciascuno = 2.67h
 elif debug == 2:
     active_cells = [8]
     output_dims = [My*Mz]
-    num_layers_list = [0]
-    #num_layers_list = [0,1]
-    #num_layers_list = [2,3]
-    R_list = [32, 8, 1] # indifferente il valore di R se num_layers_list = [0]. Verrà eseguita una sola iterazione
+    num_layers_list = [1,2,3]
+    R_list = [1] # indifferente il valore di R se num_layers_list = [0]. Verrà eseguita una sola iterazione
 else: # modello di Taha
     #input_featuress = [1024]
     active_cells = [8]
@@ -118,16 +116,16 @@ if ISWINDOWS:
     if mcu_name == 'pico':
         mcu_type = {'name': 'pico', 
                     #'port': '/dev/ttyACM0',
-                    #'serial_number': "458064E633287E4F", # when using ArduinoCore-mbed
                     'serial_number': "E66480454F7E2833", # when using earlephilhower/arduino-pico
+                    'serial_number_2': "458064E633287E4F", # when using ArduinoCore-mbed
                     #'baud_rate': 9600}
                     #'baud_rate': 115200}
-                    'baud_rate': 921600}
+                    'baud_rate': 115200}
     elif mcu_name == 'esp32':
         mcu_type = {'name': 'esp32-s2-saola-tflm', 
                     #'port': '/dev/ttyUSB0',
                     'serial_number': "2017651D8BD2EB11B8CCC149E93FD3F1",
-                    'baud_rate': 921600}
+                    'baud_rate': 115200}
     else:
         print("Run this board on Linux")
         os._exit(1)
@@ -758,13 +756,14 @@ def parse_compilation_logfile(file_path):
 #    return -1
 
 def find_com_port_by_serial_number(SERIAL_NUMBER):
-    for port in serial.tools.list_ports.comports():
-        if port.serial_number == SERIAL_NUMBER:
-            com_port = port.device
-            print(f"Dispositivo trovato su {com_port}")
-            return com_port
-    print(f"Dispositivo SERIAL_NUMBER={SERIAL_NUMBER} non trovato!")
-    return -1
+    while True:
+        for port in serial.tools.list_ports.comports():
+            if port.serial_number == SERIAL_NUMBER or (mcu_name == 'pico' and port.serial_number == mcu_type['serial_number_2']):
+                com_port = port.device
+                print(f"Dispositivo trovato su {com_port}")
+                return com_port
+        print(f"Dispositivo SERIAL_NUMBER={SERIAL_NUMBER} non trovato!")
+        time.sleep(10)
                     
 # ----- Salva risultati del profiling su file -----
 def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,

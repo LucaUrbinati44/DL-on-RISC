@@ -52,7 +52,7 @@ def main(dummy,
     tot_latency_fast_list = []
     Error_model_in_ram = 0
     #inter_chunk_delay = 0.005     # 5 ms (aumentare se necessario)
-    inter_chunk_delay = 0.002     # 2 ms (aumentare se necessario)
+    inter_chunk_delay = 0.100     # 10 ms (aumentare se necessario)
 
     baud_rate = mcu_type['baud_rate']
 

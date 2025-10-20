@@ -19,6 +19,35 @@ import os
 import textwrap  # Per andare a capo nelle legende lunghe
 import re
 
+def is_windows():
+    return 1 if os.name == 'nt' else 0
+ISWINDOWS = is_windows()
+
+base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
+if ISWINDOWS:
+    #base_folder = subprocess.check_output(["wslpath", "-w", base_folder]).decode().strip()
+    base_folder = subprocess.check_output(["wsl", "wslpath", "-w", base_folder]).decode().strip()
+    print(base_folder)
+output_folder = os.path.join(base_folder, 'Output_Python')
+mcu_profiling_folder = os.path.join(output_folder, 'Profiling_Search_MCU')
+
+files_example = [
+    # Inserire i CSV qui
+    os.path.join(mcu_profiling_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_esp32-s2-saola-tflm.csv"),
+    #os.path.join(mcu_profiling_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_nucleo-h753zi.csv"),
+    os.path.join(mcu_profiling_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_nucleo-h753zi_fake.csv"),
+    os.path.join(mcu_profiling_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_fake_esp32-s2-saola-tflm.csv"),
+    os.path.join(mcu_profiling_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_fake2_esp32-s2-saola-tflm.csv"),
+]
+
+files = [
+    # Inserire i CSV qui
+    os.path.join(mcu_profiling_folder, "profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_pico.csv"),
+    os.path.join(mcu_profiling_folder, "profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_esp32-s2-saola-tflm.csv"),
+    os.path.join(mcu_profiling_folder, "profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_nucleo-f446ze.csv"),
+    os.path.join(mcu_profiling_folder, "profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_nucleo-h753zi.csv"),
+]
+
 # Imposta font size per ogni elemento del grafico
 SMALL_SIZE = 12
 MEDIUM_SIZE = 14
@@ -264,15 +293,8 @@ def plot_pareto_scatter(files, output_png, zoom=False):
 # Main
 # -----------------------------
 if __name__ == "__main__":
-    files = [
-        # Inserire i CSV qui
-        "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_esp32-s2-saola-tflm.csv",
-        #"ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_nucleo-h753zi.csv",
-        "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_nucleo-h753zi_fake.csv",
-        "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_fake_esp32-s2-saola-tflm.csv",
-        "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_fake2_esp32-s2-saola-tflm.csv"
-    ]
+
     # Plot completo
     plot_pareto_scatter(files, "pareto_plot_full.png", zoom=False)
     # Plot zoom sul fronte Pareto
-    plot_pareto_scatter(files, "pareto_plot_zoom.png", zoom=True)
+    #plot_pareto_scatter(files, "pareto_plot_zoom.png", zoom=True)
