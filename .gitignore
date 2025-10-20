@@ -84,3 +84,4 @@ mcu/stm32-test/lib/model/mlp_model_data.h
 *.ps1
 *.pyc
 *.png
+compilation*.txt

@@ -73,7 +73,7 @@ Training_Size_dd = Training_Size[0]
 
 # ------------------------------------------------------------------------------------------
 
-debug = 2            # 0: production mode, 1: production mode for one case, 2: debug mode
+debug = 1            # 0: production mode, 1: production mode for one case, 2: debug mode
 
 #dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
 dummy = ''
@@ -103,8 +103,9 @@ elif debug == 1: # (9x9+1)x2 x 8min ciascuno = 2.67h
 elif debug == 2:
     active_cells = [8]
     output_dims = [My*Mz]
-    num_layers_list = [1,2,3]
-    R_list = [1] # indifferente il valore di R se num_layers_list = [0]. Verrà eseguita una sola iterazione
+    num_layers_list = [2,3]
+    #num_layers_list = [1]
+    R_list = [32] # indifferente il valore di R se num_layers_list = [0]. Verrà eseguita una sola iterazione
 else: # modello di Taha
     #input_featuress = [1024]
     active_cells = [8]
@@ -688,7 +689,9 @@ def parse_compilation_logfile(file_path):
     #no_overflow = re.compile(r'^\s*(RAM|Flash):.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
     ram_pattern = re.compile(r'^\s*RAM:.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
     flash_pattern = re.compile(r'^\s*Flash:.*?used\s+(\d+)\s+bytes', re.IGNORECASE)
-    hardware_pattern = re.compile(r"HARDWARE:\s+\S+\s+(\d+)MHz,\s+(\d+)KB RAM,\s+(\d+)MB Flash", re.IGNORECASE)
+    hardware_pattern_MB = re.compile(r"HARDWARE:\s+\S+\s+(\d+)MHz,\s+(\d+)KB RAM,\s+(\d+)MB Flash", re.IGNORECASE)
+    hardware_pattern_KB = re.compile(r"HARDWARE:\s+\S+\s+(\d+)MHz,\s+(\d+)KB RAM,\s+(\d+)KB Flash", re.IGNORECASE)
+
     #error_pattern = re.compile(r"\berror\b", re.IGNORECASE)
     error_pattern = re.compile(r"\bError+\s\b")
 
@@ -715,12 +718,19 @@ def parse_compilation_logfile(file_path):
                 bytes_used = int(match.group(1))
                 Flash_MB = bytes_used /1024 /1024
             
-            match = hardware_pattern.search(line)
+            match = hardware_pattern_MB.search(line)
             if match:
                 #print("match hardware")
                 CLK_FREQ_MHZ = int(match.group(1))
                 RAM_HW_KB = int(match.group(2))
                 Flash_HW_MB = int(match.group(3))
+
+            match = hardware_pattern_KB.search(line)
+            if match:
+                #print("match hardware")
+                CLK_FREQ_MHZ = int(match.group(1))
+                RAM_HW_KB = int(match.group(2))
+                Flash_HW_MB = int(match.group(3))/1024
 
             # Cerca overflow RAM
             match = overflow_ram.search(line)
@@ -1300,8 +1310,21 @@ if __name__ == "__main__":
     mcu_lib_libluca_folder = os.path.join(mcu_folder, 'lib', 'lib-luca') 
     mcu_lib_model_folder = os.path.join(mcu_folder, 'lib', 'model')
 
-    #if not os.path.exists(mcu_folder):  # Controlla se la cartella esiste
-    #    os.makedirs(mcu_folder, exist_ok=True)  # Crea la cartella se non esiste
+    folders = [
+    mcu_folder,
+    mcu_lib_libluca_folder,
+    mcu_lib_model_folder
+    ]
+
+    for folder in folders:
+        if not os.path.exists(folder):  # Controlla se la cartella esiste
+            os.makedirs(folder, exist_ok=True)  # Crea la cartella se non esiste
+            print(f"\nCartella creata: {folder}")
+        else:
+            print(f"La cartella esiste già: {folder}")
+
+    #if not os.path.exists(mcu_lib_model_folder):  # Controlla se la cartella esiste
+    #    os.makedirs(mcu_lib_model_folder, exist_ok=True)  # Crea la cartella se non esiste
     #    os.system('pio project init --project-dir ' + mcu_folder + ' --board ' + mcu_type['name'] + ' --ide arduino' + \
     #              ' --project-option="upload_protocol = esptool" ' \
     #              '--project-option="upload_port = /dev/ttyUSB0" ' \

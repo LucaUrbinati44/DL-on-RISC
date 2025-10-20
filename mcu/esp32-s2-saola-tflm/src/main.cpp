@@ -150,6 +150,7 @@ void setup()
   Serial.setTimeout(10000);
   //delay(3000);
   while (!Serial); // Wait until someone opens the serial communication
+  Serial.println("Boot OK");
 
   // unsigned long t0 = micros();
   // unsigned long t1 = micros();
@@ -268,11 +269,11 @@ void setup()
   Serial.print("input_scale: ");
   Serial.println((double)input_scale, 22);
   Serial.print("input_zero_point: ");
-  Serial.println((double)input_zero_point, 22);
+  Serial.println(input_zero_point, 22);
   Serial.print("output_scale: ");
   Serial.println((double)output_scale, 22);
   Serial.print("output_zero_point: ");
-  Serial.println((double)output_zero_point, 22);
+  Serial.println(output_zero_point, 22);
 
   input_scale_inv = 1.0f / input_scale;
 
@@ -329,8 +330,10 @@ void loop()
         delay(1000);
         return;
       }
-      Serial.println("ACK");
       bytes_received += r;
+      if (bytes_received < chunk_size_in_bytes) {
+        Serial.println("ACK");
+      }
     }
     
     // Ora chunk_buf contiene `chunk_size` float (little-endian)

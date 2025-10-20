@@ -73,6 +73,11 @@ def main(dummy,
         open(mcu_profiling_logfile, 'w', encoding='utf-8') as log:
         print("Avviato logger + feeder su", mcu_serial_port)
 
+        time.sleep(5)
+        stop_count = 0  # Conta i segnali STOP ignorati
+        next_count = 0
+
+        next_received = False
         while True:
             line = ser.readline().decode('utf-8', errors='ignore').strip()
             if not line:
@@ -80,13 +85,25 @@ def main(dummy,
             
             print(f"MCU: {line}")
             log.write(f"{line}\n") # Scrivere su log
-            if line == "NEXT":
+            if line == "Boot OK":
+                next_received = True
+            elif next_received == True and line == "NEXT":
                 time.sleep(10) # Tempo da lasciare per far preparare l'MCU a leggere dalla seriale
+                next_received = False
                 break
-            
-            if line == "STOP":
+            elif next_received == False and line == "NEXT":
+                next_count += 1
+                if next_count <= 20: # avanza comunque anche senza boot
+                    break
+            elif line == "STOP":
+                stop_count += 1
+                next_received = False
+                if stop_count <= 20:
+                    print(f"Ignorato STOP numero {stop_count}")
+                    continue
                 Error_model_in_ram = 1
                 break # Esci dal while    
+
 
         for idx, sample in enumerate(x):
 

@@ -143,6 +143,7 @@ void setup()
   Serial.setTimeout(10000);
   //delay(3000);
   while (!Serial); // Wait until someone opens the serial communication
+  Serial.println("Boot OK");
 
   // unsigned long t0 = micros();
   // unsigned long t1 = micros();
@@ -261,11 +262,11 @@ void setup()
   Serial.print("input_scale: ");
   Serial.println((double)input_scale, 22);
   Serial.print("input_zero_point: ");
-  Serial.println((double)input_zero_point, 22);
+  Serial.println(input_zero_point, 22);
   Serial.print("output_scale: ");
   Serial.println((double)output_scale, 22);
   Serial.print("output_zero_point: ");
-  Serial.println((double)output_zero_point, 22);
+  Serial.println(output_zero_point, 22);
 
   input_scale_inv = 1.0f / input_scale;
 
@@ -293,33 +294,39 @@ void loop()
     // Il secondo argomento (chunk_size_in_bytes - bytes_received) è il numero di byte da leggere (quanti ne mancano per completare il chunk).
     uint32_t bytes_received = 0;
     while (bytes_received < chunk_size_in_bytes) {
+      while (Serial.available()) Serial.read(); // azzera il buffer seriale da residui
       int r = Serial.readBytes(chunk_buf + bytes_received, chunk_size_in_bytes - bytes_received);
       if (r <= 0) { 
-        Serial.println("ERR timeout or no data yet");
+        //Serial.println("ERR timeout or no data yet");
         Serial.println("Sono STM32-H7");
-        Serial.print("Overhead ESP [us]: ");
-        Serial.println(overhead);
-        //Serial.print("mean_array[0]: ");
-        //Serial.println((double)mean_array[0], 22);
-        Serial.print("mean_array: ");
-        Serial.println((double)mean_array, 22);
-        //Serial.print("variance_array_sqrt_inv[0]: ");
-        //Serial.println((double)variance_array_sqrt_inv[0], 22);
-        Serial.print("input_scale: ");
-        Serial.println((double)input_scale, 22);
-        Serial.print("input_zero_point: ");
-        Serial.println((double)input_zero_point, 22);
-        //Serial.print("output_scale: ");
-        //Serial.println((double)output_scale, 22);
-        //Serial.print("output_zero_point: ");
-        //Serial.println((double)output_zero_point, 22);
-        Serial.print("CPU Frequency: ");
-        Serial.print(F_CPU / 1000000);
-        Serial.println(" MHz");
+        //Serial.print("Overhead ESP [us]: ");
+        //Serial.println(overhead);
+        ////Serial.print("mean_array[0]: ");
+        ////Serial.println((double)mean_array[0], 22);
+        //Serial.print("mean_array: ");
+        //Serial.println((double)mean_array, 22);
+        ////Serial.print("variance_array_sqrt_inv[0]: ");
+        ////Serial.println((double)variance_array_sqrt_inv[0], 22);
+        //Serial.print("input_scale: ");
+        //Serial.println((double)input_scale, 22);
+        //Serial.print("input_zero_point: ");
+        //Serial.println((double)input_zero_point, 22);
+        ////Serial.print("output_scale: ");
+        ////Serial.println((double)output_scale, 22);
+        ////Serial.print("output_zero_point: ");
+        ////Serial.println((double)output_zero_point, 22);
+        //Serial.print("CPU Frequency: ");
+        //Serial.print(F_CPU / 1000000);
+        //Serial.println(" MHz");
         Serial.println("NEXT");
+        Serial.flush();
+        delay(1000);
         return;
       }
       bytes_received += r;
+      if (bytes_received < chunk_size_in_bytes) {
+        Serial.println("ACK");
+      }
     }
     
     // Ora chunk_buf contiene `chunk_size` float (little-endian)
