@@ -4,6 +4,7 @@
 #define DEBUG_QUANTIZE
 #define DEBUG_DEQUANTIZE
 
+#define MCU_RAM_BYTES 264*1024
 
 //#define BAUD_RATE 115200
 #define BAUD_RATE 115200

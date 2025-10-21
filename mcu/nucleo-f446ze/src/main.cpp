@@ -141,7 +141,7 @@ void setup()
   // digitalWrite(LED_BUILTIN, LOW);
   Serial.begin(BAUD_RATE);
   Serial.setTimeout(10000);
-  //delay(3000);
+  delay(1000);
   while (!Serial); // Wait until someone opens the serial communication
   Serial.println("Boot OK");
 
@@ -162,35 +162,31 @@ void setup()
   static tflite::MicroErrorReporter micro_error_reporter; // NOLINT
   error_reporter = &micro_error_reporter;                 // This variable will be passed into the interpreter, which allows it to write log
 
-  #ifdef MODEL_IN_RAM
-    Serial.println("MODEL_IN_RAM: defined");
-  #else
-    Serial.println("MODEL_IN_RAM: not defined");
-  #endif
-
 // Load a model
 #ifdef MODEL_IN_RAM
+  Serial.println("MODEL_IN_RAM: defined");
+  Serial.println("*** Check RAM availability");
+  if (g_mlp_model_data_len > MCU_RAM_BYTES / 2) { // usa solo metà RAM per sicurezza
+    while (1) {
+      Serial.println("ERRORE: modello troppo grande per la RAM disponibile!");
+      Serial.println("STOP");
+      delay(4000);
+    }
+  }
   // Copy move from Flash to RAM
-  Serial.println("*** Copy move from Flash to RAM");
+  Serial.println("*** Copy model from Flash to RAM");
   model_ram = (uint8_t *)malloc(g_mlp_model_data_len);
   if (!model_ram) {
-    Serial.println("ERRORE: malloc fallita, memoria insufficiente!");
-    int stop_count = 0;
     while (1) {
-      if (stop_count < 10) {
-        Serial.println("STOP");
-        delay(1000);
-      } else {
-        Serial.println("Reset MCU");
-        Serial.flush();
-        delay(1000);
-        NVIC_SystemReset();
-      }
+      Serial.println("ERRORE: malloc fallita, memoria insufficiente!");
+      Serial.println("STOP");
+      delay(4000);
     }
   }
   memcpy(model_ram, g_mlp_model_data, g_mlp_model_data_len);
   model = tflite::GetModel(model_ram);
 #else
+  Serial.println("MODEL_IN_RAM: not defined");
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
   model = tflite::GetModel(g_mlp_model_data);
@@ -295,6 +291,13 @@ void setup()
 
 void loop()
 {
+  #ifdef MODEL_IN_RAM
+    Serial.println("--> MODEL_IN_RAM: defined");
+  #else
+    Serial.println("--> MODEL_IN_RAM: not defined");
+  #endif
+
+  //while (Serial.available()) Serial.read(); // azzera il buffer seriale da residui
 
   // --- RICEZIONE CHUNK ---
   uint32_t features_received = 0;
@@ -302,13 +305,13 @@ void loop()
     //uint16_t chunk_size = min((uint32_t)CHUNK_SIZE_MAX, total_features - features_received);
     uint16_t chunk_size = min((uint32_t)CHUNK_SIZE_MAX, INPUT_FEATURE_SIZE - features_received);
     uint32_t chunk_size_in_bytes = chunk_size * sizeof(float);
-
+    
     // Legge dati dalla porta seriale e li memorizza in un buffer.
     // Il primo argomento (p + bytes_received) è il puntatore alla posizione corrente nel buffer dove scrivere i nuovi dati.
     // Il secondo argomento (chunk_size_in_bytes - bytes_received) è il numero di byte da leggere (quanti ne mancano per completare il chunk).
     uint32_t bytes_received = 0;
     while (bytes_received < chunk_size_in_bytes) {
-      while (Serial.available()) Serial.read(); // azzera il buffer seriale da residui
+      //while (Serial.available()) Serial.read(); // azzera il buffer seriale da residui
       int r = Serial.readBytes(chunk_buf + bytes_received, chunk_size_in_bytes - bytes_received);
       if (r <= 0) { 
         //Serial.println("ERR timeout or no data yet");
@@ -334,12 +337,16 @@ void loop()
         //Serial.println(" MHz");
         Serial.println("NEXT");
         Serial.flush();
-        delay(1000);
-        return;
-      }
-      bytes_received += r;
-      if (bytes_received < chunk_size_in_bytes) {
-        Serial.println("ACK");
+        delay(100);
+        //return;
+      } else {
+        bytes_received += r;
+        if (bytes_received < chunk_size_in_bytes) {
+          Serial.println("ACK");
+          if (CHUNK_SIZE_MAX == 1024) {
+            break; // TODO
+          }
+        }
       }
     }
     

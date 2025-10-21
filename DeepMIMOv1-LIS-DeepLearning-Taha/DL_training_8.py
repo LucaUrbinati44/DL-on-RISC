@@ -103,7 +103,7 @@ elif debug == 1: # (9x9+1)x2 x 8min ciascuno = 2.67h
 elif debug == 2:
     active_cells = [8]
     output_dims = [My*Mz]
-    num_layers_list = [2,3]
+    num_layers_list = [1,2,3]
     #num_layers_list = [1]
     R_list = [32] # indifferente il valore di R se num_layers_list = [0]. Verrà eseguita una sola iterazione
 else: # modello di Taha
@@ -127,6 +127,11 @@ if ISWINDOWS:
                     #'port': '/dev/ttyUSB0',
                     'serial_number': "2017651D8BD2EB11B8CCC149E93FD3F1",
                     'baud_rate': 115200}
+    elif mcu_name == 'stm32f4':
+        mcu_type = {'name': 'nucleo-f446ze', 
+                    #'port': '/dev/ttyACM1',
+                    'serial_number': "066FFF485570854967101750",
+                    'baud_rate': 115200}
     else:
         print("Run this board on Linux")
         os._exit(1)
@@ -147,7 +152,7 @@ else: # These boards must run on Linux
         mcu_type = {'name': 'nucleo-f446ze', 
                     #'port': '/dev/ttyACM1',
                     'serial_number': "066FFF485570854967101750",
-                    'baud_rate': 921600}
+                    'baud_rate': 115200}
     elif mcu_name == 'stm32h7':
         mcu_type = {'name': 'nucleo-h753zi',
                     #'port': '/dev/ttyACM0',
@@ -693,7 +698,8 @@ def parse_compilation_logfile(file_path):
     hardware_pattern_KB = re.compile(r"HARDWARE:\s+\S+\s+(\d+)MHz,\s+(\d+)KB RAM,\s+(\d+)KB Flash", re.IGNORECASE)
 
     #error_pattern = re.compile(r"\berror\b", re.IGNORECASE)
-    error_pattern = re.compile(r"\bError+\s\b")
+    #error_pattern = re.compile(r"\bError+\s\b")
+    error_pattern = re.compile(r"\[FAILED\]")
 
     # Pattern di errore da overflow
     # \d+ per indicare un numero di byte (così non catturi testo non previsto).
@@ -773,7 +779,7 @@ def find_com_port_by_serial_number(SERIAL_NUMBER):
                 print(f"Dispositivo trovato su {com_port}")
                 return com_port
         print(f"Dispositivo SERIAL_NUMBER={SERIAL_NUMBER} non trovato!")
-        time.sleep(10)
+        time.sleep(5)
                     
 # ----- Salva risultati del profiling su file -----
 def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
@@ -1125,7 +1131,11 @@ def run_experiment(dummy, data_csv, x_sample,
 
         i = 1 # TODO: must be 1
         #while i <= 4:
-        while i <= 2: # TODO: must be 2
+        if mcu_type['name'] == 'nucleo-f446ze':
+            i_max = 1
+        else:
+            i_max = 2
+        while i <= i_max: # TODO: must be 2
             # prima provi con modello in ram
             # poi provi con modello in flash
             if i == 1:
@@ -1152,7 +1162,15 @@ def run_experiment(dummy, data_csv, x_sample,
                 com_port = find_com_port_by_serial_number(mcu_type['serial_number'])
                 if com_port == -1:
                     return
-                    
+
+                print(f"\n*** Rimuovi cartella .pio")    
+                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "src")
+                os.system(f"rm {firmware_path}")
+                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "*.bin")
+                os.system(f"rm {firmware_path}")
+                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "*.map")
+                os.system(f"rm {firmware_path}")
+
                 with open(compilation_logfile, "w", encoding="utf-8") as logfile:
 
                     process = subprocess.Popen(
@@ -1173,15 +1191,19 @@ def run_experiment(dummy, data_csv, x_sample,
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,
                         text=True,
-                        bufsize=1  # line-buffered
+                        bufsize=1
                     )
 
                     for line in process.stdout:
                         print(line, end="")       # scrive a terminale
                         logfile.write(line)       # scrive sul file
+                        logfile.flush()  # <-- aggiungi questa riga
                     
                     ret = process.wait() # <-- è bloccante: quando ritorna significa che pio è ritornato, cioè la programmazione è stata terminata
                     print(f"[INFO] Process exited with code {ret}") 
+
+            print("In attesa prima del parser")
+            time.sleep(5)
 
             # Lancia il parser per recuperare RAM e ROM da compilation output
             # La Flash include non solo il modello perciò sarà maggiore di model_size_int8_mb
@@ -1189,7 +1211,7 @@ def run_experiment(dummy, data_csv, x_sample,
 
             if Error_does_not_fit == 0:
 
-                time.sleep(10)
+                #time.sleep(5)
 
                 com_port = find_com_port_by_serial_number(mcu_type['serial_number'])
                 if com_port == -1:

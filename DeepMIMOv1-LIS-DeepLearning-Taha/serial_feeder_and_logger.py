@@ -73,33 +73,39 @@ def main(dummy,
         open(mcu_profiling_logfile, 'w', encoding='utf-8') as log:
         print("Avviato logger + feeder su", mcu_serial_port)
 
-        time.sleep(5)
-        stop_count = 0  # Conta i segnali STOP ignorati
+        #time.sleep(1)
+        stop_count = 0 # Conta i segnali STOP ignorati
         next_count = 0
 
         next_received = False
         while True:
+            #print(f"PSY: Read one line from serial")
             line = ser.readline().decode('utf-8', errors='ignore').strip()
             if not line:
+                time.sleep(0.1)
                 continue
             
             print(f"MCU: {line}")
             log.write(f"{line}\n") # Scrivere su log
             if line == "Boot OK":
+                print(f"PSY: Boot received")
                 next_received = True
             elif next_received == True and line == "NEXT":
-                time.sleep(10) # Tempo da lasciare per far preparare l'MCU a leggere dalla seriale
+                print(f"PSY: NEXT received")
+                time.sleep(3) # Tempo da lasciare per far preparare l'MCU a leggere dalla seriale
                 next_received = False
                 break
             elif next_received == False and line == "NEXT":
                 next_count += 1
-                if next_count <= 20: # avanza comunque anche senza boot
+                print(f"PSY: NEXT received number {next_count}")
+                if next_count == 20: # avanza comunque anche senza boot
+                    print(f"PSY: too many NEXT received")
                     break
             elif line == "STOP":
                 stop_count += 1
                 next_received = False
-                if stop_count <= 20:
-                    print(f"Ignorato STOP numero {stop_count}")
+                if stop_count <= 40:
+                    print(f"PSY: Ignoring STOP number {stop_count}")
                     continue
                 Error_model_in_ram = 1
                 break # Esci dal while    

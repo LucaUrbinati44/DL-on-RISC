@@ -1,11 +1,14 @@
 #include <Arduino.h>
-#include "system_stm32f4xx.h"
+//#include "system_stm32f4xx.h"
 #include <stdint.h>
 
 #define DEBUG_QUANTIZE
 #define DEBUG_DEQUANTIZE
 
-#define BAUD_RATE 921600
+#define MCU_RAM_BYTES 128*1024
+
+//#define BAUD_RATE 115200
+#define BAUD_RATE 115200
 #define CHUNK_SIZE_MAX 1024
 
 #define INPUT_FEATURE_SIZE 1024

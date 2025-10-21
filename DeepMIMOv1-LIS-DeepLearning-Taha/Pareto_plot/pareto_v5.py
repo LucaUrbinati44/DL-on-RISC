@@ -18,6 +18,7 @@ from matplotlib.lines import Line2D
 import os
 import textwrap  # Per andare a capo nelle legende lunghe
 import re
+import subprocess
 
 def is_windows():
     return 1 if os.name == 'nt' else 0
@@ -29,15 +30,18 @@ if ISWINDOWS:
     base_folder = subprocess.check_output(["wsl", "wslpath", "-w", base_folder]).decode().strip()
     print(base_folder)
 output_folder = os.path.join(base_folder, 'Output_Python')
+pareto_plot_folder = os.path.join(base_folder, 'Pareto_plot')
 mcu_profiling_folder = os.path.join(output_folder, 'Profiling_Search_MCU')
+output_figure = os.path.join(pareto_plot_folder, "pareto_plot_full.png")
+output_figure_zoom = os.path.join(pareto_plot_folder, "pareto_plot_zoom.png")
 
-files_example = [
+files = [
     # Inserire i CSV qui
-    os.path.join(mcu_profiling_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_esp32-s2-saola-tflm.csv"),
-    #os.path.join(mcu_profiling_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_nucleo-h753zi.csv"),
-    os.path.join(mcu_profiling_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_nucleo-h753zi_fake.csv"),
-    os.path.join(mcu_profiling_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_fake_esp32-s2-saola-tflm.csv"),
-    os.path.join(mcu_profiling_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_fake2_esp32-s2-saola-tflm.csv"),
+    os.path.join(pareto_plot_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_esp32-s2-saola-tflm.csv"),
+    #os.path.join(pareto_plot_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_nucleo-h753zi.csv"),
+    os.path.join(pareto_plot_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_nucleo-h753zi_fake.csv"),
+    os.path.join(pareto_plot_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_fake_esp32-s2-saola-tflm.csv"),
+    os.path.join(pareto_plot_folder, "ok_profiling_seed0_grid1200_M3232_Mbar8_30000_ep200_fake2_esp32-s2-saola-tflm.csv"),
 ]
 
 files = [
@@ -295,6 +299,6 @@ def plot_pareto_scatter(files, output_png, zoom=False):
 if __name__ == "__main__":
 
     # Plot completo
-    plot_pareto_scatter(files, "pareto_plot_full.png", zoom=False)
+    plot_pareto_scatter(files, output_figure, zoom=False)
     # Plot zoom sul fronte Pareto
-    #plot_pareto_scatter(files, "pareto_plot_zoom.png", zoom=True)
+    #plot_pareto_scatter(files, output_figure_zoom, zoom=True)
