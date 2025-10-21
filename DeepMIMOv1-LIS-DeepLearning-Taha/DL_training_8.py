@@ -754,10 +754,11 @@ def parse_compilation_logfile(file_path):
                 Flash_MB = -int(match.group(1))
                 Error_does_not_fit = 2
 
-            match = error_pattern.search(line)
-            if match:
-                print("match Error")
-                Error_does_not_fit = 3
+            if Error_does_not_fit == 0: # per non sovrascrivere gli altri
+                match = error_pattern.search(line)
+                if match:
+                    print("match Error")
+                    Error_does_not_fit = 3
 
     return RAM_KB, Flash_MB, CLK_FREQ_MHZ, RAM_HW_KB, Flash_HW_MB, Error_does_not_fit
 
@@ -1165,10 +1166,12 @@ def run_experiment(dummy, data_csv, x_sample,
 
                 print(f"\n*** Rimuovi cartella .pio")    
                 firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "src")
+                os.system(f"rm -r {firmware_path}")
+                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "firmware.bin")
                 os.system(f"rm {firmware_path}")
-                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "*.bin")
+                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "firmware.elf")
                 os.system(f"rm {firmware_path}")
-                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "*.map")
+                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "firmware.map")
                 os.system(f"rm {firmware_path}")
 
                 with open(compilation_logfile, "w", encoding="utf-8") as logfile:

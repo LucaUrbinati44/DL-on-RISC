@@ -120,7 +120,7 @@ def plot_pareto_scatter(files, output_png, zoom=False):
     - zoom: se effettuare o meno lo zoom
     """
     # Colonne standard
-    x_col = "Rate_DL_py_load_test_tflite" # TODO: rimetti MCU
+    x_col = "Rate_DL_py_load_test_tflite_mcu" # TODO: qui usare _mcu
     y_col = "mean_tot_latency_fast"
     env_col = "env_name"
     settings_col = "end_folder_Training_Size_dd_epochs"
@@ -234,6 +234,15 @@ def plot_pareto_scatter(files, output_png, zoom=False):
                            facecolor="none", edgecolor=settings_to_color[s],
                            linewidths=1.2, alpha=0.95)
 
+        # -----------------------------
+        # Linee verticali
+        # -----------------------------
+        if "Rate_OPT_py_load_test" in data_all.columns:# and "Rate_DL_py_load_test" in data_all.columns:
+            rate_opt = data_all["Rate_OPT_py_load_test"][0]
+            #rate_dl = data_all["Rate_DL_py_load_test"].mean()
+            ax.axvline(rate_opt, color=settings_to_color[s], linestyle=':', linewidth=1.2, label='Rate_OPT')
+            #ax.axvline(rate_dl, color='cyan', linestyle=':', linewidth=2, label='Rate_DL')
+
     # -----------------------------
     # Fronte Pareto
     # -----------------------------
@@ -256,8 +265,7 @@ def plot_pareto_scatter(files, output_png, zoom=False):
     # -----------------------------
     # Simboli micro
     micro_legend = [
-        Line2D([0], [0], marker=micro_to_marker[m], color='w', markerfacecolor='gray',
-               markeredgecolor='k', linewidth=0, markersize=markersize, label=str(m))
+        Line2D([0], [0], marker=micro_to_marker[m], color='w', markerfacecolor='gray', markeredgecolor='k', linewidth=0, markersize=markersize, label=str(m))
         for m in unique_micro
     ]
     micro_legend.append(Line2D([0], [0], color='r', linewidth=1.2, label="Pareto Front (Global)", alpha=0.5))
@@ -267,22 +275,28 @@ def plot_pareto_scatter(files, output_png, zoom=False):
 
     # Colori settings con line break per nomi lunghi
     settings_legend = [
-        Line2D([0], [0], marker='o', color='w', markerfacecolor=settings_to_color[s],
-               markeredgecolor='k', linewidth=0, markersize=markersize, label="\n".join(textwrap.wrap(str(s), 20)))
+        Line2D([0], [0], color='w', marker='o', markerfacecolor=settings_to_color[s], markeredgecolor='k', linewidth=0, markersize=markersize, label="\n".join(textwrap.wrap(str(s), 20)))
         for s in unique_settings
     ]
+    #settings_legend.append(Line2D([0], [0], color=settings_to_color[s], linestyle=':', linewidth=1.2, markersize=markersize, label="Genie-aided"))
+
     #leg2 = ax.legend(handles=settings_legend, title=f"{'Settings'.center(len(f'({settings_col})')+20)}\n({settings_col})", loc="upper right", frameon=True)
+    settings_legend.append(Line2D([0], [0], color='k', linestyle=':', linewidth=1.2, markersize=markersize, label="Genie-aided"))
     leg2 = ax.legend(handles=settings_legend, title=f"{'Settings'.center(len(f'({settings_col})'))}", loc="upper center", frameon=True)
     ax.add_artist(leg2)
 
     # Legenda per variante micro e fronte Pareto
     fill_legend = [
-        Line2D([0], [0], marker='o', color='k', markerfacecolor='k', markeredgecolor='k',
-               linewidth=0, markersize=markersize, label="From RAM"),
-        Line2D([0], [0], marker='o', color='k', markerfacecolor='none', markeredgecolor='k',
-               linewidth=0, markersize=markersize, label="From Flash")
+        Line2D([0], [0], marker='o', color='k', markerfacecolor='k', markeredgecolor='k', linewidth=0, markersize=markersize, label="From RAM"),
+        Line2D([0], [0], marker='o', color='k', markerfacecolor='none', markeredgecolor='k', linewidth=0, markersize=markersize, label="From Flash")
     ]
     ax.legend(handles=fill_legend, title="Model's Load Position", loc="center right", frameon=True)
+
+    # -----------------------------
+    # Limiti
+    # -----------------------------
+    ax.set_xlim([1.8, 1.6])
+    ax.set_ylim([0, 250])
 
     # -----------------------------
     # Salvataggio figura
