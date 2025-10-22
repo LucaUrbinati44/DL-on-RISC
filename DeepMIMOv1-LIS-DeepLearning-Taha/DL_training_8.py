@@ -18,8 +18,10 @@ import datetime
 import time
 import serial.tools.list_ports
 import argparse
+import shutil
 
-import serial_feeder_and_logger, DL_training_4_v3_test
+
+import serial_feeder_and_logger
 
 # Read mcu name from user
 parser = argparse.ArgumentParser()
@@ -34,6 +36,9 @@ if mcu_name not in allowed_mcus:
 def is_windows():
     return 1 if os.name == 'nt' else 0
 ISWINDOWS = is_windows()
+
+if not(ISWINDOWS):
+    import DL_training_4_v3_test
 
 print("TensorFlow version:", tf.__version__)
 
@@ -73,13 +78,13 @@ Training_Size_dd = Training_Size[0]
 
 # ------------------------------------------------------------------------------------------
 
-debug = 1            # 0: production mode, 1: production mode for one case, 2: debug mode
+debug = 2            # 0: production mode, 1: production mode for one case, 2: debug mode
 
 #dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
 dummy = ''
 
-#test_set_size = 'small' # 'full' in prodcution
-test_set_size = 'full'
+test_set_size = 'small' # 'full' in prodcution
+#test_set_size = 'full'
 
 if test_set_size == 'small':
     small_samples = 5 # even and greater than or equal to 2
@@ -127,11 +132,11 @@ if ISWINDOWS:
                     #'port': '/dev/ttyUSB0',
                     'serial_number': "2017651D8BD2EB11B8CCC149E93FD3F1",
                     'baud_rate': 115200}
-    elif mcu_name == 'stm32f4':
-        mcu_type = {'name': 'nucleo-f446ze', 
-                    #'port': '/dev/ttyACM1',
-                    'serial_number': "066FFF485570854967101750",
-                    'baud_rate': 115200}
+    #elif mcu_name == 'stm32f4':
+    #    mcu_type = {'name': 'nucleo-f446ze', 
+    #                #'port': '/dev/ttyACM1',
+    #                'serial_number': "066FFF485570854967101750",
+    #                'baud_rate': 115200}
     else:
         print("Run this board on Linux")
         os._exit(1)
@@ -157,7 +162,7 @@ else: # These boards must run on Linux
         mcu_type = {'name': 'nucleo-h753zi',
                     #'port': '/dev/ttyACM0',
                     'serial_number': "0024002F3234510737333934",
-                    'baud_rate': 921600}
+                    'baud_rate': 115200}
     #elif mcu_name == 'esp32':
     #    mcu_type = {'name': 'esp32-s2-saola-tflm', 
     #                #'port': '/dev/ttyUSB0',
@@ -866,6 +871,7 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
             writer.writeheader()
 
         try:
+            print(Rate_DL_py_load_test_tflite)
             rate_dl_py_load_test_tflite_str = f"{Rate_DL_py_load_test_tflite.item():.6f}"
         except Exception:
             rate_dl_py_load_test_tflite_str = f"{Rate_DL_py_load_test_tflite:.6f}"
@@ -1008,6 +1014,33 @@ def save_results_v3(dummy, end_folder_Training_Size_dd_epochs, K_DL,
 #        print(f"[ERROR] usbipd {action} failed (code {e.returncode}): {e.output}")
 #        return None
     
+
+def windows_to_wsl(path_windows: str) -> str:
+    """
+    Converte un path Windows in un path WSL/Unix-like.
+    
+    Gestisce:
+    - backslash → slash
+    - spazi nel path
+    - caratteri speciali
+    """
+    # Normalizza backslash in slash
+    path_clean = path_windows.replace("\\", "/")
+
+    try:
+        # Usa wslpath per la conversione
+        path_wsl = subprocess.check_output(
+            ["wsl", "wslpath", "-u", path_clean],
+            stderr=subprocess.PIPE
+        ).decode().strip()
+        return path_wsl
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            f"Errore nella conversione del path '{path_windows}' a WSL.\n"
+            f"stdout: {e.output}\nstderr: {e.stderr.decode()}"
+        )
+
+
 # ----- Run di una singola configurazione -----
 def run_experiment(dummy, data_csv, x_sample, 
                    input_features, output_dim, num_layers, R, hidden_units_list, 
@@ -1050,7 +1083,7 @@ def run_experiment(dummy, data_csv, x_sample,
 
     else:
 
-        if train_model_flag == 1 and load_model_flag == 0:
+        if train_model_flag == 1 and load_model_flag == 0 and ISWINDOWS == 0:
             DL_training_4_v3_test.main(
                                         My, Mz, load_model_flag, max_epochs, initial_epoch,
                                         train_model_flag, predict_loaded_model_flag,
@@ -1066,26 +1099,135 @@ def run_experiment(dummy, data_csv, x_sample,
                                         tensorboard_logs, training_history_json,
                                         save_files_flag_master, save_files_flag_master_once)     
         elif train_model_flag == 0 and load_model_flag == 1:
-            model_py, \
-            Rate_OPT_py_load_val,  Rate_DL_py_load_val, \
-            Rate_OPT_py_load_test, Rate_DL_py_load_test, \
-            Rate_DL_py_load_test_tflite, \
-            Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
-            Indmax_DL_py_load_test_tflite, \
-            YValidation_un_test = DL_training_4_v3_test.main(
-                                            My, Mz, load_model_flag, max_epochs, initial_epoch,
-                                            train_model_flag, predict_loaded_model_flag,
-                                            convert_model_flag, Training_Size_dd,
-                                            input_features, output_dim, num_layers, hidden_units_list,
-                                            init_learning_rate, min_learning_rate, factor, patience, min_delta,
-                                            mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
-                                            end_folder, end_folder_Training_Size_dd, 
-                                            end_folder_Training_Size_dd_epochs, model_name_suffix, model_path_tflite, model_path_keras,
-                                            DL_dataset_folder, network_folder_in,
-                                            network_folder_out_RateDLpy, network_folder_out_RateDLpy_TFLite, 
-                                            mcu_profiling_folder_test_data, mcu_profiling_folder_test_data_normalized, mcu_profiling_folder_scaler, 
-                                            tensorboard_logs, training_history_json,
-                                            save_files_flag_master, save_files_flag_master_once)
+            if ISWINDOWS == 0:
+                #model_py, \
+                Rate_OPT_py_load_val,  Rate_DL_py_load_val, \
+                Rate_OPT_py_load_test, Rate_DL_py_load_test, \
+                Rate_DL_py_load_test_tflite, \
+                Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
+                Indmax_DL_py_load_test_tflite, \
+                YValidation_un_test = DL_training_4_v3_test.main(
+                                                My, Mz, load_model_flag, max_epochs, initial_epoch,
+                                                train_model_flag, predict_loaded_model_flag,
+                                                convert_model_flag, Training_Size_dd,
+                                                input_features, output_dim, num_layers, hidden_units_list,
+                                                init_learning_rate, min_learning_rate, factor, patience, min_delta,
+                                                mean_array_filepath, variance_array_filepath, test_set_size, small_samples,
+                                                end_folder, end_folder_Training_Size_dd, 
+                                                end_folder_Training_Size_dd_epochs, model_name_suffix, model_path_tflite, model_path_keras,
+                                                DL_dataset_folder, network_folder_in,
+                                                network_folder_out_RateDLpy, network_folder_out_RateDLpy_TFLite, 
+                                                mcu_profiling_folder_test_data, mcu_profiling_folder_test_data_normalized, mcu_profiling_folder_scaler, 
+                                                tensorboard_logs, training_history_json,
+                                                save_files_flag_master, save_files_flag_master_once)
+            else: # ISWINDOWS == 1
+                print("***** ENTRO NEL NUOVO SCRIPT")
+
+                def call_dl_training_4_v3_test_wsl(params_dict, output_json_path):
+                    # Salva i parametri in un file JSON
+                    params_path = "params_dl_training_4_v3_test.json"
+                    with open(params_path, "w", encoding="utf-8") as f:
+                        json.dump(params_dict, f)
+
+                    wsl_script_path = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/DL_training_4_v3_test.py"
+                    process = subprocess.Popen([
+                        "wsl", "bash", "-lc", 
+                        "source ~/miniconda3/etc/profile.d/conda.sh && conda activate deepmimo && /home/work_wsl/miniconda3/envs/deepmimo/bin/python -u /mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/DL_training_4_v3_test.py"
+                        f" --params {params_path}"], # --output {output_json_path}"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        errors='replace',
+                        bufsize=1)
+
+                    #for line in process.stdout:
+                    #    print(line, end="")       # scrive a terminale
+                    #    #logfile.write(line)       # scrive sul file
+                    #    #logfile.flush()
+                    #
+                    #process.wait()
+
+                    # stampa in tempo reale
+                    for line in iter(process.stdout.readline, ''):
+                        print(line, end='')
+                    # lettura in binario, decodifica robusta
+                    #for line in iter(process.stdout.readline, b''):
+                    #    try:
+                    #        print(line.decode('utf-8'), end='')
+                    #    except UnicodeDecodeError:
+                    #        # se non si può decodificare, ignora i byte non decodificabili
+                    #        print(line.decode('utf-8', errors='replace'), end='')
+
+                    process.stdout.close()
+                    return_code = process.wait()
+
+                    print("***** PROCESSO WSL RITORNATO")
+                    
+                    # Carica i risultati SOLO dopo che il processo è terminato
+                    with open(output_json_path, "r", encoding="utf-8") as f:
+                        results = json.load(f)
+                    return results
+
+                params_dict = {
+                    "My": My,
+                    "Mz": Mz,
+                    "load_model_flag": load_model_flag,
+                    "max_epochs": max_epochs,
+                    "initial_epoch": initial_epoch,
+                    "train_model_flag": train_model_flag,
+                    "predict_loaded_model_flag": predict_loaded_model_flag,
+                    "convert_model_flag": convert_model_flag,
+                    "Training_Size_dd": Training_Size_dd,
+                    "input_features": input_features,
+                    "output_dim": output_dim,
+                    "num_layers": num_layers,
+                    "hidden_units_list": hidden_units_list,
+                    "init_learning_rate": init_learning_rate,
+                    "min_learning_rate": min_learning_rate,
+                    "factor": factor,
+                    "patience": patience,
+                    "min_delta": min_delta,
+                    "mean_array_filepath": windows_to_wsl(mean_array_filepath),
+                    "variance_array_filepath": windows_to_wsl(variance_array_filepath),
+                    "test_set_size": test_set_size,
+                    "small_samples": small_samples,
+                    "end_folder": windows_to_wsl(end_folder),
+                    "end_folder_Training_Size_dd": windows_to_wsl(end_folder_Training_Size_dd),
+                    "end_folder_Training_Size_dd_epochs": windows_to_wsl(end_folder_Training_Size_dd_epochs),
+                    "model_name_suffix": model_name_suffix,
+                    "model_path_tflite": windows_to_wsl(model_path_tflite),
+                    "model_path_keras": windows_to_wsl(model_path_keras),
+                    "DL_dataset_folder": windows_to_wsl(DL_dataset_folder),
+                    "network_folder_in": windows_to_wsl(network_folder_in),
+                    "network_folder_out_RateDLpy": windows_to_wsl(network_folder_out_RateDLpy),
+                    "network_folder_out_RateDLpy_TFLite": windows_to_wsl(network_folder_out_RateDLpy_TFLite),
+                    "mcu_profiling_folder_test_data": windows_to_wsl(mcu_profiling_folder_test_data),
+                    "mcu_profiling_folder_test_data_normalized": windows_to_wsl(mcu_profiling_folder_test_data_normalized),
+                    "mcu_profiling_folder_scaler": windows_to_wsl(mcu_profiling_folder_scaler),
+                    "tensorboard_logs": windows_to_wsl(tensorboard_logs),
+                    "training_history_json": windows_to_wsl(training_history_json),
+                    "save_files_flag_master": save_files_flag_master,
+                    "save_files_flag_master_once": save_files_flag_master_once
+                }
+                output_json_path = os.path.join(output_folder, "output_dl_training_4_v3_test.json")
+                results = call_dl_training_4_v3_test_wsl(params_dict, output_json_path)
+
+                # Poi estrai i risultati come prima:
+                #model_py = None  # Non puoi serializzare direttamente il modello, usa solo i risultati numerici
+                Rate_OPT_py_load_val =          np.array(results["Rate_OPT_py_load_val"])
+                Rate_DL_py_load_val =           np.array(results["Rate_DL_py_load_val"])
+                Rate_OPT_py_load_test =         np.array(results["Rate_OPT_py_load_test"])
+                Rate_DL_py_load_test =          np.array(results["Rate_DL_py_load_test"])
+                Rate_DL_py_load_test_tflite =   np.array(results["Rate_DL_py_load_test_tflite"])
+                Indmax_OPT_py_load_test =       np.array(results["Indmax_OPT_py_load_test"])
+                Indmax_DL_py_load_test =        np.array(results["Indmax_DL_py_load_test"])
+                Indmax_DL_py_load_test_tflite = np.array(results["Indmax_DL_py_load_test_tflite"])
+                YValidation_un_test =           np.array(results["YValidation_un_test"])
+
+                print(Rate_OPT_py_load_test)
+                print(Rate_DL_py_load_test)
+                print(Rate_DL_py_load_test_tflite)
+
         else:
             Rate_OPT_py_load_val = 0
             Rate_DL_py_load_val = 0
@@ -1165,14 +1307,15 @@ def run_experiment(dummy, data_csv, x_sample,
                     return
 
                 print(f"\n*** Rimuovi cartella .pio")    
-                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "src")
-                os.system(f"rm -r {firmware_path}")
-                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "firmware.bin")
-                os.system(f"rm {firmware_path}")
-                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "firmware.elf")
-                os.system(f"rm {firmware_path}")
-                firmware_path = os.path.join(mcu_folder, ".pio", "build", env_name, "firmware.map")
-                os.system(f"rm {firmware_path}")
+                firmware_src_path = os.path.join(mcu_folder, ".pio", "build", env_name, "src")
+                if os.path.exists(firmware_src_path):
+                    shutil.rmtree(firmware_src_path, ignore_errors=True)
+
+                print(f"\n*** Rimuovi file in .pio")   
+                for filename in ["firmware.bin", "firmware.elf", "firmware.map", "src/main.cpp.o", "src/main.cpp.d"]:
+                    firmware_file_path = os.path.join(mcu_folder, ".pio", "build", env_name, filename)
+                    if os.path.exists(firmware_file_path):
+                        os.remove(firmware_file_path)
 
                 with open(compilation_logfile, "w", encoding="utf-8") as logfile:
 

@@ -285,6 +285,8 @@ void setup()
   Serial.print("CPU Frequency: ");
   Serial.print(F_CPU / 1000000);
   Serial.println(" MHz");
+
+  Serial.println("Boot OK");
 }
 
 // ------------------------------------------------------------
@@ -340,13 +342,8 @@ void loop()
         delay(100);
         //return;
       } else {
-      bytes_received += r;
-      if (bytes_received < chunk_size_in_bytes) {
+        bytes_received += r;
         Serial.println("ACK");
-          if (CHUNK_SIZE_MAX == 1024) {
-            break; // TODO
-          }
-        }
       }
     }
     

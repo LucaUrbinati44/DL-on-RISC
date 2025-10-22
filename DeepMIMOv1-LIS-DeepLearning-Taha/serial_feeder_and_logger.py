@@ -52,7 +52,7 @@ def main(dummy,
     tot_latency_fast_list = []
     Error_model_in_ram = 0
     #inter_chunk_delay = 0.005     # 5 ms (aumentare se necessario)
-    inter_chunk_delay = 0.100     # 10 ms (aumentare se necessario)
+    inter_chunk_delay = 0.100     # 100 ms (aumentare se necessario)
 
     baud_rate = mcu_type['baud_rate']
 
@@ -73,7 +73,6 @@ def main(dummy,
         open(mcu_profiling_logfile, 'w', encoding='utf-8') as log:
         print("Avviato logger + feeder su", mcu_serial_port)
 
-        #time.sleep(1)
         stop_count = 0 # Conta i segnali STOP ignorati
         next_count = 0
 
@@ -87,21 +86,21 @@ def main(dummy,
             
             print(f"MCU: {line}")
             log.write(f"{line}\n") # Scrivere su log
-            if line == "Boot OK":
+            if "Boot OK" in line:
                 print(f"PSY: Boot received")
                 next_received = True
-            elif next_received == True and line == "NEXT":
+            elif next_received == True and "NEXT" in line:
                 print(f"PSY: NEXT received")
                 time.sleep(3) # Tempo da lasciare per far preparare l'MCU a leggere dalla seriale
                 next_received = False
                 break
-            elif next_received == False and line == "NEXT":
+            elif next_received == False and "NEXT" in line:
                 next_count += 1
                 print(f"PSY: NEXT received number {next_count}")
-                if next_count == 20: # avanza comunque anche senza boot
+                if next_count == 8: # avanza comunque anche senza boot
                     print(f"PSY: too many NEXT received")
                     break
-            elif line == "STOP":
+            elif "STOP" in line:
                 stop_count += 1
                 next_received = False
                 if stop_count <= 40:
@@ -110,8 +109,8 @@ def main(dummy,
                 Error_model_in_ram = 1
                 break # Esci dal while    
 
-
-        for idx, sample in enumerate(x):
+        idx = 0
+        while idx < len(x):
 
             if Error_model_in_ram == 1:
                 break # Esci dal for
@@ -119,6 +118,7 @@ def main(dummy,
             print("PSY: ------------------------")
             print(f"PSY: Sample {idx+1}/{xtest_size}")
             
+            sample = x[idx]
             data_floats = sample.tolist()  # array di float
             total_features = len(data_floats)
 
@@ -134,20 +134,21 @@ def main(dummy,
                 print(f"PYS: Inviate {features_sent}/{total_features} features ({features_sent/total_features*100}%)")
                 
                 # piccolo delay per non saturare USB
-                if mcu_type['name'] == 'pico' or mcu_type['name'] == 'esp32-s2-saola-tflm':
-                    time.sleep(inter_chunk_delay)
+                #if mcu_type['name'] == 'pico' or mcu_type['name'] == 'esp32-s2-saola-tflm':
+                time.sleep(inter_chunk_delay)
 
-                    # Attendi ACK dal MCU prima di continuare
-                    while True:
-                        line = ser.readline().decode('utf-8', errors='ignore').strip()
-                        log.write(f"{line}\n")
-                        #print(f"MCU: {line}")
-                        if line == "ACK":
-                            break
-                        else:
-                            #print("PSY: Waiting ACK from MCU")
-                            time.sleep(inter_chunk_delay)
+                # Attendi ACK dal MCU prima di continuare
+                while True:
+                    line = ser.readline().decode('utf-8', errors='ignore').strip()
+                    log.write(f"{line}\n")
+                    #print(f"MCU: {line}")
+                    if "ACK" in line:
+                        break
+                    else:
+                        #print("PSY: Waiting ACK from MCU")
+                        time.sleep(inter_chunk_delay)
 
+            next_count = 0
             while True: # Leggi output MCU
 
                 # Leggere dalla seriale
@@ -157,6 +158,13 @@ def main(dummy,
                 
                 print(f"MCU: {line}")
                 log.write(f"{line}\n") # Scrivere su log
+
+                if "NEXT" in line:
+                    next_count += 1
+                    print(f"PSY: NEXT received number {next_count} (not normal)")
+                    if next_count == 3: # avanza comunque anche senza boot
+                        print(f"PSY: Something went wrong, resend the same sample")
+                        break
 
                 # Parsing dei tempi
                 match = re.match(r"normalize_input \[us\]: (\d+)", line)
@@ -209,6 +217,7 @@ def main(dummy,
                         tot_latency_list.append(tot_latency)
                         tot_latency_fast_list.append(tot_latency_fast)
 
+                    idx += 1
                     break # Esci dal while perchè hai raccolto tutti i tempi, passa al sample successivo
                     
                 # Pattern che causa loop infinito
@@ -217,7 +226,7 @@ def main(dummy,
                     Error_model_in_ram = 1
                     break # Esci dal while
 
-                if line == "STOP":
+                if "STOP" in line:
                     Error_model_in_ram = 1
                     break # Esci dal while  
 
