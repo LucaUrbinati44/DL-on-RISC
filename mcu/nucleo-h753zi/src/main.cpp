@@ -170,7 +170,7 @@ void setup()
     while (1) {
       Serial.println("ERRORE: modello troppo grande per la RAM disponibile!");
       Serial.println("STOP");
-      delay(4000);
+      delay(1000);
     }
   }
   // Copy move from Flash to RAM
@@ -180,7 +180,7 @@ void setup()
     while (1) {
       Serial.println("ERRORE: malloc fallita, memoria insufficiente!");
       Serial.println("STOP");
-      delay(4000);
+      delay(1000);
     }
   }
   memcpy(model_ram, g_mlp_model_data, g_mlp_model_data_len);
@@ -338,9 +338,9 @@ void loop()
         //Serial.print(F_CPU / 1000000);
         //Serial.println(" MHz");
         Serial.println("NEXT");
-        Serial.flush();
-        delay(100);
-        //return;
+        //Serial.flush();
+        //delay(100);
+        return;
       } else {
         bytes_received += r;
         Serial.println("ACK");

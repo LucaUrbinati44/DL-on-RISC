@@ -7,11 +7,10 @@
 
 #define MCU_RAM_BYTES 128*1024
 
-//#define BAUD_RATE 115200
 #define BAUD_RATE 115200
-#define CHUNK_SIZE_MAX 1024
+#define CHUNK_SIZE_MAX 3584
 
-#define INPUT_FEATURE_SIZE 1024
+#define INPUT_FEATURE_SIZE 3584
 #define OUTPUT_FEATURE_SIZE 1024
 
-const float mean_array = -5.190452156966785e-06;
+const float mean_array = 0.0002337912592338398;

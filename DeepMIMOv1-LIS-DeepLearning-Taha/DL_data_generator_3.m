@@ -7,7 +7,7 @@ disp('---> Deep Learning Dataset Generation');
 global load_H_files load_Delta_H_max load_DL_dataset load_Rates save_mat_files;
 global seed DeepMIMO_dataset_folder end_folder end_folder_M_bar DL_dataset_folder network_folder figure_folder;
 
-filename_Ht=strcat(DeepMIMO_dataset_folder, 'Ht', '_seed', '_grid', num2str(seed), num2str(Ur_rows(2)), '_M', num2str(My), num2str(Mz), '.mat');
+filename_Ht=strcat(DeepMIMO_dataset_folder, 'Ht', end_folder, '.mat');
 filename_params_Ht=strcat(DeepMIMO_dataset_folder, 'params_Ht', end_folder, '.mat');
 filename_Hr=strcat(DeepMIMO_dataset_folder, 'Hr', end_folder);
 filename_params_Hr=strcat(DeepMIMO_dataset_folder, 'params_Hr', end_folder);

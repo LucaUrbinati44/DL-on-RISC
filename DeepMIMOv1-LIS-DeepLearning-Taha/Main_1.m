@@ -48,7 +48,15 @@ cd(base_folder);
 % Luca variables to control the flow
 global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat_py;
 
-% all 1s in production
+% STEP 1) Generate DeepMIMO Dataset
+%load_Delta_H_max = 0; % load output from DeepMIMO_data_generator_2.m
+%load_H_files     = 0; % load output from DeepMIMO_data_generator_2.m
+%load_DL_dataset  = 0; % load output from DL_data_generator_3.m
+%load_Rates       = 0; % load output from DL_training_4.m
+%training         = 0; % 1 for training the network, 0 from loaoding it from file
+%save_mat_files   = 1;
+
+% STEP 2) Generate DL Dataset
 load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
 load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
 load_DL_dataset  = 0; % load output from DL_data_generator_3.m
@@ -56,7 +64,23 @@ load_Rates       = 0; % load output from DL_training_4.m
 training         = 0; % 1 for training the network, 0 from loaoding it from file
 save_mat_files   = 1;
 
-load_mat_py      = 4; 
+% STEP 3) Train DL model
+%load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
+%load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
+%load_DL_dataset  = 1; % load output from DL_data_generator_3.m
+%load_Rates       = 0; % load output from DL_training_4.m
+%training         = 1; % 1 for training the network, 0 from loaoding it from file
+%save_mat_files   = 1;
+
+% STEP 4) Plot results
+%load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
+%load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
+%load_DL_dataset  = 1; % load output from DL_data_generator_3.m
+%load_Rates       = 1; % load output from DL_training_4.m
+%training         = 0; % 1 for training the network, 0 from loaoding it from file
+%save_mat_files   = 1;
+
+load_mat_py      = 4;
 % 4: load py-generated test tflite files (production)
 % 3: load py-generated test files
 % 2: load py-generated files
@@ -117,7 +141,7 @@ Pt=5; % transmit power (dB)
 L=1; % number of channel paths
 
 % TO CHANGE FOR DESIGN-SPACE EXPLORATION
-M_bar=8; % number of active elements
+M_bar=1; % number of active elements
 
 D_Lambda = 0.5; % Antenna spacing relative to the wavelength
 BW = 100e6; % Bandwidth
@@ -135,6 +159,7 @@ Ur_rows = [1000 1200]; % original
 Validation_Size = 6200; % Validation dataset Size
 Test_Size = 3100; % Test dataset Size
 
+%%
 % fig12
 Rate_OPTt=zeros(numel(My_ar),numel(Training_Size));
 Rate_DLt_mat=zeros(numel(My_ar),numel(Training_Size));  % numel = number of elements

@@ -5,7 +5,7 @@ void normalize_input(float *buffer_in, float *buffer_out)
 {
 
 #ifdef ENABLE_UNROLL_NORMALIZE
-#pragma GCC unroll 1024
+#pragma GCC unroll 3584
 #endif
   for (int i = 0; i < INPUT_FEATURE_SIZE; ++i)
   {

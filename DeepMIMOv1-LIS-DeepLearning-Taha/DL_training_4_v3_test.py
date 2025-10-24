@@ -740,66 +740,7 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
         # %%
         ################################ Train Model ################################
         if train_model_flag == 1 and load_model_flag == 0:
-            print("\n### define model architecture")
-
-            # Define the neural network architecture
-            #model_py = Sequential([
-            #    Input(shape=(X_train.shape[1],), name='input'),
-            #
-            #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully1_'),
-            #    ReLU(name='relu1'),
-            #    Dropout(0.5, name='dropout1'),
-            #
-            #    Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully2_'),
-            #    ReLU(name='relu2'),
-            #    Dropout(0.5, name='dropout2'),
-            #
-            #    Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully3_'),
-            #    ReLU(name='relu3'),
-            #    Dropout(0.5, name='dropout3'),
-            #
-            #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully4_'),
-            #])
-
-            model_py = build_mlp_v1(input_features, output_dim, num_layers, hidden_units_list)
-            #model_py = build_mlp_v2(input_features, output_dim, num_layers, hidden_units_list)
-            #model_py = build_mlp_v3(input_features, output_dim, num_layers, hidden_units_list)
-
-            #if train_model_flag == 1:
-
-                #mini_batch_size = 500
-
-                # https://keras.io/api/optimizers/learning_rate_schedules/cosine_decay_restarts/
-                #steps_per_epoch = math.ceil(X_train.shape[0] / mini_batch_size)
-                #lr_decayed_fn = CosineDecayRestarts(
-                #    initial_learning_rate=init_learning_rate,
-                #    first_decay_steps=20 * steps_per_epoch, # epoche di discesa prima del restart
-                #    t_mul=1.0, # moltiplica la durata dei cicli successivi; 2.0 raddoppia ogni ciclo, 1.0 mantiene cicli di uguale lunghezza
-                #    m_mul=0.5, # moltiplica il picco LR a ogni restart; 1.0 riparte allo stesso picco, 0.9–0.95 crea restart via via più bassi se si desidera stabilizzare nel tempo
-                #    alpha=0.1, # valore minimo come frazione del LR iniziale alla fine del ciclo; 0.0 scende fino a 0, valori piccoli come 1e-6 stabiliscono un pavimento “soft”.
-                #    name="SGDRDecay"
-                #)
-
-                #lr_decayed_fn = CosineDecay(
-                #    initial_learning_rate=init_learning_rate,
-                #    decay_steps,
-                #    alpha=0.0015625, # valore minimo come frazione del LR iniziale alla fine del ciclo; 0.0 scende fino a 0, valori piccoli come 1e-6 stabiliscono un pavimento “soft”.
-                #    name="CosineDecay",
-                #    warmup_target=None,
-                #    warmup_steps=0,
-                #)
-        
-            # Compile the model with SGD optimizer and mean squared error loss
-            optimizer = SGD(learning_rate=init_learning_rate, momentum=0.9)
-            #optimizer = SGD(learning_rate=lr_decayed_fn, momentum=0.9)
-
-            #model_py.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mse'])
-            #model_py.compile(optimizer=optimizer, loss=mse_keras, metrics=['mse'])
-            #model_py.compile(optimizer=optimizer, loss=mse_matlab, metrics=['mse'])
-            model_py.compile(optimizer=optimizer, loss=mse_custom, metrics=['mse'])
-            model_py.summary()
-
-        if train_model_flag == 1:
+            
             print("\n### train_model")
 
             mini_batch_size = 500
@@ -886,21 +827,112 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
 
             start_time = time.time()
 
-            history = model_py.fit(
-                xtrain, Y_train,
-                validation_data=(xval, Y_val),
-                #train_dataset, 
-                #validation_data=val_dataset
-                batch_size=mini_batch_size,
-                initial_epoch=initial_epoch,
-                epochs=max_epochs,
-                shuffle=True,  # Shuffle data at each epoch
-                callbacks=[lr_scheduler, tensorboard_callback, checkpoint_callback, earlystopping_callback],
-                #callbacks=[tensorboard_callback, checkpoint_callback],
-                validation_freq=validationFrequency,
-                verbose=2
-            )
+            #history = model_py.fit(
+            #    xtrain, Y_train,
+            #    validation_data=(xval, Y_val),
+            #    #train_dataset, 
+            #    #validation_data=val_dataset
+            #    batch_size=mini_batch_size,
+            #    initial_epoch=initial_epoch,
+            #    epochs=max_epochs,
+            #    shuffle=True,  # Shuffle data at each epoch
+            #    callbacks=[lr_scheduler, tensorboard_callback, checkpoint_callback, earlystopping_callback],
+            #    #callbacks=[tensorboard_callback, checkpoint_callback],
+            #    validation_freq=validationFrequency,
+            #    verbose=2
+            #)
 
+            lr = init_learning_rate
+            while lr >= min_learning_rate:
+
+                print("\n### define model architecture")
+
+                # Define the neural network architecture
+                #model_py = Sequential([
+                #    Input(shape=(X_train.shape[1],), name='input'),
+                #
+                #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully1_'),
+                #    ReLU(name='relu1'),
+                #    Dropout(0.5, name='dropout1'),
+                #
+                #    Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully2_'),
+                #    ReLU(name='relu2'),
+                #    Dropout(0.5, name='dropout2'),
+                #
+                #    Dense(units=4 * Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully3_'),
+                #    ReLU(name='relu3'),
+                #    Dropout(0.5, name='dropout3'),
+                #
+                #    Dense(units=Y_train.shape[1], kernel_regularizer=l2(1e-4), name='Fully4_'),
+                #])
+
+                model_py = build_mlp_v1(input_features, output_dim, num_layers, hidden_units_list)
+                #model_py = build_mlp_v2(input_features, output_dim, num_layers, hidden_units_list)
+                #model_py = build_mlp_v3(input_features, output_dim, num_layers, hidden_units_list)
+
+                #if train_model_flag == 1:
+
+                    #mini_batch_size = 500
+
+                    # https://keras.io/api/optimizers/learning_rate_schedules/cosine_decay_restarts/
+                    #steps_per_epoch = math.ceil(X_train.shape[0] / mini_batch_size)
+                    #lr_decayed_fn = CosineDecayRestarts(
+                    #    initial_learning_rate=init_learning_rate,
+                    #    first_decay_steps=20 * steps_per_epoch, # epoche di discesa prima del restart
+                    #    t_mul=1.0, # moltiplica la durata dei cicli successivi; 2.0 raddoppia ogni ciclo, 1.0 mantiene cicli di uguale lunghezza
+                    #    m_mul=0.5, # moltiplica il picco LR a ogni restart; 1.0 riparte allo stesso picco, 0.9–0.95 crea restart via via più bassi se si desidera stabilizzare nel tempo
+                    #    alpha=0.1, # valore minimo come frazione del LR iniziale alla fine del ciclo; 0.0 scende fino a 0, valori piccoli come 1e-6 stabiliscono un pavimento “soft”.
+                    #    name="SGDRDecay"
+                    #)
+
+                    #lr_decayed_fn = CosineDecay(
+                    #    initial_learning_rate=init_learning_rate,
+                    #    decay_steps,
+                    #    alpha=0.0015625, # valore minimo come frazione del LR iniziale alla fine del ciclo; 0.0 scende fino a 0, valori piccoli come 1e-6 stabiliscono un pavimento “soft”.
+                    #    name="CosineDecay",
+                    #    warmup_target=None,
+                    #    warmup_steps=0,
+                    #)
+            
+                # Compile the model with SGD optimizer and mean squared error loss
+                optimizer = SGD(learning_rate=lr, momentum=0.9)
+                #optimizer = SGD(learning_rate=lr_decayed_fn, momentum=0.9)
+
+                #model_py.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mse'])
+                #model_py.compile(optimizer=optimizer, loss=mse_keras, metrics=['mse'])
+                #model_py.compile(optimizer=optimizer, loss=mse_matlab, metrics=['mse'])
+                model_py.compile(optimizer=optimizer, loss=mse_custom, metrics=['mse'])
+                model_py.summary()
+                
+                print(f"\nStart DL training with learning rate: {lr}")
+                history = model_py.fit(
+                    xtrain, Y_train,
+                    validation_data=(xval, Y_val),
+                    #train_dataset, 
+                    #validation_data=val_dataset
+                    batch_size=mini_batch_size,
+                    initial_epoch=initial_epoch,
+                    epochs=max_epochs,
+                    shuffle=True,  # Shuffle data at each epoch
+                    callbacks=[lr_scheduler, tensorboard_callback, checkpoint_callback, earlystopping_callback],
+                    #callbacks=[tensorboard_callback, checkpoint_callback],
+                    validation_freq=validationFrequency,
+                    verbose=2
+                )
+                
+                first_loss = history.history['loss'][0]
+                last_loss = history.history['loss'][-1]
+                print(f"First/Last epoch loss: {first_loss}/{last_loss}")
+                
+                if np.isnan(first_loss) or np.isnan(last_loss):
+                    print("NaN detected in first epoch. Reducing learning rate and retrying...")
+                    lr = lr * 0.8
+                    if lr < min_learning_rate:
+                        print(f"Learning rate reached minimum ({min_lr}). Training stopped.")
+                        return model, history
+                else:
+                    break
+            
             elapsed_time = time.time() - start_time
             print(f"Training completed in {elapsed_time / 60:.2f} minutes.")
 
@@ -993,21 +1025,21 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
                 Indmax_DL_py_test_tflite = [0, 0, 0, 0, 0]
                 Rate_DL_py_test_tflite = 0
 
-        if Training_Size_dd >= 10000 or Training_Size_dd == 2:
-            
-            filename_Rate_OPT = os.path.join(network_folder_in, f"Rate_OPT{end_folder_Training_Size_dd}.mat")
-
-            with h5py.File(filename_Rate_OPT, 'r') as f:
-                Rate_OPT = f['Rate_OPT'][:][0][0]
-
-            filename_Rate_DL = os.path.join(network_folder_in, f"Rate_DL{end_folder_Training_Size_dd}.mat")
-
-            with h5py.File(filename_Rate_DL, 'r') as f:
-                Rate_DL_valOld = f['Rate_DL'][:][0][0]
-
-            # Output finali
-            print(f"\nRate_OPT: {Rate_OPT}")
-            print(f"Rate_DL_valOld: {Rate_DL_valOld}")
+        #if Training_Size_dd >= 10000 or Training_Size_dd == 2:
+        #    
+        #    filename_Rate_OPT = os.path.join(network_folder_in, f"Rate_OPT{end_folder_Training_Size_dd}.mat")
+        #
+        #    with h5py.File(filename_Rate_OPT, 'r') as f:
+        #        Rate_OPT = f['Rate_OPT'][:][0][0]
+        #
+        #    filename_Rate_DL = os.path.join(network_folder_in, f"Rate_DL{end_folder_Training_Size_dd}.mat")
+        #
+        #    with h5py.File(filename_Rate_DL, 'r') as f:
+        #        Rate_DL_valOld = f['Rate_DL'][:][0][0]
+        #
+        #    # Output finali
+        #    print(f"\nRate_OPT: {Rate_OPT}")
+        #    print(f"Rate_DL_valOld: {Rate_DL_valOld}")
 
         # Output finali       
         try:
@@ -1050,33 +1082,64 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
         #elif train_model_flag == 0 and load_model_flag == 1:
         #    return
 
-        results = {
-            "Rate_OPT_py_load_val": float(Rate_OPT_py_load_val),
-            "Rate_DL_py_load_val": float(Rate_DL_py_load_val),
-            "Rate_OPT_py_load_test": float(Rate_OPT_py_load_test),
-            "Rate_DL_py_load_test": float(Rate_DL_py_load_test),
-            "Rate_DL_py_load_test_tflite": float(Rate_DL_py_load_test_tflite),
-            "Indmax_OPT_py_load_test": Indmax_OPT_py_load_test.tolist() if hasattr(Indmax_OPT_py_load_test, "tolist") else Indmax_OPT_py_load_test,
-            #"Indmax_OPT_py_load_test": Indmax_OPT_py_load_test,
-            "Indmax_DL_py_load_test": Indmax_DL_py_load_test.tolist() if hasattr(Indmax_DL_py_load_test, "tolist") else Indmax_DL_py_load_test,
-            #"Indmax_DL_py_load_test": Indmax_DL_py_load_test,
-            "Indmax_DL_py_load_test_tflite": Indmax_DL_py_load_test_tflite.tolist() if hasattr(Indmax_DL_py_load_test_tflite, "tolist") else Indmax_DL_py_load_test_tflite,
-            #"Indmax_DL_py_load_test_tflite": Indmax_DL_py_load_test_tflite,
-            "YValidation_un_test": YValidation_un_test.tolist() if hasattr(YValidation_un_test, "tolist") else YValidation_un_test
-            #"YValidation_un_test": YValidation_un_test
-        }
+        if load_model_flag == 1:
+            results = {
+                "Rate_OPT_py_load_val": float(Rate_OPT_py_load_val),
+                "Rate_DL_py_load_val": float(Rate_DL_py_load_val),
+                "Rate_OPT_py_load_test": float(Rate_OPT_py_load_test),
+                "Rate_DL_py_load_test": float(Rate_DL_py_load_test),
+                "Rate_DL_py_load_test_tflite": float(Rate_DL_py_load_test_tflite),
+                "Indmax_OPT_py_load_test": Indmax_OPT_py_load_test.tolist() if hasattr(Indmax_OPT_py_load_test, "tolist") else Indmax_OPT_py_load_test,
+                #"Indmax_OPT_py_load_test": Indmax_OPT_py_test,
+                "Indmax_DL_py_load_test": Indmax_DL_py_load_test.tolist() if hasattr(Indmax_DL_py_load_test, "tolist") else Indmax_DL_py_load_test,
+                #"Indmax_DL_py_load_test": Indmax_DL_py_load_test,
+                "Indmax_DL_py_load_test_tflite": Indmax_DL_py_load_test_tflite.tolist() if hasattr(Indmax_DL_py_load_test_tflite, "tolist") else Indmax_DL_py_load_test_tflite,
+                #"Indmax_DL_py_load_test_tflite": Indmax_DL_py_load_test_tflite,
+                "YValidation_un_test": YValidation_un_test.tolist() if hasattr(YValidation_un_test, "tolist") else YValidation_un_test
+                #"YValidation_un_test": YValidation_un_test
+            }
 
-        output_json_path = os.path.join(output_folder, "output_dl_training_4_v3_test.json")
-        with open(output_json_path, "w", encoding="utf-8") as f:
-            json.dump(results, f)
+            output_json_path = os.path.join(output_folder, f"output_dl_training_4_v3_test{end_folder_Training_Size_dd_epochs}.json")
+            with open(output_json_path, "w", encoding="utf-8") as f:
+                json.dump(results, f)
 
-        #return  model_py, \
-        return  Rate_OPT_py_load_val,  Rate_DL_py_load_val, \
-                Rate_OPT_py_load_test, Rate_DL_py_load_test, \
-                Rate_DL_py_load_test_tflite, \
-                Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
-                Indmax_DL_py_load_test_tflite, \
-                YValidation_un_test
+            #return  model_py, \
+            return  Rate_OPT_py_load_val,  Rate_DL_py_load_val, \
+                    Rate_OPT_py_load_test, Rate_DL_py_load_test, \
+                    Rate_DL_py_load_test_tflite, \
+                    Indmax_OPT_py_load_test, Indmax_DL_py_load_test, \
+                    Indmax_DL_py_load_test_tflite, \
+                    YValidation_un_test
+                
+        if train_model_flag == 1:
+            results = {
+                "Rate_OPT_py_load_val": float(Rate_OPT_py_val),
+                "Rate_DL_py_load_val": float(Rate_DL_py_val),
+                "Rate_OPT_py_load_test": float(Rate_OPT_py_test),
+                "Rate_DL_py_load_test": float(Rate_DL_py_test),
+                "Rate_DL_py_load_test_tflite": float(Rate_DL_py_test_tflite),
+                "Indmax_OPT_py_load_test": Indmax_OPT_py_test.tolist() if hasattr(Indmax_OPT_py_test, "tolist") else Indmax_OPT_py_test,
+                #"Indmax_OPT_py_load_test": Indmax_OPT_py_test,
+                "Indmax_DL_py_load_test": Indmax_DL_py_test.tolist() if hasattr(Indmax_DL_py_test, "tolist") else Indmax_DL_py_test,
+                #"Indmax_DL_py_load_test": Indmax_DL_py_test,
+                "Indmax_DL_py_load_test_tflite": Indmax_DL_py_test_tflite.tolist() if hasattr(Indmax_DL_py_test_tflite, "tolist") else Indmax_DL_py_test_tflite,
+                #"Indmax_DL_py_load_test_tflite": Indmax_DL_py_test_tflite,
+                "YValidation_un_test": YValidation_un_test.tolist() if hasattr(YValidation_un_test, "tolist") else YValidation_un_test
+                #"YValidation_un_test": YValidation_un_test
+            }
+
+            output_json_path = os.path.join(output_folder, "output_dl_training_4_v3_test.json")
+            with open(output_json_path, "w", encoding="utf-8") as f:
+                json.dump(results, f)
+
+            #return  model_py, \
+            return  Rate_OPT_py_val,  Rate_DL_py_val, \
+                    Rate_OPT_py_test, Rate_DL_py_test, \
+                    Rate_DL_py_test_tflite, \
+                    Indmax_OPT_py_test, Indmax_DL_py_test, \
+                    Indmax_DL_py_test_tflite, \
+                    YValidation_un_test
+   
 
 if __name__ == "__main__":
     import argparse, json

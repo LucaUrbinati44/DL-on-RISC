@@ -56,10 +56,12 @@ K_DL = 64 # subcarriers, costante (per ora)
 Ur_rows = [1000, 1200]
 #My_ar = [32, 64]
 #Mz_ar = [32, 64]
-My_ar = [32]
-Mz_ar = [32]
-#My_ar = [64]
-#Mz_ar = [64]
+
+# TODO DEVO CAMBIARE QUI
+#My_ar = [32]
+#Mz_ar = [32]
+My_ar = [64]
+Mz_ar = [64]
 
 My = My_ar[0]
 Mz = Mz_ar[0]
@@ -83,15 +85,15 @@ debug = 2            # 0: production mode, 1: production mode for one case, 2: d
 #dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
 dummy = ''
 
-test_set_size = 'small' # 'full' in prodcution
-#test_set_size = 'full'
+#test_set_size = 'small' # 'full' in prodcution
+test_set_size = 'full'
 
 if test_set_size == 'small':
     small_samples = 5 # even and greater than or equal to 2
     warmup_samples_for_statistics = 0
 else:
     small_samples = 5 # non cambiare, usata solo per le print
-    warmup_samples_for_statistics = 100 # TODO: 100, riabililo dopo
+    warmup_samples_for_statistics = 100
 
 # SPAZIO DI RICERCA 
 # 8 celle attive x 64 subcarriers x 2 (real/img) = 1024
@@ -101,76 +103,20 @@ if debug == 0:
     num_layers_list = [0,1,2,3]   # Numero di layer MLP (ESCLUSO L'ULTIMO!!!)
     R_list = [32, 8, 1]
 elif debug == 1: # (9x9+1)x2 x 8min ciascuno = 2.67h
-    active_cells = [8]
+    active_cells = [28] # TODO DEVO CAMBIARE QUI
     output_dims = [My*Mz]
     num_layers_list = [0,1,2,3]
     R_list = [32, 8, 1]
 elif debug == 2:
-    active_cells = [8]
+    active_cells = [28]
     output_dims = [My*Mz]
-    num_layers_list = [1,2,3]
-    #num_layers_list = [1]
-    R_list = [32] # indifferente il valore di R se num_layers_list = [0]. Verrà eseguita una sola iterazione
+    num_layers_list = [3]
+    R_list = [1] # indifferente il valore di R se num_layers_list = [0]. Verrà eseguita una sola iterazione
 else: # modello di Taha
     #input_featuress = [1024]
     active_cells = [8]
     output_dims = [1024]
     num_layers_list = [3]
-
-# These boards must run on Windows
-if ISWINDOWS:
-    if mcu_name == 'pico':
-        mcu_type = {'name': 'pico', 
-                    #'port': '/dev/ttyACM0',
-                    'serial_number': "E66480454F7E2833", # when using earlephilhower/arduino-pico
-                    'serial_number_2': "458064E633287E4F", # when using ArduinoCore-mbed
-                    #'baud_rate': 9600}
-                    #'baud_rate': 115200}
-                    'baud_rate': 115200}
-    elif mcu_name == 'esp32':
-        mcu_type = {'name': 'esp32-s2-saola-tflm', 
-                    #'port': '/dev/ttyUSB0',
-                    'serial_number': "2017651D8BD2EB11B8CCC149E93FD3F1",
-                    'baud_rate': 115200}
-    #elif mcu_name == 'stm32f4':
-    #    mcu_type = {'name': 'nucleo-f446ze', 
-    #                #'port': '/dev/ttyACM1',
-    #                'serial_number': "066FFF485570854967101750",
-    #                'baud_rate': 115200}
-    else:
-        print("Run this board on Linux")
-        os._exit(1)
-
-    # Non riesce a scaricare le librerie per STM32 su Windows. Serve attach per lavorare su Linux
-    #mcu_type = {'name': 'nucleo-f446ze', 
-    #            #'port': '/dev/ttyACM1',
-    #            'serial_number': "066FFF485570854967101750",
-    #            'baud_rate': 921600}
-    #
-    #mcu_type = {'name': 'nucleo-h753zi',
-    #            #'port': '/dev/ttyACM0',
-    #            'serial_number': "0024002F3234510737333934",
-    #            'baud_rate': 921600}
-else: # These boards must run on Linux
-    
-    if mcu_name == 'stm32f4':
-        mcu_type = {'name': 'nucleo-f446ze', 
-                    #'port': '/dev/ttyACM1',
-                    'serial_number': "066FFF485570854967101750",
-                    'baud_rate': 115200}
-    elif mcu_name == 'stm32h7':
-        mcu_type = {'name': 'nucleo-h753zi',
-                    #'port': '/dev/ttyACM0',
-                    'serial_number': "0024002F3234510737333934",
-                    'baud_rate': 115200}
-    #elif mcu_name == 'esp32':
-    #    mcu_type = {'name': 'esp32-s2-saola-tflm', 
-    #                #'port': '/dev/ttyUSB0',
-    #                'serial_number': "2017651D8BD2EB11B8CCC149E93FD3F1",
-    #                'baud_rate': 921600}
-    else: 
-        print("Run this board on Windows")
-        os._exit(1)
 
 # ------------------------------------------------------------------------------------------
 
@@ -199,33 +145,62 @@ max_epochs = 200 # tanto c'è early stopping
 
 # ------------------------------------------------------------------------------------------
 
-##### TRAINING #####
+# STEP 1) Train DL model
 #datetime_str = datetime.datetime.now().strftime("experiment-%d-%m-%y-%H-%M")
-#initial_epoch = 0
-#load_model_flag = 0
-#train_model_flag = 1
-#predict_loaded_model_flag = 0
-#convert_model_flag = 1
-#profiling_flag = 0
-#compile_and_upload_flag = 0
-#save_files_flag_master = 1
-#save_files_flag_master_once = 0
+datetime_str = datetime.datetime.now().strftime("experiment" + '_M' + str(My) + str(Mz) + '_Mbar' + str(active_cells[0]))
+initial_epoch = 0
 
-##### LOADING (for inference and profiling) #####
-datetime_str = datetime.datetime.now().strftime("experiment-09-09-25-15-56")
-initial_epoch = 200 # se vuoi continuare un allenamento, sono le epoche dalle quali riparti
-
-train_model_flag = 0
-convert_model_flag = 0
-save_files_flag_master = 0
+train_model_flag = 1
+convert_model_flag = 1
+save_files_flag_master = 1
 save_files_flag_master_once = 1
 
-load_model_flag = 1
+load_model_flag = 0
 predict_loaded_model_flag = load_model_flag # deve essere uguale a load_model_flag
-profiling_flag = 1
-compile_and_upload_flag = 1 # TODO: RIATTIVARE
+profiling_flag = 0
+compile_and_upload_flag = 0
 
-chunk_size_max = 1024
+# STEP 2) Inference on MCUs
+##### LOADING (for inference and profiling) #####
+#datetime_str = USA ALTRO SCRIPT
+
+# ------------------------------------------------------------------------------------------
+
+if profiling_flag == 1:
+    # These boards must run on Windows
+    if ISWINDOWS:
+        if mcu_name == 'pico':
+            mcu_type = {'name': 'pico', 
+                        #'port': '/dev/ttyACM0',
+                        'serial_number': "E66480454F7E2833", # when using earlephilhower/arduino-pico
+                        'serial_number_2': "458064E633287E4F", # when using ArduinoCore-mbed
+                        #'baud_rate': 9600}
+                        #'baud_rate': 115200}
+                        'baud_rate': 115200}
+        elif mcu_name == 'esp32':
+            mcu_type = {'name': 'esp32-s2-saola-tflm', 
+                        #'port': '/dev/ttyUSB0',
+                        'serial_number': "2017651D8BD2EB11B8CCC149E93FD3F1",
+                        'baud_rate': 921600}
+        else:
+            # Non riesce a scaricare le librerie per STM32 su Windows. Serve attach per lavorare su Linux
+            print("Run this board on Linux")
+            os._exit(1)
+            
+    else: # These boards must run on Linux
+        if mcu_name == 'stm32f4':
+            mcu_type = {'name': 'nucleo-f446ze', 
+                        #'port': '/dev/ttyACM1',
+                        'serial_number': "066FFF485570854967101750",
+                        'baud_rate': 115200}
+        elif mcu_name == 'stm32h7':
+            mcu_type = {'name': 'nucleo-h753zi',
+                        #'port': '/dev/ttyACM0',
+                        'serial_number': "0024002F3234510737333934",
+                        'baud_rate': 921600}
+        else: 
+            print("Run this board on Windows")
+            os._exit(1)
 
 # ------------------------------------------------------------------------------------------
 
@@ -263,7 +238,8 @@ mcu_profiling_folder_test_data = os.path.join(mcu_profiling_folder, 'test_data')
 mcu_profiling_folder_test_data_normalized = os.path.join(mcu_profiling_folder, 'test_data_normalized')
 mcu_profiling_folder_outputdata = os.path.join(mcu_profiling_folder, 'output_data')
 mcu_profiling_folder_logfile = os.path.join(mcu_profiling_folder, 'logs') 
-mcu_profiling_logfile = os.path.join(mcu_profiling_folder_logfile, f'log_{mcu_type['name']}_{datetime_str}.txt')
+if profiling_flag == 1:
+    mcu_profiling_logfile = os.path.join(mcu_profiling_folder_logfile, f'log_{mcu_type['name']}_{datetime_str}.txt')
 #pio_projects_folder = '/mnt/c/Users/Work/Documents/PlatformIO/Projects/'
 pio_projects_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/mcu'
 if ISWINDOWS:
@@ -333,6 +309,7 @@ def run_tensorboard():
     # Controlla se TensorBoard è già in esecuzione
     try:
         # Avvia TensorBoard in background
+        terminate_tensorboard()
         tensorboard_process = subprocess.Popen(tensorboard_command)
         print(f"\nTensorBoard avviato in background.")
     except:
@@ -566,7 +543,7 @@ def get_model_info_precise(model, model_path_tflite, save_dir='./'):
     return round(model_h_size_int8_kb, 2), round(model_file_size_int8_kb, 2), round(model_file_size_int8_mb, 2), 
 
 
-def change_config_file_1(file_path, input_features, output_dim, baud_rate, chunk_size_max):
+def change_config_file_1(file_path, input_features, output_dim, baud_rate):
 
     print('\n*** change_config_file_1')
 
@@ -587,7 +564,7 @@ def change_config_file_1(file_path, input_features, output_dim, baud_rate, chunk
     content = pattern_input.sub(rf"\g<1>{input_features}", content)
     content = pattern_output.sub(rf"\g<1>{output_dim}", content)
     content = pattern_baudrate.sub(rf"\g<1>{baud_rate}", content)
-    content = pattern_chunksizemax.sub(rf"\g<1>{chunk_size_max}", content)
+    content = pattern_chunksizemax.sub(rf"\g<1>{input_features}", content) # CAMBIARE QUI se serve ridurre il chunk_size_max
 
     # salva file
     with open(file_path, "w", encoding="utf-8") as f:
@@ -702,6 +679,8 @@ def parse_compilation_logfile(file_path):
     hardware_pattern_MB = re.compile(r"HARDWARE:\s+\S+\s+(\d+)MHz,\s+(\d+)KB RAM,\s+(\d+)MB Flash", re.IGNORECASE)
     hardware_pattern_KB = re.compile(r"HARDWARE:\s+\S+\s+(\d+)MHz,\s+(\d+)KB RAM,\s+(\d+)KB Flash", re.IGNORECASE)
 
+    disconnected_pattern = re.compile(r"No accessible", re.IGNORECASE)
+
     #error_pattern = re.compile(r"\berror\b", re.IGNORECASE)
     #error_pattern = re.compile(r"\bError+\s\b")
     error_pattern = re.compile(r"\[FAILED\]")
@@ -759,7 +738,11 @@ def parse_compilation_logfile(file_path):
                 Flash_MB = -int(match.group(1))
                 Error_does_not_fit = 2
 
-            if Error_does_not_fit == 0: # per non sovrascrivere gli altri
+            match = disconnected_pattern.search(line)
+            if match:
+                Error_does_not_fit = 4
+
+            if Error_does_not_fit == 0: # per non sovrascrivere gli altri errori
                 match = error_pattern.search(line)
                 if match:
                     print("match Error")
@@ -1125,7 +1108,7 @@ def run_experiment(dummy, data_csv, x_sample,
 
                 def call_dl_training_4_v3_test_wsl(params_dict, output_json_path):
                     # Salva i parametri in un file JSON
-                    params_path = "params_dl_training_4_v3_test.json"
+                    params_path = f"params_dl_training_4_v3_test{end_folder_Training_Size_dd_epochs}.json"
                     with open(params_path, "w", encoding="utf-8") as f:
                         json.dump(params_dict, f)
 
@@ -1209,7 +1192,7 @@ def run_experiment(dummy, data_csv, x_sample,
                     "save_files_flag_master": save_files_flag_master,
                     "save_files_flag_master_once": save_files_flag_master_once
                 }
-                output_json_path = os.path.join(output_folder, "output_dl_training_4_v3_test.json")
+                output_json_path = os.path.join(output_folder, f"output_dl_training_4_v3_test{end_folder_Training_Size_dd_epochs}.json")
                 results = call_dl_training_4_v3_test_wsl(params_dict, output_json_path)
 
                 # Poi estrai i risultati come prima:
@@ -1375,7 +1358,7 @@ def run_experiment(dummy, data_csv, x_sample,
                 mean_tot_latency, perc50_tot_latency, perc95_tot_latency, std_tot_latency, \
                 mean_tot_latency_fast, perc50_tot_latency_fast, perc95_tot_latency_fast, std_tot_latency_fast, \
                 Indmax_DL_py_load_test_tflite_mcu, Rate_DL_py_load_test_tflite_mcu, Error_model_in_ram = serial_feeder_and_logger.main(dummy,
-                                                                                                                           com_port, mcu_type, chunk_size_max,
+                                                                                                                           com_port, mcu_type, input_features,
                                                                                                                            data_csv, test_set_size, small_samples,
                                                                                                                            warmup_samples_for_statistics, 
                                                                                                                            YValidation_un_test, 
@@ -1391,10 +1374,6 @@ def run_experiment(dummy, data_csv, x_sample,
                     print("*** ATTENZIONE: Error_model_in_ram == 1 and i == 1")
                 elif Error_model_in_ram != 0 and i == 2:
                     print("*** ATTENZIONE: Error_model_in_ram == 1 and i == 2")
-                elif Error_model_in_ram != 0 and i == 3: # if error
-                    print("*** ATTENZIONE: Error_model_in_ram == 1 and i == 3")
-                elif Error_model_in_ram != 0 and i == 4: # if error
-                    print("*** ATTENZIONE: Error_model_in_ram == 1 and i == 4")
             
             if Error_does_not_fit != 0 or Error_model_in_ram != 0:
                 mean_norm = 0
@@ -1472,24 +1451,25 @@ if __name__ == "__main__":
 
     start_time = time.time()
 
-    mcu_folder = os.path.join(pio_projects_folder, mcu_type['name'])
-    mcu_include_config = os.path.join(mcu_folder, 'include', 'config.h') 
-    #mcu_include_config = os.path.join(mcu_folder, 'lib/lib-luca/config.cc') 
-    mcu_lib_libluca_folder = os.path.join(mcu_folder, 'lib', 'lib-luca') 
-    mcu_lib_model_folder = os.path.join(mcu_folder, 'lib', 'model')
+    if profiling_flag == 1:
+        mcu_folder = os.path.join(pio_projects_folder, mcu_type['name'])
+        mcu_include_config = os.path.join(mcu_folder, 'include', 'config.h') 
+        #mcu_include_config = os.path.join(mcu_folder, 'lib/lib-luca/config.cc') 
+        mcu_lib_libluca_folder = os.path.join(mcu_folder, 'lib', 'lib-luca') 
+        mcu_lib_model_folder = os.path.join(mcu_folder, 'lib', 'model')
 
-    folders = [
-    mcu_folder,
-    mcu_lib_libluca_folder,
-    mcu_lib_model_folder
-    ]
+        folders = [
+        mcu_folder,
+        mcu_lib_libluca_folder,
+        mcu_lib_model_folder
+        ]
 
-    for folder in folders:
-        if not os.path.exists(folder):  # Controlla se la cartella esiste
-            os.makedirs(folder, exist_ok=True)  # Crea la cartella se non esiste
-            print(f"\nCartella creata: {folder}")
-        else:
-            print(f"La cartella esiste già: {folder}")
+        for folder in folders:
+            if not os.path.exists(folder):  # Controlla se la cartella esiste
+                os.makedirs(folder, exist_ok=True)  # Crea la cartella se non esiste
+                print(f"\nCartella creata: {folder}")
+            else:
+                print(f"La cartella esiste già: {folder}")
 
     #if not os.path.exists(mcu_lib_model_folder):  # Controlla se la cartella esiste
     #    os.makedirs(mcu_lib_model_folder, exist_ok=True)  # Crea la cartella se non esiste
@@ -1549,8 +1529,9 @@ if __name__ == "__main__":
 
         for output_dim in output_dims:
 
-            change_config_file_1(mcu_include_config, input_features, output_dim, mcu_type['baud_rate'], chunk_size_max)
-            change_lib_file_1(mcu_lib_libluca_folder, input_features, output_dim)
+            if profiling_flag == 1:
+                change_config_file_1(mcu_include_config, input_features, output_dim, mcu_type['baud_rate'])
+                change_lib_file_1(mcu_lib_libluca_folder, input_features, output_dim)
             
             once_zero_layers = 0 # serve per evitare che si iteri su R quando num_layers = 0
 
@@ -1580,4 +1561,7 @@ if __name__ == "__main__":
                                    end_folder, end_folder_Training_Size_dd)
                     
     elapsed_time = time.time() - start_time
-    print(f"Script debug={debug}, test_set_size={test_set_size}, mcu_type={mcu_type['name']} completed in {elapsed_time / 60:.2f} minutes ({elapsed_time / 3600:.2f} hours)")
+    if profiling_flag == 1:
+        print(f"Script debug={debug}, test_set_size={test_set_size}, mcu_type={mcu_type['name']} completed in {elapsed_time / 60:.2f} minutes ({elapsed_time / 3600:.2f} hours)")
+    else:
+        print(f"Script debug={debug}, test_set_size={test_set_size} completed in {elapsed_time / 60:.2f} minutes ({elapsed_time / 3600:.2f} hours)")

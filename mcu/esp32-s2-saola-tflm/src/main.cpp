@@ -52,7 +52,7 @@ namespace
   // Create an area of memory to use for input, output, and intermediate arrays.
   // The size of this will depend on the model you're using, and may need to be
   // determined by experimentation.
-  constexpr int kTensorArenaSize = 32 * 1024; // con valori superiori a 114KB non va su ESP32, confronti fatti con 114KB
+  constexpr int kTensorArenaSize = 64 * 1024; // con valori superiori a 114KB non va su ESP32, confronti fatti con 114KB
   uint8_t tensor_arena[kTensorArenaSize];
 } // namespace
 // Con namespace { ... } (anonymous namespace). Tutte le variabili e funzioni dichiarate dentro hanno linkage interno → sono visibili solo all’interno di quel file .cpp.
@@ -177,7 +177,7 @@ void setup()
     while (1) {
       Serial.println("ERRORE: modello troppo grande per la RAM disponibile!");
       Serial.println("STOP");
-      delay(4000);
+      delay(1000);
     }
   }
   // Copy move from Flash to RAM
@@ -187,7 +187,7 @@ void setup()
     while (1) {
       Serial.println("ERRORE: malloc fallita, memoria insufficiente!");
       Serial.println("STOP");
-      delay(4000);
+      delay(1000);
     }
   }
   memcpy(model_ram, g_mlp_model_data, g_mlp_model_data_len);

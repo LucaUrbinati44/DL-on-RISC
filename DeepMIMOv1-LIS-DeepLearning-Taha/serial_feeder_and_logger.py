@@ -51,7 +51,6 @@ def main(dummy,
     tot_latency_list = []
     tot_latency_fast_list = []
     Error_model_in_ram = 0
-    #inter_chunk_delay = 0.005     # 5 ms (aumentare se necessario)
     inter_chunk_delay = 0.100     # 100 ms (aumentare se necessario)
 
     baud_rate = mcu_type['baud_rate']
@@ -103,8 +102,15 @@ def main(dummy,
             elif "STOP" in line:
                 stop_count += 1
                 next_received = False
-                if stop_count <= 40:
+                if stop_count <= 20:
                     print(f"PSY: Ignoring STOP number {stop_count}")
+                    continue
+                Error_model_in_ram = 1
+                break # Esci dal while    
+            elif "Rebooting" in line:
+                stop_count += 1
+                if stop_count <= 5:
+                    print(f"PSY: Try to increase the TensorArena {stop_count}")
                     continue
                 Error_model_in_ram = 1
                 break # Esci dal while    
@@ -131,11 +137,15 @@ def main(dummy,
                 ser.write(data)
                 ser.flush()
                 features_sent += chunk_size
-                print(f"PYS: Inviate {features_sent}/{total_features} features ({features_sent/total_features*100}%)")
+                if idx < 10:
+                    print(f"PYS: Inviate {features_sent}/{total_features} features ({features_sent/total_features*100}%)")
                 
                 # piccolo delay per non saturare USB
                 #if mcu_type['name'] == 'pico' or mcu_type['name'] == 'esp32-s2-saola-tflm':
-                time.sleep(inter_chunk_delay)
+                if mcu_type['name'] == 'nucleo-h753zi':
+                    time.sleep(inter_chunk_delay/10)
+                else:
+                    time.sleep(inter_chunk_delay)
 
                 # Attendi ACK dal MCU prima di continuare
                 while True:
@@ -146,7 +156,10 @@ def main(dummy,
                         break
                     else:
                         #print("PSY: Waiting ACK from MCU")
-                        time.sleep(inter_chunk_delay)
+                        if mcu_type['name'] == 'nucleo-h753zi':
+                            time.sleep(inter_chunk_delay/10)
+                        else:
+                            time.sleep(inter_chunk_delay)
 
             next_count = 0
             while True: # Leggi output MCU

@@ -5,7 +5,7 @@ void quantize_input(float *buffer_in, float scale_inv, int zero_point, int8_t *b
 {
 
 #ifdef ENABLE_UNROLL_QUANTIZE
-#pragma GCC unroll 1024
+#pragma GCC unroll 3584
 #endif
   for (int i = 0; i < INPUT_FEATURE_SIZE; ++i)
   {
