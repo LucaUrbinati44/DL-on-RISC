@@ -138,7 +138,7 @@ def pareto_front(df, x_col, y_col, xoffset=0.0, yoffset=0.0):
     for _, row in d.iterrows():
         x, y = row[x_col], row[y_col]
         #if y < best_y:
-        if y < best_y and abs(x - best_x) > 0.001:
+        if y <= best_y and abs(x - best_x) > 0.001:
             front_x.append(x + xoffset/x)
             #front_y.append(y - yoffset)
             #front_x.append(x*(1+xoffset))
@@ -337,20 +337,38 @@ def plot_pareto_subplots(files,
         # ---- se subopt == False: mantieni solo punti appartenenti ai fronti (global o locali) ----
         if subopt == False:
             pareto_points_set = set()
+
+             # aggiungi metadati associando le coordinate ai record originali
+            pf_sub = pf_sub.merge(
+                df_subplot_filtered[[x_col, y_col, "micro_base", "modelinram"]],
+                on=[x_col, y_col],
+                how="left"
+            )
+            
             # punti frontali globali
-            pareto_points_set.update(zip(pf_sub[x_col].tolist(), pf_sub[y_col].tolist()))
+            pareto_points_set.update(zip(pf_sub[x_col].tolist(),pf_sub[y_col].tolist(),pf_sub["micro_base"],pf_sub["modelinram"]))
+
             # fronti locali per ogni micro+setting
             for s in df_subplot_filtered[settings_col].astype(str).unique():
                 df_s = df_subplot_filtered[df_subplot_filtered[settings_col].astype(str) == s]
                 for m in df_s["micro_base"].unique():
                     df_sm = df_s[df_s["micro_base"] == m]
                     pf_local = pareto_front(df_sm, x_col, y_col)
-                    pareto_points_set.update(zip(pf_local[x_col].tolist(), pf_local[y_col].tolist()))
-            # filtra df_subplot_filtered per mantenere solo i punti in pareto_points_set
-            df_subplot_filtered = df_subplot_filtered[df_subplot_filtered.apply(lambda r: (r[x_col], r[y_col]) in pareto_points_set, axis=1)]
-            # ricalcolo pf_sub sulla sotto-porzione (utile se subopt rimuove tutti i non-pareto)
+                    if pf_local.empty:
+                        continue
+                    pf_local = pf_local.merge(df_sm[[x_col, y_col, "micro_base", "modelinram"]], on=[x_col, y_col], how="left")
+                    pareto_points_set.update(zip(pf_local[x_col].tolist(),pf_local[y_col].tolist(),pf_local["micro_base"],pf_local["modelinram"]))
+
+            # filtro mantenendo anche chi ha stessi (x,y) ma diversi modelinram, mantenendo quindi anche i punti sovrapposti
+            df_subplot_filtered = df_subplot_filtered[df_subplot_filtered.apply(lambda r: (r[x_col], r[y_col], r["micro_base"], r["modelinram"]) in pareto_points_set,axis=1)]
+            
+            # ricalcolo pf_sub sulla sotto-porzione filtrata
             pf_sub = pareto_front(df_subplot_filtered, x_col, y_col, offset_x, offset_y)
 
+        # Stampa solo le colonne utili per capire quali punti sono rimasti
+        #cols_to_show = [x_col, y_col, "micro_base", "modelinram", settings_col]
+        #print(df_subplot_filtered[cols_to_show].sort_values(by=[x_col, y_col, "micro_base", "modelinram"]).to_string(index=False))
+        
         # Per ciascuna settings presente nel subplot: plottiamo punti e fronte locale (per micro)
         settings_in_subplot = sorted(df_subplot_filtered[settings_col].astype(str).unique(), key=extract_mbar)
         print(settings_in_subplot)
@@ -533,7 +551,7 @@ if __name__ == "__main__":
     # Limiti personalizzati per alcuni Mbar (inserirai tu i valori reali)
     xlims = {
         1:  (0.35, 0.0),  # esempio (max left, min right) — ricorda che l'asse X viene invertito
-        4:  (1.78, 1.36),
+        4:  (1.78, 1.35),
         8:  (1.78, 1.64),
         12: (1.78, 1.64),
         28: (1.78, 1.64),
@@ -563,17 +581,18 @@ if __name__ == "__main__":
                          zoom=False,
                          subopt=False)
 
-    #plot_pareto_subplots(files,
-    #                     pareto_plot_folder,
-    #                     active_cells_list=active_cells,
-    #                     x_col="Rate_DL_py_load_test_tflite_mcu",
-    #                     y_col="mean_tot_latency_fast",
-    #                     env_col="env_name",
-    #                     settings_col="end_folder_Training_Size_dd_epochs",
-    #                     err_cols=("Error_does_not_fit", "Error_model_in_ram"),
-    #                     plot_modelinram=True,
-    #                     logscale=True,
-    #                     xlims_dict=xlims,
-    #                     ylims_dict=ylims,
-    #                     zoom=False,
-    #                     subopt=True)
+    plot_pareto_subplots(files,
+                         pareto_plot_folder,
+                         active_cells_list=active_cells,
+                         x_col="Rate_DL_py_load_test_tflite_mcu",
+                         y_col="mean_tot_latency_fast",
+                         env_col="env_name",
+                         settings_col="end_folder_Training_Size_dd_epochs",
+                         err_cols=("Error_does_not_fit", "Error_model_in_ram"),
+                         plot_modelinram=True,
+                         logscale=True,
+                         axes_lims_enable=True,
+                         xlims_dict=xlims,
+                         ylims_dict=ylims,
+                         zoom=False,
+                         subopt=True)
