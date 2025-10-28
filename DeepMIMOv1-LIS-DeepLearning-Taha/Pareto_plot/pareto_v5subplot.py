@@ -29,7 +29,6 @@ def is_windows():
     return 1 if os.name == 'nt' else 0
 ISWINDOWS = is_windows()
 
-# --- Configurazioni base (copia dal tuo script principale) ---
 base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
 if ISWINDOWS:
     base_folder = subprocess.check_output(["wsl", "wslpath", "-w", base_folder]).decode().strip()
@@ -46,7 +45,8 @@ Ur_rows = [1000, 1200]
 My_ar = [32, 64]
 Mz_ar = [32, 64]
 My_ar = [32]
-Mz_ar = [32]
+#My_ar = [64]
+Mz_ar = My_ar
 Training_Size = [30000]
 Training_Size_dd = Training_Size[0]
 max_epochs = 200
@@ -138,7 +138,8 @@ def pareto_front(df, x_col, y_col, xoffset=0.0, yoffset=0.0):
     for _, row in d.iterrows():
         x, y = row[x_col], row[y_col]
         #if y < best_y:
-        if y <= best_y and abs(x - best_x) > 0.001:
+        #if y <= best_y and abs(x - best_x) > 0.001:
+        if y < best_y*(1-0.01) and abs(x - best_x) > 0.001: # un punto è di pareto se supera il precedente dell'1% in y (latenza)
             front_x.append(x + xoffset/x)
             #front_y.append(y - yoffset)
             #front_x.append(x*(1+xoffset))
@@ -187,7 +188,8 @@ def plot_pareto_subplots(files,
                          xlims_dict=None,
                          ylims_dict=None,
                          zoom=False,
-                         subopt=True):
+                         subopt=True,
+                         export_pdf=False):
     """
     Crea una figura con N subplot verticali (N = len(active_cells_list)),
     uno per ciascun valore di Mbar (active_cells_list). Ogni subplot contiene
@@ -298,7 +300,7 @@ def plot_pareto_subplots(files,
     ]
 
     pareto_legend = [
-        Line2D([0], [0], color='grey', linewidth=LINEWIDTH_XXL*2, label="Local", linestyle='--', ),
+        Line2D([0], [0], color='grey', linewidth=LINEWIDTH_XXL, label="Local", linestyle='--', ),
         #Line2D([0], [0], color='r', linewidth=1.2, label="Global", alpha=0.5),
         Line2D([0], [0], color='gold', linewidth=6, label="Global", alpha=0.8),
         Line2D([0], [0], color='w', label=""),
@@ -436,11 +438,13 @@ def plot_pareto_subplots(files,
         mask_M6464 = df_subplot_filtered[settings_col].astype(str).str.contains("M6464") & df_subplot_filtered[settings_col].astype(str).str.contains(pattern)
         if mask_M3232.any() and "Rate_OPT_py_load_test" in df_subplot_filtered.columns:
             rate_opt_M3232 = df_subplot_filtered.loc[mask_M3232, "Rate_OPT_py_load_test"].iloc[0]
+            rate_opt_M3232 = round(rate_opt_M3232,3)
             #ax.axvline(rate_opt_M3232, color='b', linestyle=':', linewidth=1.2, alpha=0.9, label=f'{round(rate_opt_M3232,3)}                                                                                                                                                                ')
             #labelLines(plt.gca().get_lines(), color='b', rotation=90, fontsize=SMALL_SIZE)
             line_rate_opt_M3232 = ax.axvline(rate_opt_M3232, color='b', linestyle=':', linewidth=LINEWIDTH_XL, label=f'Genie M=32x32: {round(rate_opt_M3232,3)} [bps/Hz]')
         if mask_M6464.any() and "Rate_OPT_py_load_test" in df_subplot_filtered.columns:
             rate_opt_M6464 = df_subplot_filtered.loc[mask_M6464, "Rate_OPT_py_load_test"].iloc[0]
+            rate_opt_M6464 = round(rate_opt_M6464,3)
             #ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=1.2, alpha=0.9, label=f'{round(rate_opt_M6464,3)}                                                                                                                                                                ')
             #labelLines([plt.gca().get_lines()[-1]], color='r', rotation=90, fontsize=SMALL_SIZE)
             line_rate_opt_M6464 = ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=LINEWIDTH_XL, label=f'Genie M=64x64: {round(rate_opt_M6464,3)} [bps/Hz]')
@@ -520,7 +524,10 @@ def plot_pareto_subplots(files,
     # Salvataggio figura
     # -----------------------------
     #output_fname = f"pareto_plot_subplots_{Training_Size_dd}_log{int(bool(logscale))}_zoom{int(bool(zoom))}_subopt{int(bool(subopt))}.png"  
-    output_png = os.path.join(pareto_plot_folder, f"pareto_subplots{end_folder_Training_Size_dd_epochs}_zoom{zoom}_subopt{subopt}_axeslims{axes_lims_enable}_modelinram{plot_modelinram}_logscale{logscale}.png")
+    if export_pdf == False:
+        output_png = os.path.join(pareto_plot_folder, f"pareto_subplots{end_folder_Training_Size_dd_epochs}_zoom{zoom}_subopt{subopt}_axeslims{axes_lims_enable}_modelinram{plot_modelinram}_logscale{logscale}.png")
+    elif export_pdf == True: 
+        output_png = os.path.join(pareto_plot_folder, f"pareto_subplots{end_folder_Training_Size_dd_epochs}_zoom{zoom}_subopt{subopt}_axeslims{axes_lims_enable}_modelinram{plot_modelinram}_logscale{logscale}.pdf")
     output_path = os.path.join(pareto_plot_folder, output_png)
     os.makedirs(pareto_plot_folder, exist_ok=True)
     fig.savefig(output_path, dpi=300)
@@ -548,38 +555,54 @@ def format_settings_label_verbose(s):
 # -----------------------------
 if __name__ == "__main__":
    
-    # Limiti personalizzati per alcuni Mbar (inserirai tu i valori reali)
-    xlims = {
-        1:  (0.35, 0.0),  # esempio (max left, min right) — ricorda che l'asse X viene invertito
-        4:  (1.78, 1.35),
-        8:  (1.78, 1.64),
-        12: (1.78, 1.64),
-        28: (1.78, 1.64),
-    }
-    ylims = {
-        1:  (0.1, 500),
-        4:  (0.1, 500),
-        8:  (1, 500),
-        12: (1, 500),
-        28: (1, 500),
-    }
+    if My_ar[0] == 32:
+        xlims = {
+            1:  (0.35, 0.0),  # esempio (max left, min right) — ricorda che l'asse X viene invertito
+            4:  (1.78, 1.35),
+            8:  (1.78, 1.64),
+            12: (1.78, 1.64),
+            28: (1.78, 1.64),
+        }
+        ylims = {
+            1:  (0.1, 500),
+            4:  (0.1, 500),
+            8:  (1, 500),
+            12: (1, 500),
+            28: (1, 500),
+        }
+    elif My_ar[0] == 64:
+        xlims = {
+            1:  (0.85, 0.0),  # esempio (max left, min right) — ricorda che l'asse X viene invertito
+            4:  (5.25, 0.0),
+            8:  (5.10, 3.8),
+            12: (5.12, 3.8),
+            28: (5.10, 3.8),
+        }
+        ylims = {
+            1:  (0.1, 700),
+            4:  (1,   700),
+            8:  (1,   700),
+            12: (1,   700),
+            28: (1,   700),
+        }
 
     # Chiamata principale: genera la figura con 5 subplot (active_cells)
-    plot_pareto_subplots(files,
-                         pareto_plot_folder,
-                         active_cells_list=active_cells,
-                         x_col="Rate_DL_py_load_test_tflite_mcu",
-                         y_col="mean_tot_latency_fast",
-                         env_col="env_name",
-                         settings_col="end_folder_Training_Size_dd_epochs",
-                         err_cols=("Error_does_not_fit", "Error_model_in_ram"),
-                         plot_modelinram=True,
-                         logscale=True,
-                         axes_lims_enable=True,
-                         xlims_dict=xlims,
-                         ylims_dict=ylims,
-                         zoom=False,
-                         subopt=False)
+    #plot_pareto_subplots(files,
+    #                     pareto_plot_folder,
+    #                     active_cells_list=active_cells,
+    #                     x_col="Rate_DL_py_load_test_tflite_mcu",
+    #                     y_col="mean_tot_latency_fast",
+    #                     env_col="env_name",
+    #                     settings_col="end_folder_Training_Size_dd_epochs",
+    #                     err_cols=("Error_does_not_fit", "Error_model_in_ram"),
+    #                     plot_modelinram=True,
+    #                     logscale=True,
+    #                     axes_lims_enable=False,
+    #                     xlims_dict=xlims,
+    #                     ylims_dict=ylims,
+    #                     zoom=False,
+    #                     subopt=True,
+    #                     export_pdf=True)
 
     plot_pareto_subplots(files,
                          pareto_plot_folder,
@@ -595,4 +618,5 @@ if __name__ == "__main__":
                          xlims_dict=xlims,
                          ylims_dict=ylims,
                          zoom=False,
-                         subopt=True)
+                         subopt=False, 
+                         export_pdf=True)
