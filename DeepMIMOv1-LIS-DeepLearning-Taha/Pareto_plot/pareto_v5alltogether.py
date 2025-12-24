@@ -217,6 +217,80 @@ def plot_pareto_scatter(files, pareto_plot_folder, xlim=[0, 0], ylim=[0, 0],
         #pf_global = pareto_front(data_all, x_col, y_col, 0.001, 50)
         pf_global = pareto_front(data_all, x_col, y_col)
 
+        # ---- EXPORT: soli punti di Pareto GLOBALI "toccati" dalla linea gialla ----
+        # Usa una copia dei dati non zoomati per la selezione robusta dei punti globali
+        data_raw = data_all.copy()
+
+        if pf_global_enable and not pf_global.empty:
+            # Chiavi di match con arrotondamento per stabilità (rate ~ 1e-6, latenza ~ 1e-3)
+            x_key, y_key = "rate_key", "lat_key"
+            pg = pf_global.copy()
+            pg[x_key] = pg[x_col].round(6)
+            pg[y_key] = pg[y_col].round(3)
+
+            dfk = data_raw.copy()
+            dfk[x_key] = dfk[x_col].round(6)
+            dfk[y_key] = dfk[y_col].round(3)
+
+            # Join INNER su (rate, latenza) per tenere solo i punti globali
+            df_pg = dfk.merge(pg[[x_key, y_key]], on=[x_key, y_key], how="inner")
+
+            # Calcoli metriche richieste
+            if set(["Rate_OPT_py_load_test", "Rate_DL_py_load_test",
+                    "Rate_DL_py_load_test_tflite", "Rate_DL_py_load_test_tflite_mcu",
+                    "num_layers","R"]).issubset(df_pg.columns):
+                df_pg["latency_ms"] = df_pg["mean_tot_latency_fast"] / 1000.0
+                df_pg["drop_opt_to_fp32_pct"] = 100.0 * (
+                    (df_pg["Rate_OPT_py_load_test"] - df_pg["Rate_DL_py_load_test"])
+                    / df_pg["Rate_OPT_py_load_test"]
+                )
+                df_pg["drop_fp32_to_int8_pct"] = 100.0 * (
+                    (df_pg["Rate_DL_py_load_test"] - df_pg["Rate_DL_py_load_test_tflite"])
+                    / df_pg["Rate_DL_py_load_test"]
+                )
+                df_pg["drop_int8_to_mcu_pct"] = 100.0 * (
+                    (df_pg["Rate_DL_py_load_test_tflite"] - df_pg["Rate_DL_py_load_test_tflite_mcu"])
+                    / df_pg["Rate_DL_py_load_test_tflite"]
+                )
+
+                # Selezione, ordinamento e arrotondamenti
+                cols_keep = [
+                    "end_folder_Training_Size_dd_epochs", "num_layers","R", "micro_base", "modelinram",
+                    "Rate_OPT_py_load_test", "Rate_DL_py_load_test",
+                    "Rate_DL_py_load_test_tflite", "Rate_DL_py_load_test_tflite_mcu",
+                    "latency_ms", "drop_opt_to_fp32_pct",
+                    "drop_fp32_to_int8_pct", "drop_int8_to_mcu_pct",
+                ]
+                df_pg = df_pg[cols_keep].sort_values(
+                    by=["Rate_DL_py_load_test_tflite_mcu", "latency_ms"],
+                    ascending=[False, True]
+                )
+
+                round_rates = ["Rate_OPT_py_load_test", "Rate_DL_py_load_test",
+                            "Rate_DL_py_load_test_tflite", "Rate_DL_py_load_test_tflite_mcu"]
+                df_pg[round_rates] = df_pg[round_rates].round(3)
+                df_pg["latency_ms"] = df_pg["latency_ms"].round(3)
+                df_pg["drop_opt_to_fp32_pct"] = df_pg["drop_opt_to_fp32_pct"].round(2)
+                df_pg["drop_fp32_to_int8_pct"] = df_pg["drop_fp32_to_int8_pct"].round(2)
+                df_pg["drop_int8_to_mcu_pct"] = df_pg["drop_int8_to_mcu_pct"].round(2)
+
+                # Costruisci nome file coerente con il naming del plot
+                if len(My_ar) == 1:
+                    end_folder = f'_seed{seed}_grid{Ur_rows[1]}_M{My_ar[0]}{Mz_ar[0]}'
+                else:
+                    end_folder = f'_seed{seed}_grid{Ur_rows[1]}_M{My_ar[0]}{Mz_ar[0]}'
+                end_folder_Training_Size_dd = end_folder + f'_{Training_Size_dd}'
+                end_folder_Training_Size_dd_epochs = end_folder_Training_Size_dd + f"_ep{max_epochs}"
+                csv_out = os.path.join(
+                    pareto_plot_folder,
+                    f"pareto_global_points{end_folder_Training_Size_dd_epochs}.csv"
+                )
+                df_pg.to_csv(csv_out, index=False)
+                print(f"[OK] Salvati punti di Pareto GLOBALI in: {csv_out}")
+            else:
+                print("[WARN] Colonne di rate mancanti per il calcolo dei drop; nessun CSV esportato.")
+
+
         if zoom:
             # Limiti intorno al fronte
             pad_x = (pf_global[x_col].max() - pf_global[x_col].min()) * 0.2
@@ -651,6 +725,7 @@ if __name__ == "__main__":
                 end_folder_Training_Size_dd_epochs = f"{end_folder}_{Training_Size_dd}_ep{max_epochs}"
                 files_32.append(os.path.join(mcu_profiling_folder, f"profiling{end_folder_Training_Size_dd_epochs}_{mcu_type_name}.csv"))
     xlim = [1.777, 1.638]
+    #xlim = [1.777, 1.35] # non si vede niente, anche se includerebbe due punti verdi altrimenti esclusi
     ylim = [0.6, 450]
     plot_pareto_scatter(files_32, pareto_plot_folder, xlim, ylim,
                         subopt=subopt, plot_modelinram=plot_modelinram, logscale=logscale,

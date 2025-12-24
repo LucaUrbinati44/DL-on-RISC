@@ -2,7 +2,14 @@ DeepMIMOv1-LIS-DeepLearning-Taha/RayTracing Scenarios/O1_28
 
 DeepMIMOv1-LIS-DeepLearning-Taha/Output
 DeepMIMOv1-LIS-DeepLearning-Taha/Outputv2
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python
+DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/*
+!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU
+DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/logs
+DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/model
+DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/output_data
+DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/scaler
+DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/test_data
+DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/test_data_normalized
 DeepMIMOv1-LIS-DeepLearning-Taha/Output Matlab
 
 tensorflow

@@ -44,8 +44,8 @@ K_DL = 64 # subcarriers, costante (per ora)
 Ur_rows = [1000, 1200]
 My_ar = [32, 64]
 Mz_ar = [32, 64]
+My_ar = [64]
 My_ar = [32]
-#My_ar = [64]
 Mz_ar = My_ar
 Training_Size = [30000]
 Training_Size_dd = Training_Size[0]
@@ -302,7 +302,7 @@ def plot_pareto_subplots(files,
     pareto_legend = [
         Line2D([0], [0], color='grey', linewidth=LINEWIDTH_XXL, label="Local", linestyle='--', ),
         #Line2D([0], [0], color='r', linewidth=1.2, label="Global", alpha=0.5),
-        Line2D([0], [0], color='gold', linewidth=6, label="Global", alpha=0.8),
+        #Line2D([0], [0], color='gold', linewidth=6, label="Global", alpha=0.8),
         Line2D([0], [0], color='w', label=""),
         Line2D([0], [0], color='w', label=""),
     ]
@@ -368,8 +368,17 @@ def plot_pareto_subplots(files,
             pf_sub = pareto_front(df_subplot_filtered, x_col, y_col, offset_x, offset_y)
 
         # Stampa solo le colonne utili per capire quali punti sono rimasti
-        #cols_to_show = [x_col, y_col, "micro_base", "modelinram", settings_col]
+        cols_to_show = [x_col, y_col, "micro_base", "modelinram", settings_col]
         #print(df_subplot_filtered[cols_to_show].sort_values(by=[x_col, y_col, "micro_base", "modelinram"]).to_string(index=False))
+        extra_cols = ["input_features", "num_layers", "R", "hidden_units_list", "output_dim"]
+        extra_cols2 = ["Rate_OPT_py_load_test", "Rate_DL_py_load_test", "Rate_DL_py_load_test_tflite"]
+        # Aggiungi solo le colonne effettivamente presenti nel DataFrame
+        cols_to_show += [c for c in extra_cols if c in df_subplot_filtered.columns]
+        cols_to_show += [c for c in extra_cols2 if c in df_subplot_filtered.columns]
+        # Stampa i punti ordinati con le colonne richieste
+        print(df_subplot_filtered[cols_to_show]
+            .sort_values(by=[x_col, y_col, "micro_base", "modelinram"])
+            .to_string(index=False))
         
         # Per ciascuna settings presente nel subplot: plottiamo punti e fronte locale (per micro)
         settings_in_subplot = sorted(df_subplot_filtered[settings_col].astype(str).unique(), key=extract_mbar)
@@ -411,8 +420,8 @@ def plot_pareto_subplots(files,
         # -----------------------------
         # Fronte Pareto (Pareto Front)
         # -----------------------------
-        if not pf_sub.empty:
-            ax.plot(pf_sub[x_col], pf_sub[y_col] / 1000.0, color='gold', linestyle='-', linewidth=6, alpha=0.3, label='Pareto Front (Global)')
+        #if not pf_sub.empty:
+        #    ax.plot(pf_sub[x_col], pf_sub[y_col] / 1000.0, color='gold', linestyle='-', linewidth=6, alpha=0.3, label='Pareto Front (Global)')
 
         # ---- se zoom == True: limita i dati del subplot intorno al fronte Pareto per centrarlo ----
         if zoom and (not pf_sub.empty):

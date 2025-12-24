@@ -11,6 +11,8 @@
 #define CHUNK_SIZE_MAX 3584
 
 #define INPUT_FEATURE_SIZE 3584
-#define OUTPUT_FEATURE_SIZE 1024
+#define OUTPUT_FEATURE_SIZE 4096
 
-const float mean_array = 0.0002337912592338398;
+#define TENSOR_ARENA_KB 100
+
+const float mean_array = 0.00017636189295444638;

@@ -58,10 +58,10 @@ Ur_rows = [1000, 1200]
 #Mz_ar = [32, 64]
 
 # TODO DEVO CAMBIARE QUI
-My_ar = [32]
-Mz_ar = [32]
-#My_ar = [64]
-#Mz_ar = [64]
+#My_ar = [32]
+#Mz_ar = [32]
+My_ar = [64]
+Mz_ar = [64]
 
 My = My_ar[0]
 Mz = Mz_ar[0]
@@ -110,7 +110,7 @@ elif debug == 1: # (9x9+1)x2 x 8min ciascuno = 2.67h
 elif debug == 2:
     active_cells = [28]
     output_dims = [My*Mz]
-    num_layers_list = [2,3]
+    num_layers_list = [3]
     R_list = [1] # indifferente il valore di R se num_layers_list = [0]. Verrà eseguita una sola iterazione
 else: # modello di Taha
     #input_featuress = [1024]
@@ -193,7 +193,7 @@ if profiling_flag == 1:
             mcu_type = {'name': 'nucleo-f446ze', 
                         #'port': '/dev/ttyACM1',
                         'serial_number': "066FFF485570854967101750",
-                        'baud_rate': 115200}
+                        'baud_rate': 115200} # più di così non va
         elif mcu_name == 'stm32h7':
             mcu_type = {'name': 'nucleo-h753zi',
                         #'port': '/dev/ttyACM0',
