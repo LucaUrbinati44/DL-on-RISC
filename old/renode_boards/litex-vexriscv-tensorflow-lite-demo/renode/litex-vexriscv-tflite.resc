@@ -1,0 +1,31 @@
+using sysbus
+
+$zephyr_elf?=@../tensorflow/tensorflow/lite/micro/tools/make/gen/zephyr_vexriscv_x86_64/magic_wand/build/zephyr/zephyr.elf
+#$zephyr_elf?=@../binaries/magic_wand/zephyr.elf
+
+mach create
+machine LoadPlatformDescription $ORIGIN/litex-vexriscv-tflite.repl
+showAnalyzer uart
+logLevel 3 i2c
+
+macro reset
+"""
+    sysbus LoadELF $zephyr_elf
+
+    i2c.adxl345 MaxFifoDepth 1
+    i2c.adxl345 FeedSample $ORIGIN/circle.data
+    i2c.adxl345 FeedSample 0 15000 15000 128
+    i2c.adxl345 FeedSample 0 0 0 128
+    i2c.adxl345 FeedSample $ORIGIN/angle.data
+    i2c.adxl345 FeedSample 0 15000 15000 128
+    i2c.adxl345 FeedSample 0 0 0 128
+    i2c.adxl345 FeedSample $ORIGIN/circle.data
+    i2c.adxl345 FeedSample 0 15000 15000 128
+    i2c.adxl345 FeedSample 0 0 0 128
+    i2c.adxl345 FeedSample $ORIGIN/angle.data
+    i2c.adxl345 FeedSample 0 15000 15000 128
+    i2c.adxl345 FeedSample 0 0 0 128
+
+"""
+
+runMacro $reset

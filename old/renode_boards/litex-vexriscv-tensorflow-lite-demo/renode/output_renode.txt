@@ -1,0 +1,4 @@
+*** Booting Zephyr OS version 2.2.99  ***
+Enter setup
+541
+543
