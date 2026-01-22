@@ -44,7 +44,7 @@ Training_Size_dd = Training_Size[0]
 max_epochs = 200
 active_cells = [1, 4, 8, 12, 28]
 mcu_type_name_list = ['pico', 'nucleo-f446ze', 'esp32-s2-saola-tflm', 'nucleo-h753zi']
-mcu_type_name_lgd_list = ['RP2040', 'STM32-F446ZE', 'ESP32-S2-SOLO', 'STM32-H753ZI']
+mcu_type_name_lgd_list = ['RP2040', 'STM32F446ZE', 'ESP32-S2-SOLO', 'STM32H753ZI']
 
 def generate_files(My_ar, Mz_ar):
     if debug == 1:

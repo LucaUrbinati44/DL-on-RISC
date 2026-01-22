@@ -21,10 +21,11 @@ figure_folder = [output_folder, 'Figures/'];
 
 network_folder_py = [output_folder_py, 'Neural_Network/'];
 figure_folder_py = [output_folder_py, 'Figures/'];
-network_folder_out_RateDLpy = [network_folder_py, 'RateDLpy/'];
-network_folder_out_RateDLpy_TFLite = [network_folder_py, 'RateDLpy_TFLite/'];
+%network_folder_out_RateDLpy = [network_folder_py, 'RateDLpy/'];
+%network_folder_out_RateDLpy_TFLite = [network_folder_py, 'RateDLpy_TFLite/'];
 
-folders = {DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py network_folder_out_RateDLpy network_folder_out_RateDLpy_TFLite};
+%folders = {DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py network_folder_out_RateDLpy network_folder_out_RateDLpy_TFLite};
+folders = {DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py};
 for i = 1:length(folders)
     if ~exist(folders{i}, 'dir') % Controlla se la cartella esiste
         mkdir(folders{i}); % Crea la cartella se non esiste
@@ -57,12 +58,12 @@ global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_ma
 %save_mat_files   = 1;
 
 % STEP 2) Generate DL Dataset
-load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
-load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
-load_DL_dataset  = 0; % load output from DL_data_generator_3.m
-load_Rates       = 0; % load output from DL_training_4.m
-training         = 0; % 1 for training the network, 0 from loaoding it from file
-save_mat_files   = 1;
+%load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
+%load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
+%load_DL_dataset  = 0; % load output from DL_data_generator_3.m
+%load_Rates       = 0; % load output from DL_training_4.m
+%training         = 0; % 1 for training the network, 0 from loaoding it from file
+%save_mat_files   = 1;
 
 % STEP 3) Train DL model
 %load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
@@ -73,23 +74,23 @@ save_mat_files   = 1;
 %save_mat_files   = 1;
 
 % STEP 4) Plot results
-%load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
-%load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
-%load_DL_dataset  = 1; % load output from DL_data_generator_3.m
-%load_Rates       = 1; % load output from DL_training_4.m
-%training         = 0; % 1 for training the network, 0 from loaoding it from file
-%save_mat_files   = 1;
+load_Delta_H_max = 1; % load output from DeepMIMO_data_generator_2.m
+load_H_files     = 1; % load output from DeepMIMO_data_generator_2.m
+load_DL_dataset  = 1; % load output from DL_data_generator_3.m
+load_Rates       = 1; % load output from DL_training_4.m
+training         = 0; % 1 for training the network, 0 from loaoding it from file
+save_mat_files   = 1;
 
-load_mat_py      = 4;
+load_mat_py      = 0;
 % 4: load py-generated test tflite files (production)
 % 3: load py-generated test files
 % 2: load py-generated files
-% 1: load mat-python-mat files
+% 1: load mat-python-mat files (non c'è più)
 % 0: load mat-generated files
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
-plot_fig12 = 0;
-epochs_fig12 = 60;
+plot_fig12 = 1;
+epochs_fig12 = 20;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 %plot_fig7 = 0;
 plot_figC = 0;
@@ -104,13 +105,13 @@ plot_figD = 0; % Richiede di impostare My_ar=[32 64]; Mz_ar=[32 64];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Settings condivise tra i vari plot
 plot_mode = 2; % 1: matlab, 2: python
-Training_Size_number = 6;
+Training_Size_number = 2;
 %Training_Size_number = 11;
 %                1    2     3     4     5     6      7      8      9      10     11
 Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
-%max_epochs_load = 20;
+max_epochs_load = 20;
 %max_epochs_load = 40;
-max_epochs_load = 60;
+%max_epochs_load = 60;
 %max_epochs_load = 80; % ATTENZIONE funziona solo con [64, 64] per ora
 %max_epochs_load = 100; % ATTENZIONE funziona solo con [64, 64] per ora
 
@@ -141,7 +142,7 @@ Pt=5; % transmit power (dB)
 L=1; % number of channel paths
 
 % TO CHANGE FOR DESIGN-SPACE EXPLORATION
-M_bar=1; % number of active elements
+M_bar=8; % number of active elements
 
 D_Lambda = 0.5; % Antenna spacing relative to the wavelength
 BW = 100e6; % Bandwidth
@@ -225,6 +226,22 @@ for rr = 1:1:numel(My_ar)
     end_folder = strcat('_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My), ' ', ''), strrep(num2str(Mz), ' ', ''));
     end_folder_M_bar = strcat(end_folder, '_Mbar', num2str(M_bar));
 
+    %experiment_folder = strcat('experiment_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '/');
+    experiment_folder = 'new/';
+
+    network_folder_out_RateDLpy = [network_folder_py, experiment_folder, 'RateDLpy/'];
+    network_folder_out_RateDLpy_TFLite = [network_folder_py, experiment_folder, 'RateDLpy_TFLite/'];
+    folders = {network_folder_out_RateDLpy network_folder_out_RateDLpy_TFLite};
+    for i = 1:length(folders)
+        if ~exist(folders{i}, 'dir') % Controlla se la cartella esiste
+            mkdir(folders{i}); % Crea la cartella se non esiste
+            disp(['Cartella creata: ', folders{i}]);
+        else
+            disp(['La cartella esiste già: ', folders{i}]);
+        end
+    end
+
+
     %% DeepMIMO Dataset Generation
 
     [Ur_rows_grid]=DeepMIMO_data_generator_2(Mx,My,Mz,D_Lambda,BW,K,K_DL,L,Ut_row,Ut_element,Ur_rows,params);
@@ -238,7 +255,7 @@ for rr = 1:1:numel(My_ar)
     %Validation_Ind = RandP_all2[-(Validation_Size+Test_Size):-Test_Size] % python
     %Validation_Ind_6200 = RandP_all(end-(Test_Size+Test_Size)+1:end);
 
-    continue
+    %continue
     
     %% DL Beamforming
 
@@ -247,6 +264,7 @@ for rr = 1:1:numel(My_ar)
         Training_Size_dd = Training_Size(dd);
 
         if Training_Size_dd >= 10000 || Training_Size_dd == 2
+        %if Training_Size_dd == 2000
             [Rate_OPT,Rate_DL,MaxR_OPT,MaxR_DL]=DL_training_4(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
             %[Rate_OPT,Rate_DL]=DL_predict_5(Mx,My,Mz,M_bar,Ur_rows,kbeams,Training_Size(dd),RandP_all,Validation_Ind);
         else
@@ -374,21 +392,36 @@ for rr = 1:1:numel(My_ar)
             for epochs = 20:20:epochs_fig12
             
                 for i = 1:length(plot_types)
-                    
-                    end_folder_Training_Size_dd_max_epochs = strcat(end_folder, '_', num2str(Training_Size_dd), '_', num2str(epochs));
+
+                    init_learning_rate = 0.1;
+                    min_learning_rate = 0.0001;
+                    factor = 0.75;
+                    patience = 4;
+                    min_delta = 0.001;
+                    output_dim = My*Mz;
+                    num_layers = 3;
+                    R = 1;
+                    input_features = M_bar * K_DL * 2;
+                    hidden = strcat('_', num2str(input_features/R), '_', num2str(4*input_features/R), '_', num2str(4*input_features/R), '_');
+
+                    model_name_suffix = strcat("_initlr", num2str(init_learning_rate), "_minlr", num2str(min_learning_rate), "_fact", num2str(factor), "_pat", num2str(patience), "_mindelta", num2str(min_delta), "_nl", num2str(num_layers), "_R", num2str(R), "_in", num2str(input_features), hidden, "out", num2str(output_dim));
+
+                    end_folder_Training_Size_dd_max_epochs = strcat(end_folder_M_bar, '_', num2str(Training_Size_dd), '_', num2str(epochs), model_name_suffix);
 
                     if strcmp(plot_types{i}, 'Rate_DL_py_test_tflite') % Test set TFLite
                         filename_Rate_DL_py = strcat(network_folder_out_RateDLpy_TFLite, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
                     else
                         filename_Rate_DL_py = strcat(network_folder_out_RateDLpy, plot_types{i}, end_folder_Training_Size_dd_max_epochs, '.mat');
                     end
+                    %disp(filename_Rate_DL_py)
                     
                     try
                         Rate_DL_py = h5read(filename_Rate_DL_py, '/Rate_DL_py');
+                        disp(filename_Rate_DL_py)
                     catch exception
                         Rate_DL_py = NaN;
                         disp('exception')
-                        disp(filename_Rate_DL_py)
+                        %disp(filename_Rate_DL_py)
                     end
                     
                     if strcmp(plot_types{i}, 'Rate_DL_py_valOld') % valOld
@@ -442,16 +475,21 @@ end
 
 %% Fig 12
 if plot_fig12 == 1
-    Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
+    %Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
+    %            epochs_fig12, ...
+    %            Rate_OPTt,Rate_DLt_mat, ...
+    %            Rate_DLt_py_valOld_20,Rate_DLt_py_valOld_40, ...
+    %            Rate_DLt_py_val_20,Rate_DLt_py_test_20,Rate_DLt_py_test_tflite_20, ...
+    %            Rate_DLt_py_val_40,Rate_DLt_py_test_40,Rate_DLt_py_test_tflite_40, ...
+    %            Rate_DLt_py_test_60,Rate_DLt_py_test_tflite_60, ...
+    %            Rate_DLt_py_test_80,Rate_DLt_py_test_tflite_80, ...
+    %            Rate_DLt_py_test_100, Rate_DLt_py_test_tflite_100)
+
+    Fig12_plot_v2(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
                 epochs_fig12, ...
                 Rate_OPTt,Rate_DLt_mat, ...
                 Rate_DLt_py_valOld_20,Rate_DLt_py_valOld_40, ...
-                Rate_DLt_py_val_20,Rate_DLt_py_test_20,Rate_DLt_py_test_tflite_20, ...
-                Rate_DLt_py_val_40,Rate_DLt_py_test_40,Rate_DLt_py_test_tflite_40, ...
-                Rate_DLt_py_test_60,Rate_DLt_py_test_tflite_60, ...
-                Rate_DLt_py_test_80,Rate_DLt_py_test_tflite_80, ...
-                Rate_DLt_py_test_100, Rate_DLt_py_test_tflite_100)
-
+                Rate_DLt_py_val_20,Rate_DLt_py_test_20,Rate_DLt_py_test_tflite_20)
                
 end
 

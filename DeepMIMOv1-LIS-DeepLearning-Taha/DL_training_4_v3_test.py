@@ -914,7 +914,8 @@ def main(My, Mz, load_model_flag, max_epochs, initial_epoch,
                     initial_epoch=initial_epoch,
                     epochs=max_epochs,
                     shuffle=True,  # Shuffle data at each epoch
-                    callbacks=[lr_scheduler, tensorboard_callback, checkpoint_callback, earlystopping_callback],
+                    #callbacks=[lr_scheduler, tensorboard_callback, checkpoint_callback, earlystopping_callback],
+                    callbacks=[lr_scheduler, checkpoint_callback],
                     #callbacks=[tensorboard_callback, checkpoint_callback],
                     validation_freq=validationFrequency,
                     verbose=2

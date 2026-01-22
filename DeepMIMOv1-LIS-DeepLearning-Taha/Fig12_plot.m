@@ -10,8 +10,8 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
     
     disp('--> Plotting Fig12...');  
 
-    global load_H_files load_Delta_H_max load_DL_dataset load_Rates training save_mat_files load_mat_py;
-    global seed DeepMIMO_dataset_folder DL_dataset_folder network_folder network_folder_py figure_folder figure_folder_py;
+    global load_mat_py;
+    global seed figure_folder figure_folder_py;
 
     filename_fig12=strcat(figure_folder, 'Fig12', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
     filename_fig12_mat=strcat(figure_folder_py, 'Fig12_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.png');
@@ -74,12 +74,20 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
         set(0, 'CurrentFigure', f12)
         hold on; grid on;
         for rr=1:1:numel(My_ar)
-            plot((Training_Size*1e-3),Rate_OPTt(rr,:),   [Colour(rr) Marker_mat{rr, 1}],'markersize',7,'linewidth',1.2, 'DisplayName', ['Genie, M = ' num2str(My_ar(rr))])
-            plot((Training_Size*1e-3),Rate_DLt_mat(rr,:),[Colour(rr) Marker_mat{rr, 2}],'markersize',7,'linewidth',1., 'DisplayName', ['DL_{matVal20}, M = ' num2str(My_ar(rr))])
-            disp('Rate_OPTt(rr,:)')
-            disp(Rate_OPTt(rr,:))
-            disp('Rate_DLt_mat(rr,:)')
-            disp(Rate_DLt_mat(rr,:))
+            mask_valid = ~isnan(Rate_OPTt(rr,:));
+            Rate_OPTt_valid = Rate_OPTt(rr,mask_valid);
+            Rate_DLt_mat_valid = Rate_DLt_mat(rr,mask_valid);
+            Training_Size_valid = Training_Size(mask_valid);
+            %disp('mask_valid')
+            %disp(mask_valid);
+            %disp('Rate_OPTt_valid')
+            %disp(Rate_OPTt_valid)
+            %disp('Rate_DLt_mat_valid')
+            %disp(Rate_DLt_mat_valid)
+            %disp('Training_Size_valid')
+            %disp(Training_Size_valid);
+            plot((Training_Size_valid*1e-3),Rate_OPTt_valid,   [Colour(rr) Marker_mat{rr, 1}],'markersize',7,'linewidth',1.2, 'DisplayName', ['Genie, M = ' num2str(My_ar(rr))])
+            plot((Training_Size_valid*1e-3),Rate_DLt_mat_valid,[Colour(rr) Marker_mat{rr, 2}],'markersize',7,'linewidth',1., 'DisplayName', ['DL_{matVal20}, M = ' num2str(My_ar(rr))])
             
             if epochs == 20
                 plot((Training_Size*1e-3),Rate_DLt_py_valOld_20(rr,:),      [Colour_valOld(rr) Marker_valOld_20_40{rr, 1}], 'markersize',7,'linewidth',1.2, 'DisplayName', ['DL_{pyValOld20    }, M = ' num2str(My_ar(rr))])
