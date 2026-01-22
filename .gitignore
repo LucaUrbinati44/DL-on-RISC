@@ -92,3 +92,6 @@ mcu/stm32-test/lib/model/mlp_model_data.h
 *.pyc
 *.png
 compilation*.txt
+
+!renode_boards/litex-vexriscv-tensorflow-lite-demo/old/
+renode_boards/litex-vexriscv-tensorflow-lite-demo/old/*
