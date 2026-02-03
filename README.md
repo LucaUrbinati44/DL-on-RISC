@@ -1,4 +1,4 @@
-# RIS
+# DL-on-RISC
 
 ## TFLM commit/version:
 - https://github.com/tensorflow/tflite-micro/commit/a1eb0480ed9f98e9ea5f5fb9b8e3da98ec512caf
@@ -43,3 +43,4 @@
   - tool-picotool-rp2040-earlephilhower @ 5.140200.250530 (14.2.0) 
   - tool-pioasm-rp2040-earlephilhower @ 5.140200.250530 (14.2.0) 
   - toolchain-rp2040-earlephilhower @ 5.140200.250530 (14.2.0)
+
