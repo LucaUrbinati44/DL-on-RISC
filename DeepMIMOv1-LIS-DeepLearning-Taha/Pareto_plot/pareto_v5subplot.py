@@ -52,7 +52,7 @@ Training_Size_dd = Training_Size[0]
 max_epochs = 200
 active_cells = [1, 4, 8, 12, 28]
 mcu_type_name_list = ['pico', 'nucleo-f446ze', 'esp32-s2-saola-tflm', 'nucleo-h753zi']
-mcu_type_name_lgd_list = ['RP2040', 'STM32-F446ZE', 'ESP32-S2-SOLO', 'STM32-H753ZI']
+mcu_type_name_lgd_list = ['RP2040', 'STM32F446ZE', 'ESP32-S2-SOLO', 'STM32H753ZI']
 
 if debug == 1:
     files = [
@@ -450,20 +450,23 @@ def plot_pareto_subplots(files,
             rate_opt_M3232 = round(rate_opt_M3232,3)
             #ax.axvline(rate_opt_M3232, color='b', linestyle=':', linewidth=1.2, alpha=0.9, label=f'{round(rate_opt_M3232,3)}                                                                                                                                                                ')
             #labelLines(plt.gca().get_lines(), color='b', rotation=90, fontsize=SMALL_SIZE)
-            line_rate_opt_M3232 = ax.axvline(rate_opt_M3232, color='b', linestyle=':', linewidth=LINEWIDTH_XL, label=f'Genie M=32x32: {round(rate_opt_M3232,3)} [bps/Hz]')
+            #line_rate_opt_M3232 = ax.axvline(rate_opt_M3232, color='b', linestyle=':', linewidth=LINEWIDTH_XL, label=f'Genie M=32x32: {round(rate_opt_M3232,3)} [bps/Hz]')
+            line_rate_opt_M3232 = ax.axvline(rate_opt_M3232, color='b', linestyle=':', linewidth=LINEWIDTH_XL, label=fr'Genie $M=32\times32$: {rate_opt_M3232} [bps/Hz]')
+            
         if mask_M6464.any() and "Rate_OPT_py_load_test" in df_subplot_filtered.columns:
             rate_opt_M6464 = df_subplot_filtered.loc[mask_M6464, "Rate_OPT_py_load_test"].iloc[0]
             rate_opt_M6464 = round(rate_opt_M6464,3)
             #ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=1.2, alpha=0.9, label=f'{round(rate_opt_M6464,3)}                                                                                                                                                                ')
             #labelLines([plt.gca().get_lines()[-1]], color='r', rotation=90, fontsize=SMALL_SIZE)
-            line_rate_opt_M6464 = ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=LINEWIDTH_XL, label=f'Genie M=64x64: {round(rate_opt_M6464,3)} [bps/Hz]')
+            #line_rate_opt_M6464 = ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=LINEWIDTH_XL, label=f'Genie M=64x64: {round(rate_opt_M6464,3)} [bps/Hz]')
+            line_rate_opt_M6464 = ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=LINEWIDTH_XL, label=fr'Genie $M=64\times64$: {rate_opt_M6464} [bps/Hz]')
 
         # -----------------------------
         # Assi e titolo
         # -----------------------------
         if mbar == active_cells_list[-1]: 
             ax.set_xlabel("Predicted Achievable Rate on the Test set [bps/Hz]")
-        ax.set_ylabel("Total Prediction Latency [ms]")
+        ax.set_ylabel("Total Execution Latency [ms]")
         ax.grid(True, linestyle='--', alpha=0.4)
         ax.invert_xaxis()  # rate alto a sinistra
 
@@ -554,10 +557,18 @@ def format_settings_label_verbose(s):
     s = str(s)
     m_match = re.search(r'_M(\d{2})(\d{2})', s)
     mbar_match = re.search(r'Mbar(\d+)', s)
-    m_str = f"M={m_match.group(1)}x{m_match.group(2)}" if m_match else ""
-    mbar_str = r'$\overline{M}$' + f"={mbar_match.group(1)}" if mbar_match else ""
-    joined = ", ".join([part for part in (m_str, mbar_str) if part])
-    return joined if joined else s
+    #m_str = f"M={m_match.group(1)}x{m_match.group(2)}" if m_match else ""
+    #mbar_str = r'$\overline{M}$' + f"={mbar_match.group(1)}" if mbar_match else ""
+    #joined = ", ".join([part for part in (m_str, mbar_str) if part])
+    #return joined if joined else s
+    if m_match and mbar_match:
+        return fr"$M={m_match.group(1)}\times{m_match.group(2)},\ \overline{{M}}={mbar_match.group(1)}$"
+    elif m_match:
+        return fr"$M={m_match.group(1)}\times{m_match.group(2)}$"
+    elif mbar_match:
+        return fr"$\overline{{M}}={mbar_match.group(1)}$"
+    else:
+        return s
 
 # -----------------------------
 # Main

@@ -4,7 +4,7 @@
 void dequantize_output(int8_t *buffer_in, float scale, int zero_point, float *buffer_out)
 {
 #ifdef ENABLE_UNROLL_DEQUANTIZE
-#pragma GCC unroll 1024
+#pragma GCC unroll 4096
 #endif
   for (int i = 0; i < OUTPUT_FEATURE_SIZE; ++i)
   {

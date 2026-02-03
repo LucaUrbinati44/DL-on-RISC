@@ -470,7 +470,7 @@ def plot_pareto_scatter(files, pareto_plot_folder, xlim=[0, 0], ylim=[0, 0],
     ax.set_xlabel("Predicted Achievable Rate [bps/Hz]")
     #ax.set_ylabel(f"{y_col} (x1000)")
     if ax is not None and len(My_ar) == 1 and My_ar[0] == 64:
-        ax.set_ylabel(f"Total Prediction Latency [ms]")
+        ax.set_ylabel(f"Total Execution Latency [ms]")
     #ax.set_title(f"Pareto Plot: Rate vs Latency, Test Set")
     ax.grid(True, linestyle="--", alpha=0.4)
 
@@ -514,9 +514,18 @@ def plot_pareto_scatter(files, pareto_plot_folder, xlim=[0, 0], ylim=[0, 0],
         s = str(s)
         m_match = re.search(r'_M(\d{2})(\d{2})', s)
         mbar_match = re.search(r'Mbar(\d+)', s)
-        m_str = f"M={m_match.group(1)}x{m_match.group(2)}" if m_match else ""
-        mbar_str = r'$\overline{M}$' + f"={mbar_match.group(1)}" if mbar_match else ""
-        return f"{m_str}, {mbar_str}".strip()
+        #m_str = f"M={m_match.group(1)}x{m_match.group(2)}" if m_match else ""
+        #m_str = rf"$M={m_match.group(1)}\\times{m_match.group(2)}$" if m_match else ""
+        #mbar_str = r'$\overline{M}$' + f"={mbar_match.group(1)}" if mbar_match else ""
+        #return f"{m_str}, {mbar_str}".strip()
+        if m_match and mbar_match:
+            return fr"$M={m_match.group(1)}\times{m_match.group(2)},\ \overline{{M}}={mbar_match.group(1)}$"
+        elif m_match:
+            return fr"$M={m_match.group(1)}\times{m_match.group(2)}$"
+        elif mbar_match:
+            return fr"$\overline{{M}}={mbar_match.group(1)}$"
+        else:
+            return ""
     
     settings_legend = []
     settings_legend_M3232 = []
@@ -539,7 +548,7 @@ def plot_pareto_scatter(files, pareto_plot_folder, xlim=[0, 0], ylim=[0, 0],
             ax.axvline(rate_opt_M3232, color='b', linestyle=':', linewidth=LINEWIDTH_XL, label=f'{round(rate_opt_M3232,3)}                                                                                                                                                                ')
             #labelLines([plt.gca().get_lines()[-1]], color='b', rotation=90, fontsize=SMALL_SIZE)
             labelLines([ax.get_lines()[-1]], color='b', rotation=90, fontsize=SMALL_SIZE)
-            line_rate_opt_M3232 = ax.axvline(rate_opt_M3232, color='b', linestyle=':', linewidth=LINEWIDTH_XL, label='Genie-Aided M=32x32')
+            line_rate_opt_M3232 = ax.axvline(rate_opt_M3232, color='b', linestyle=':', linewidth=LINEWIDTH_XL, label=r'Genie-Aided $M=32\times32$')
 
             settings_legend_M3232.append(line_rate_opt_M3232)
     
@@ -552,7 +561,7 @@ def plot_pareto_scatter(files, pareto_plot_folder, xlim=[0, 0], ylim=[0, 0],
             ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=LINEWIDTH_XL, label=f'{round(rate_opt_M6464,3)}                                                                                                                                                  ')
             #labelLines([plt.gca().get_lines()[-1]], color='r', rotation=90, fontsize=SMALL_SIZE)
             labelLines([ax.get_lines()[-1]], color='r', rotation=90, fontsize=SMALL_SIZE)
-            line_rate_opt_M6464 = ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=LINEWIDTH_XL, label='Genie-Aided M=64x64')
+            line_rate_opt_M6464 = ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=LINEWIDTH_XL, label=r'Genie-Aided $M=64\times64$')
 
             settings_legend_M6464.append(line_rate_opt_M6464)
     
