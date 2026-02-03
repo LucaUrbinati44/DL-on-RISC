@@ -1,4 +1,4 @@
-Processing nucleo-f446ze-o3-modelinram (platform: ststm32; board: nucleo_f446ze; framework: arduino)
+Processing nucleo-f446ze-o3 (platform: ststm32; board: nucleo_f446ze; framework: arduino)
 --------------------------------------------------------------------------------
 Verbose mode can be enabled via `-v, --verbose` option
 CONFIGURATION: https://docs.platformio.org/page/boards/ststm32/nucleo_f446ze.html
@@ -23,17 +23,60 @@ Dependency Graph
 |-- model
 |-- tflite-micro
 Building in release mode
-Compiling .pio/build/nucleo-f446ze-o3-modelinram/lib7b1/model/mlp_model_data.cc.o
-Archiving .pio/build/nucleo-f446ze-o3-modelinram/lib7b1/libmodel.a
-Indexing .pio/build/nucleo-f446ze-o3-modelinram/lib7b1/libmodel.a
-Linking .pio/build/nucleo-f446ze-o3-modelinram/firmware.elf
-/home/work_wsl/.platformio/packages/toolchain-gccarmnoneeabi/bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/bin/ld: .pio/build/nucleo-f446ze-o3-modelinram/firmware.elf section `.rodata' will not fit in region `FLASH'
-/home/work_wsl/.platformio/packages/toolchain-gccarmnoneeabi/bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/bin/ld: region `FLASH' overflowed by 601136 bytes
+Compiling .pio/build/nucleo-f446ze-o3/src/main.cpp.o
+Compiling .pio/build/nucleo-f446ze-o3/lib7b1/model/mlp_model_data.cc.o
+Archiving .pio/build/nucleo-f446ze-o3/lib7b1/libmodel.a
+Indexing .pio/build/nucleo-f446ze-o3/lib7b1/libmodel.a
+lib/tflite-micro/tensorflow/compiler/mlir/lite/core/api/error_reporter.h:37:11: optimized:  Inlining tflite::ErrorReporter::~ErrorReporter()/1895 into virtual tflite::ErrorReporter::~ErrorReporter()/1897.
+lib/tflite-micro/tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h:28:35: optimized:  Inlining tflite::ErrorReporter::~ErrorReporter()/1895 into tflite::MicroErrorReporter::~MicroErrorReporter()/1899.
+src/main.cpp:162:37: optimized:  Inlining tflite::MicroErrorReporter::~MicroErrorReporter()/1899 into void __tcf_0()/8313.
+lib/tflite-micro/tensorflow/lite/micro/tflite_bridge/micro_error_reporter.h:28:35: optimized:  Inlining tflite::MicroErrorReporter::~MicroErrorReporter()/1899 into virtual tflite::MicroErrorReporter::~MicroErrorReporter()/1901.
+lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:50:9: optimized:  Inlining tflite::MicroOpResolver::~MicroOpResolver()/8139 into tflite::MicroMutableOpResolver<1>::~MicroMutableOpResolver()/22320.
+src/main.cpp:211:44: optimized:  Inlining tflite::MicroMutableOpResolver<1>::~MicroMutableOpResolver()/22320 into void __tcf_1()/8316.
+lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:50:9: optimized:  Inlining tflite::MicroMutableOpResolver<1>::~MicroMutableOpResolver()/22320 into virtual tflite::MicroMutableOpResolver<1>::~MicroMutableOpResolver()/22322.
+lib/tflite-micro/tensorflow/lite/micro/micro_op_resolver.h:50:31: optimized:  Inlining tflite::MicroOpResolver::~MicroOpResolver()/8139 into virtual tflite::MicroOpResolver::~MicroOpResolver()/8141.
+lib/tflite-micro/third_party/flatbuffers/base.h:437:22: optimized:  Inlining T flatbuffers::EndianScalar(T) [with T = long unsigned int]/8650 into T flatbuffers::ReadScalar(const void*) [with T = long unsigned int]/8697.
+lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:55:39: optimized:  Inlining constexpr tflite::MicroOpResolver::MicroOpResolver()/12252 into tflite::MicroMutableOpResolver<tOpCount>::MicroMutableOpResolver() [with unsigned int tOpCount = 1]/12255.
+lib/tflite-micro/third_party/flatbuffers/base.h:437:22: optimized:  Inlining T flatbuffers::EndianScalar(T) [with T = long int]/12427 into T flatbuffers::ReadScalar(const void*) [with T = long int]/8655.
+lib/tflite-micro/third_party/flatbuffers/table.h:30:41: optimized:  Inlining T flatbuffers::ReadScalar(const void*) [with T = long int]/8655 into const uint8_t* flatbuffers::Table::GetVTable() const/2414.
+lib/tflite-micro/third_party/flatbuffers/base.h:437:22: optimized:  Inlining T flatbuffers::EndianScalar(T) [with T = short unsigned int]/12428 into T flatbuffers::ReadScalar(const void*) [with T = short unsigned int]/8657.
+lib/tflite-micro/third_party/flatbuffers/table.h:42:50: optimized:  Inlining T flatbuffers::ReadScalar(const void*) [with T = short unsigned int]/8657 into flatbuffers::voffset_t flatbuffers::Table::GetOptionalFieldOffset(flatbuffers::voffset_t) const/2415.
+lib/tflite-micro/third_party/flatbuffers/table.h:39:40: optimized:  Inlining T flatbuffers::ReadScalar(const void*) [with T = short unsigned int]/8657 into flatbuffers::voffset_t flatbuffers::Table::GetOptionalFieldOffset(flatbuffers::voffset_t) const/2415.
+lib/tflite-micro/third_party/flatbuffers/table.h:37:28: optimized:  Inlining const uint8_t* flatbuffers::Table::GetVTable() const/2414 into flatbuffers::voffset_t flatbuffers::Table::GetOptionalFieldOffset(flatbuffers::voffset_t) const/2415.
+lib/tflite-micro/third_party/flatbuffers/table.h:47:40: optimized:  Inlining T flatbuffers::ReadScalar(const void*) [with T = long unsigned int]/8697 into T flatbuffers::Table::GetField(flatbuffers::voffset_t, T) const [with T = long unsigned int]/9036.
+lib/tflite-micro/third_party/flatbuffers/buffer.h:180:19: optimized:  Inlining T flatbuffers::EndianScalar(T) [with T = long unsigned int]/8650 into T* flatbuffers::GetMutableRoot(void*) [with T = tflite::Model]/15143.
+lib/tflite-micro/third_party/flatbuffers/buffer.h:177:14: optimized:  Inlining void flatbuffers::EndianCheck()/2339 into T* flatbuffers::GetMutableRoot(void*) [with T = tflite::Model]/15143.
+lib/tflite-micro/tensorflow/lite/schema/schema_generated.h:25246:47: optimized:  Inlining const T* flatbuffers::GetRoot(const void*) [with T = tflite::Model]/12203 into const tflite::Model* tflite::GetModel(const void*)/8088.
+src/main.cpp:211:44: optimized:  Inlining tflite::MicroMutableOpResolver<tOpCount>::MicroMutableOpResolver() [with unsigned int tOpCount = 1]/12255 into void setup()/8320.
+src/main.cpp:192:27: optimized:  Inlining const tflite::Model* tflite::GetModel(const void*)/8088 into void setup()/8320.
+src/main.cpp:145:11: optimized:  Inlining HardwareSerial::operator bool()/1882 into void setup()/8320.
+src/main.cpp:308:30: optimized:  Inlining constexpr const _Tp& std::min(const _Tp&, const _Tp&) [with _Tp = long unsigned int]/2340 into void loop()/8321.
+src/main.cpp:162:37: optimized: Semantic equality hit:void __tcf_0()/8313->void __tcf_1()/8316
+src/main.cpp:162:37: optimized: Assembler symbol names:__tcf_0/8313->__tcf_1/8316
+optimized:  Inlined void __tcf_0()/22868 into void __tcf_1()/8316 which now has time 2.000000 and size 3, net change of +0.
+lib/tflite-micro/third_party/flatbuffers/buffer.h:189:27: optimized:  Inlined T* flatbuffers::GetMutableRoot(void*) [with T = tflite::Model]/15143 into void setup()/8320 which now has time 258.449260 and size 262, net change of +0.
+/home/work_wsl/.platformio/packages/framework-arduinoststm32/cores/arduino/Stream.h:119:23: optimized: converting indirect call in size_t Stream::readBytes(uint8_t*, size_t)/1873 to direct call to virtual size_t Stream::readBytes(char*, size_t)/22852
+src/main.cpp:317:31: optimized:  Inlined size_t Stream::readBytes(uint8_t*, size_t)/1873 into void loop()/8321 which now has time 5490.697281 and size 236, net change of +0.
+optimized:  Inlined const TFLMRegistration* tflite::MicroMutableOpResolver<tOpCount>::FindOp(tflite::BuiltinOperator) const [with unsigned int tOpCount = 1]/22853 into const TFLMRegistration* tflite::MicroMutableOpResolver<tOpCount>::FindOp(tflite::BuiltinOperator) const [with unsigned int tOpCount = 1]/17130 which now has time 60.510528 and size 12, net change of +0.
+lib/tflite-micro/tensorflow/lite/schema/schema_generated.h:16808:30: optimized:  Inlined T flatbuffers::Table::GetField(flatbuffers::voffset_t, T) const [with T = long unsigned int]/9036 into uint32_t tflite::Model::version() const/5451 which now has time 18.000000 and size 11, net change of +0.
+lib/tflite-micro/third_party/flatbuffers/table.h:46:47: optimized:  Inlined flatbuffers::voffset_t flatbuffers::Table::GetOptionalFieldOffset(flatbuffers::voffset_t) const/2415 into T flatbuffers::Table::GetField(flatbuffers::voffset_t, T) const [with T = long unsigned int]/9036 which now has time 11.500000 and size 11, net change of +0.
+optimized:  Inlined TfLiteStatus tflite::MicroMutableOpResolver<tOpCount>::AddBuiltin(tflite::BuiltinOperator, const TFLMRegistration&, tflite::TfLiteBridgeBuiltinParseFunction) [with unsigned int tOpCount = 1]/22865 into AddBuiltin.isra/22866 which now has time 42.360325 and size 43, net change of +0.
+src/main.cpp:142:15: optimized:  Inlined void HardwareSerial::begin(long unsigned int)/1877 into void setup()/8320 which now has time 259.449260 and size 263, net change of +0.
+lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:389:24: optimized:  Inlined AddBuiltin.isra/22866 into AddFullyConnected.isra/22867 which now has time 37.097179 and size 36, net change of +0.
+src/main.cpp:195:21: optimized:  Inlined uint32_t tflite::Model::version() const/5451 into void setup()/8320 which now has time 256.949260 and size 271, net change of +0.
+lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:815:17: optimized: converting indirect call in AddBuiltin.isra/22866 to direct call to const TFLMRegistration* tflite::MicroMutableOpResolver<tOpCount>::FindOp(tflite::BuiltinOperator) const [with unsigned int tOpCount = 1]/17130
+src/main.cpp:214:38: optimized:  Inlined AddFullyConnected.isra/22867 into void setup()/8320 which now has time 269.165357 and size 299, net change of +0.
+lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:91:34: optimized: loop with 1 iterations completely unrolled (header execution count 102576008)
+lib/tflite-micro/tensorflow/lite/micro/micro_mutable_op_resolver.h:57:29: optimized: loop with 1 iterations completely unrolled (header execution count 102576008)
+src/main.cpp:353:23: optimized: Loop 4 distributed: split to 0 loops and 1 library calls.
+Linking .pio/build/nucleo-f446ze-o3/firmware.elf
+/home/work_wsl/.platformio/packages/toolchain-gccarmnoneeabi/bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/bin/ld: .pio/build/nucleo-f446ze-o3/firmware.elf section `.rodata' will not fit in region `FLASH'
+/home/work_wsl/.platformio/packages/toolchain-gccarmnoneeabi/bin/../lib/gcc/arm-none-eabi/12.3.1/../../../../arm-none-eabi/bin/ld: region `FLASH' overflowed by 600832 bytes
 collect2: error: ld returned 1 exit status
-*** [.pio/build/nucleo-f446ze-o3-modelinram/firmware.elf] Error 1
-========================= [FAILED] Took 55.69 seconds =========================
+*** [.pio/build/nucleo-f446ze-o3/firmware.elf] Error 1
+========================= [FAILED] Took 55.51 seconds =========================
 
-Environment                  Status    Duration
----------------------------  --------  ------------
-nucleo-f446ze-o3-modelinram  FAILED    00:00:55.685
-==================== 1 failed, 0 succeeded in 00:00:55.685 ====================
+Environment       Status    Duration
+----------------  --------  ------------
+nucleo-f446ze-o3  FAILED    00:00:55.513
+==================== 1 failed, 0 succeeded in 00:00:55.513 ====================
