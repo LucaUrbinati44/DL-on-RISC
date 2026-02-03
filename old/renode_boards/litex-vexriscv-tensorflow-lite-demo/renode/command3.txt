@@ -1,1 +1,0 @@
-/mnt/c/Users/Work/Desktop/deepMIMO/RIS/renode_portable/tools/csv2resd/csv2resd.py --input test_set_small.data --map binary_data:data::0 --start-time 0 --frequency 1 test_set_small.resd
