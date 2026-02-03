@@ -58,29 +58,28 @@ Ur_rows = [1000, 1200]
 #Mz_ar = [32, 64]
 
 # TODO DEVO CAMBIARE QUI
-#My_ar = [32]
-#Mz_ar = [32]
-My_ar = [64]
-Mz_ar = [64]
+My_ar = [32]
+Mz_ar = [32]
+#My_ar = [64]
+#Mz_ar = [64]
 
 My = My_ar[0]
 Mz = Mz_ar[0]
 
 #Training_Size = [2, 10000, 14000, 18000, 22000, 26000, 30000]
-#Training_Size = [10000, 30000]
+#Training_Size = [2]
 #Training_Size = [10000]
-#Training_Size = [30000]
-#Training_Size = [2000, 4000, 6000, 8000]
-#Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000]
-#Training_Size = [8000, 10000, 14000, 18000, 22000, 26000, 30000]
-#Training_Size = [10000, 30000]
+#Training_Size = [14000]
+#Training_Size = [18000]
+#Training_Size = [22000]
+#Training_Size = [26000]
 Training_Size = [30000]
 
 Training_Size_dd = Training_Size[0]
 
 # ------------------------------------------------------------------------------------------
 
-debug = 2            # 0: production mode, 1: production mode for one case, 2: debug mode
+debug = 3            # 0: production mode, 1: production mode for one case, 2: debug mode, 3: preliminary results
 
 #dummy = 'dummy_'    # '': production mode, 'dummy_': dummy mode
 dummy = ''
@@ -115,8 +114,9 @@ elif debug == 2:
 else: # modello di Taha
     #input_featuress = [1024]
     active_cells = [8]
-    output_dims = [1024]
+    output_dims = [My*Mz]
     num_layers_list = [3]
+    R_list = [1]
 
 # ------------------------------------------------------------------------------------------
 
@@ -141,7 +141,10 @@ factor = 0.75
 #max_epochs_list = [    200,     200,    200,   200 ] # tanto c'è early stopping
 patience = 4
 min_delta = 0.001
-max_epochs = 200 # tanto c'è early stopping
+if debug == 3:
+    max_epochs = 20 # tanto c'è early stopping
+else:
+    max_epochs = 200 # tanto c'è early stopping
 
 # ------------------------------------------------------------------------------------------
 
@@ -159,10 +162,6 @@ load_model_flag = 0
 predict_loaded_model_flag = load_model_flag # deve essere uguale a load_model_flag
 profiling_flag = 0
 compile_and_upload_flag = 0
-
-# STEP 2) Inference on MCUs
-##### LOADING (for inference and profiling) #####
-#datetime_str = USA ALTRO SCRIPT
 
 # ------------------------------------------------------------------------------------------
 
@@ -192,7 +191,7 @@ if profiling_flag == 1:
             mcu_type = {'name': 'nucleo-f446ze', 
                         #'port': '/dev/ttyACM1',
                         'serial_number': "066FFF485570854967101750",
-                        'baud_rate': 115200}
+                        'baud_rate': 115200} # più di così non va
         elif mcu_name == 'stm32h7':
             mcu_type = {'name': 'nucleo-h753zi',
                         #'port': '/dev/ttyACM0',
@@ -225,7 +224,11 @@ output_folder = os.path.join(base_folder, 'Output_Python')
 network_folder_out = os.path.join(output_folder, 'Neural_Network')
 figure_folder = os.path.join(output_folder, 'Figures')
 
-datetime_dir = os.path.join(network_folder_out, datetime_str)
+if debug == 3:
+    datetime_dir = os.path.join(network_folder_out, "preliminary_results")
+else:
+    datetime_dir = os.path.join(network_folder_out, datetime_str)
+    
 network_folder_out_RateDLpy = os.path.join(datetime_dir, 'RateDLpy')
 network_folder_out_RateDLpy_TFLite = os.path.join(datetime_dir, 'RateDLpy_TFLite')
 network_folder_out_RateDLpy_TFLite_mcu = os.path.join(datetime_dir, 'RateDLpy_TFLite_mcu')
@@ -366,7 +369,7 @@ def get_model_paths(dummy, end_folder_Training_Size_dd, max_epochs, num_layers, 
         hidden = '_' + str(hidden_units_list[0]) + '_' + str(hidden_units_list[1]) + '_' + str(hidden_units_list[2]) + '_'
     
     model_name_suffix = f"_initlr{init_learning_rate}_minlr{min_learning_rate}_fact{factor}_pat{patience}_mindelta{min_delta}_nl{num_layers}_R{R}_in{input_features}{hidden}out{output_dim}"
-    
+
     end_folder_Training_Size_dd_epochs = end_folder_Training_Size_dd + f"_ep{str(max_epochs)}"
 
     model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_epochs + model_name_suffix

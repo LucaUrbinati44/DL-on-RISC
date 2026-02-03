@@ -67,13 +67,12 @@ My = My_ar[0]
 Mz = Mz_ar[0]
 
 #Training_Size = [2, 10000, 14000, 18000, 22000, 26000, 30000]
-#Training_Size = [10000, 30000]
+#Training_Size = [2]
 #Training_Size = [10000]
-#Training_Size = [30000]
-#Training_Size = [2000, 4000, 6000, 8000]
-#Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000]
-#Training_Size = [8000, 10000, 14000, 18000, 22000, 26000, 30000]
-#Training_Size = [10000, 30000]
+#Training_Size = [14000]
+#Training_Size = [18000]
+#Training_Size = [22000]
+#Training_Size = [26000]
 Training_Size = [30000]
 
 Training_Size_dd = Training_Size[0]
@@ -115,8 +114,9 @@ elif debug == 2:
 else: # modello di Taha
     #input_featuress = [1024]
     active_cells = [8]
-    output_dims = [1024]
+    output_dims = [My*Mz]
     num_layers_list = [3]
+    R_list = [1]
 
 # ------------------------------------------------------------------------------------------
 
@@ -367,7 +367,7 @@ def get_model_paths(dummy, end_folder_Training_Size_dd, max_epochs, num_layers, 
         hidden = '_' + str(hidden_units_list[0]) + '_' + str(hidden_units_list[1]) + '_' + str(hidden_units_list[2]) + '_'
     
     model_name_suffix = f"_initlr{init_learning_rate}_minlr{min_learning_rate}_fact{factor}_pat{patience}_mindelta{min_delta}_nl{num_layers}_R{R}_in{input_features}{hidden}out{output_dim}"
-    
+
     end_folder_Training_Size_dd_epochs = end_folder_Training_Size_dd + f"_ep{str(max_epochs)}"
 
     model_type_load = dummy + 'model_py_test' + end_folder_Training_Size_dd_epochs + model_name_suffix
