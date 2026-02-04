@@ -1,9 +1,0 @@
-end_folder_Training_Size_dd_epochs,num_layers,R,micro_base,modelinram,Rate_OPT_py_load_test,Rate_DL_py_load_test,Rate_DL_py_load_test_tflite,Rate_DL_py_load_test_tflite_mcu,latency_ms,drop_opt_to_fp32_pct,drop_fp32_to_int8_pct,drop_int8_to_mcu_pct
-_seed0_grid1200_M6464_Mbar8_30000_ep200,3,8,esp32-s2-saola-tflm-o3,0,5.054,5.006,5.001,5.0,276.943,0.93,0.12,0.0
-_seed0_grid1200_M6464_Mbar12_30000_ep200,3,32,nucleo-h753zi-o3,1,5.067,4.888,4.896,4.893,12.934,3.52,-0.15,0.07
-_seed0_grid1200_M6464_Mbar28_30000_ep200,1,32,nucleo-h753zi-o3,0,5.042,4.737,4.736,4.738,12.498,6.05,0.03,-0.05
-_seed0_grid1200_M6464_Mbar12_30000_ep200,1,32,nucleo-h753zi-o3,0,5.067,4.593,4.575,4.577,4.335,9.36,0.38,-0.04
-_seed0_grid1200_M6464_Mbar8_30000_ep200,1,32,nucleo-h753zi-o3,0,5.054,3.857,3.844,3.845,2.856,23.67,0.34,-0.02
-_seed0_grid1200_M6464_Mbar4_30000_ep200,1,32,nucleo-h753zi-o3,1,5.062,2.357,2.307,2.309,1.589,53.44,2.1,-0.08
-_seed0_grid1200_M6464_Mbar1_30000_ep200,2,32,nucleo-h753zi-o3,0,5.01,0.699,0.665,0.664,1.455,86.05,4.95,0.13
-_seed0_grid1200_M6464_Mbar1_30000_ep200,1,32,nucleo-h753zi-o3,0,5.01,0.462,0.462,0.462,0.803,90.78,-0.11,0.0
