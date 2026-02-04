@@ -1,37 +1,41 @@
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/*
+!code/Output_Python/
+code/Output_Python/*
 
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/*
+!code/Output_Python/Neural_Network/
+code/Output_Python/Neural_Network/*
 
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/preliminary_results/
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/preliminary_results/*
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/preliminary_results/RateDLpy/
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/preliminary_results/RateDLpy/*
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/preliminary_results/RateDLpy/Rate*
+!code/Output_Python/Neural_Network/preliminary_results/
+code/Output_Python/Neural_Network/preliminary_results/*
+!code/Output_Python/Neural_Network/preliminary_results/RateDLpy/
+code/Output_Python/Neural_Network/preliminary_results/RateDLpy/*
+!code/Output_Python/Neural_Network/preliminary_results/RateDLpy/Rate*
 
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/experiment*/
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/experiment*/*
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/experiment*/RateDLpy/
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/experiment*/RateDLpy_TFLite/
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/experiment*/RateDLpy_TFLite_mcu/
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/experiment*/training_history/
+!code/Output_Python/Neural_Network/experiment*/
+code/Output_Python/Neural_Network/experiment*/*
+!code/Output_Python/Neural_Network/experiment*/RateDLpy/
+!code/Output_Python/Neural_Network/experiment*/RateDLpy_TFLite/
+!code/Output_Python/Neural_Network/experiment*/RateDLpy_TFLite_mcu/
+!code/Output_Python/Neural_Network/experiment*/training_history/
 
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/logs
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/model
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/output_data
-!DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/scaler
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/test_data
-DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Profiling_Search_MCU/test_data_normalized
+!code/Output_Python/Profiling_Search_MCU
+code/Output_Python/Profiling_Search_MCU/logs
+code/Output_Python/Profiling_Search_MCU/model
+code/Output_Python/Profiling_Search_MCU/output_data
+!code/Output_Python/Profiling_Search_MCU/scaler
+code/Output_Python/Profiling_Search_MCU/test_data
+code/Output_Python/Profiling_Search_MCU/test_data_normalized
 
-DeepMIMOv1-LIS-DeepLearning-Taha/Output Matlab
+code/Output Matlab
 
-DeepMIMOv1-LIS-DeepLearning-Taha/Pareto_plot/test-modelinram-*.txt
+code/Pareto_plot/test-modelinram-*.txt
 
 old/renode_portable
 old/renode_boards
 old/tflite-micro
+
+reference_papers
+
+mcu/attach boards/*
 
 mcu/esp32-s2-saola-blink/*
 
@@ -81,4 +85,4 @@ mcu/stm32-test/*
 .vscode/*
 RIS.code-workspace
 
-#DeepMIMOv1-LIS-DeepLearning-Taha/RayTracing Scenarios/O1_28
+#code/RayTracing Scenarios/O1_28
