@@ -2,7 +2,7 @@ clearvars
 close all
 %clc
 
-base_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/';
+base_folder = 'C:/Users/Work/Desktop/deepMIMO/RIS/code/';
 output_folder = [base_folder, 'Output Matlab/'];
 output_folder_py = [base_folder, 'Output_Python/'];
 
@@ -39,8 +39,8 @@ addpath(DeepMIMO_dataset_folder);
 addpath(DL_dataset_folder);
 addpath(figure_folder);
 addpath(figure_folder_py);
-addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/MAT functions');
-addpath('C:/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/RayTracing Scenarios/O1_28');
+addpath('C:/Users/Work/Desktop/deepMIMO/RIS/code/MAT functions');
+addpath('C:/Users/Work/Desktop/deepMIMO/RIS/code/RayTracing Scenarios/O1_28');
 
 cd(base_folder);
 

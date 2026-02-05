@@ -30,7 +30,7 @@ import json
 # Load the LiteRT model and allocate tensors.
 from ai_edge_litert.interpreter import Interpreter # LiteRT (Lite Runtime) successore del runtime tflite_runtime
 
-base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
+base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/code/'
 output_folder = os.path.join(base_folder, 'Output_Python')
 
 labels = [str(i) for i in range(1024)]

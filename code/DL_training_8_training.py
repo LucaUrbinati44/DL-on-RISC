@@ -204,11 +204,11 @@ if profiling_flag == 1:
 # ------------------------------------------------------------------------------------------
 
 # Aprire tensorboard da terminale:
-# tensorboard --logdir=/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/Output_Python/Neural_Network/experiment-09-09-25-15-56
+# tensorboard --logdir=/mnt/c/Users/Work/Desktop/deepMIMO/RIS/code/Output_Python/Neural_Network/experiment-09-09-25-15-56
 
 # ------------------------------------------------------------------------------------------
 
-base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
+base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/code/'
 if ISWINDOWS:
     #base_folder = subprocess.check_output(["wslpath", "-w", base_folder]).decode().strip()
     base_folder = subprocess.check_output(["wsl", "wslpath", "-w", base_folder]).decode().strip()
@@ -1115,10 +1115,10 @@ def run_experiment(dummy, data_csv, x_sample,
                     with open(params_path, "w", encoding="utf-8") as f:
                         json.dump(params_dict, f)
 
-                    wsl_script_path = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/DL_training_4_v3_test.py"
+                    wsl_script_path = "/mnt/c/Users/Work/Desktop/deepMIMO/RIS/code/DL_training_4_v3_test.py"
                     process = subprocess.Popen([
                         "wsl", "bash", "-lc", 
-                        "source ~/miniconda3/etc/profile.d/conda.sh && conda activate deepmimo && /home/work_wsl/miniconda3/envs/deepmimo/bin/python -u /mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/DL_training_4_v3_test.py"
+                        "source ~/miniconda3/etc/profile.d/conda.sh && conda activate deepmimo && /home/work_wsl/miniconda3/envs/deepmimo/bin/python -u /mnt/c/Users/Work/Desktop/deepMIMO/RIS/code/DL_training_4_v3_test.py"
                         f" --params {params_path}"], # --output {output_json_path}"],
                         stdout=subprocess.PIPE,
                         stderr=subprocess.STDOUT,

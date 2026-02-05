@@ -28,6 +28,14 @@ code/Output_Python/Profiling_Search_MCU/test_data_normalized
 code/Output Matlab
 
 code/Pareto_plot/test-modelinram-*.txt
+code/Pareto_plot/*.pdf
+code/Fig7*
+code/FigC*
+code/FigD*
+code/profiling_append*
+code/DL_predict_5.m
+code/Fig12_plot.m
+code/DL_training_8_mcu.py
 
 old/renode_portable
 old/renode_boards
@@ -84,5 +92,3 @@ mcu/stm32-test/*
 *.pyc
 .vscode/*
 RIS.code-workspace
-
-#code/RayTracing Scenarios/O1_28
