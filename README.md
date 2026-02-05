@@ -8,9 +8,15 @@ L. Urbinati, N. Decarli, F. Guidi, A. Guerra, B. M. Masini, and A. Zanella, "On-
 
 Reconfigurable Intelligent Surfaces (RISs) promise a paradigm shift in wireless communication by enabling smart propagation environments. However, traditional RIS control, which relies on base station decisions and high-volume feedback loops, struggles to meet the stringent real-time demands of next-generation systems. To overcome these limitations, this work explores direct on-board RIS control through deep learning (DL) algorithms executed on the microcontroller unit (MCU) integrated into the RIS control board, leveraging well-established tiny machine learning (TinyML) deployment tools. Unlike prior studies that assume such deployment feasibility without empirical validation, we conduct a hardware-aware analysis that quantifies the trade-off between controller design and communication performance across a range of DL models and MCU-class embedded devices, and maps the resulting latency-rate Pareto frontier under realistic constraints. The results yield actionable guidelines for jointly selecting RIS size, number of active cells, DL model complexity, and MCU class to meet application-specific rate and real-time requirements.
 
+---
+
 👥 Repo Author
+
 Luca Urbinati
 
+---
+
+```bash
 📂 Repo structure
 DL-on-RISC/
 ├── README.md                                 
@@ -37,7 +43,9 @@ DL-on-RISC/
 │   ├── nucleo-f446ze/                        # STM32F446ZE pio project
 │   ├── nucleo-h753zi/                        # STM32H753ZI pio project
 │   ├── pico/                                 # RP2040 Pico pio project
+```
 
+---
 
 📚 Reference papers
 - A. Taha, M. Alrabeiah, and A. Alkhateeb, "Enabling Large Intelligent Surfaces With Compressive Sensing and Deep Learning," IEEE Access, vol. 9, pp. 44304-44321, 2021. DOI: 10.1109/ACCESS.2021.3064073.
@@ -55,10 +63,14 @@ https://ssrn.com/abstract=4383745
 - M. Singh and H. A. Kholidy, "Generic Datasets, Beamforming Vectors Prediction of 5G Cellular Networks: A Capstone Report," Dept. Network and Computer Security, SUNY Polytechnic Inst., 2020.
 https://soar.suny.edu/entities/publication/e4aff4f9-883e-4031-9068-43e99d971905
 
+---
 
 🧑‍💻 Reference repo
+
 A. Taha, "LIS-DeepLearning," https://github.com/Abdelrahman-Taha/LIS-DeepLearning
 
+---
 
 📄 License
+
 MIT License — Use it freely for research/academia.
