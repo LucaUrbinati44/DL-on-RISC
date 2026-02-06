@@ -87,14 +87,14 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
             %plot((Training_Size_valid*1e-3),Rate_OPTt_valid,   [Colour(rr) Marker_mat{rr, 1}],'markersize',7,'linewidth',1.2, 'DisplayName', ['Genie-Aided$,\; M \mathbin{=} ' num2str(My_ar(rr)) '\times' num2str(Mz_ar(rr)) '$'])
             %plot((Training_Size_valid*1e-3),Rate_DLt_mat_valid,[Colour(rr) Marker_mat{rr, 2}],'markersize',7,'linewidth',1., 'DisplayName', ['$\mathrm{DL}_{\mathrm{val6400}},\; M \mathbin{=} ' num2str(My_ar(rr)) '\times' num2str(Mz_ar(rr)) ',\; \overline{M} \mathbin{=} 8$'])
             plot((Training_Size_valid*1e-3),Rate_OPTt_valid,   [Colour(rr) Marker_mat{rr, 1}], 'markersize',7,'linewidth',1.2, 'DisplayName', ['Genie-Aided$\,,\; M \mathbin{=} ' num2str(My_ar(rr)) ' \,\times\, ' num2str(Mz_ar(rr)) '$']);
-            plot((Training_Size_valid*1e-3),Rate_DLt_mat_valid,[Colour(rr) Marker_mat{rr, 2}], 'markersize',7,'linewidth',1., 'DisplayName', ['$\mathrm{DL}_{\mathrm{val6400}} \mathrm{[8]},\; M \mathbin{=} ' num2str(My_ar(rr)) ' \,\times\, ' num2str(Mz_ar(rr)) ',\; \overline{M} \mathbin{=} 8$']);
+            plot((Training_Size_valid*1e-3),Rate_DLt_mat_valid,[Colour(rr) Marker_mat{rr, 2}], 'markersize',7,'linewidth',1., 'DisplayName', ['$\mathrm{DL}_{\mathrm{val6400}},\; M \mathbin{=} ' num2str(My_ar(rr)) ' \,\times\, ' num2str(Mz_ar(rr)) ',\; \overline{M} \mathbin{=} 8,\; \mathrm{[8]}$']);
             
             
             if epochs == 20
                 disp("entro")
                 %plot((Training_Size*1e-3),Rate_DLt_py_valOld_20(rr,:),      [Colour_valOld(rr) Marker_valOld_20_40{rr, 1}], 'markersize',7,'linewidth',1.2, 'DisplayName', ['DL_{pyValOld20    }, M = ' num2str(My_ar(rr))])
                 %plot((Training_Size*1e-3),Rate_DLt_py_val_20(rr,:),         [Colour(rr) Marker_val_20_40{rr, 1}],           'markersize',7,'linewidth',1.2, 'DisplayName', ['DL_{pyVal20       }, M = ' num2str(My_ar(rr))])
-                plot((Training_Size_valid*1e-3),Rate_DLt_py_test_20_valid,        [Colour(rr) Marker_test{rr, 1}],          'markersize',7,'linewidth',1.0, 'DisplayName', ['$\mathrm{DL}_{\mathrm{test}      } \mathrm{[ours]},\; M \mathbin{=} ' num2str(My_ar(rr)) ' \,\times\, ' num2str(Mz_ar(rr)) ',\; \overline{M} \mathbin{=} 8$' ])
+                plot((Training_Size_valid*1e-3),Rate_DLt_py_test_20_valid,        [Colour(rr) Marker_test{rr, 1}],          'markersize',7,'linewidth',1.0, 'DisplayName', ['$\mathrm{DL}_{\mathrm{test}      },\; M \mathbin{=} ' num2str(My_ar(rr)) ' \,\times\, ' num2str(Mz_ar(rr)) ',\; \overline{M} \mathbin{=} 8,\; \mathrm{[ours]}$' ])
                 %plot((Training_Size*1e-3),Rate_DLt_py_test_tflite_20(rr,:), [Colour(rr) Marker_test_20_40{rr, 2}],          'markersize',7,'linewidth',1.0, 'DisplayName', ['DL_{pyTestTFLite20}, M = ' num2str(My_ar(rr))])
                 %disp('Rate_DLt_py_valOld_20(rr,:)')
                 %disp(Rate_DLt_py_valOld_20(rr,:))
@@ -109,7 +109,8 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
         end
         %legend('Location','SouthEast')
         lgd = legend('Location','East','NumColumns', 1);
-        lgd.Position = [0.61, 0.445, 0.15, 0.2]; % [x, y, width, height]
+        %lgd.Position = [0.61, 0.445, 0.15, 0.2]; % [x, y, width, height]
+        lgd.Position = [0.603, 0.46, 0.15, 0.2]; % [x, y, width, height]
         %x: distanza da sinistra (0=sinistra, 1=destra)
         %y: distanza dal basso (0=basso, 1=alto)
         %width, height: dimensioni (puoi lasciarle come quelle di default, oppure ridurle)
