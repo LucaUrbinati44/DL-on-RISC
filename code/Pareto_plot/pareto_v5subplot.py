@@ -29,7 +29,7 @@ def is_windows():
     return 1 if os.name == 'nt' else 0
 ISWINDOWS = is_windows()
 
-base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
+base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/code/'
 if ISWINDOWS:
     base_folder = subprocess.check_output(["wsl", "wslpath", "-w", base_folder]).decode().strip()
     print(base_folder)

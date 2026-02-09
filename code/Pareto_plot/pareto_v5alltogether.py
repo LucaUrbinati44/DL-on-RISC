@@ -26,7 +26,7 @@ def is_windows():
     return 1 if os.name == 'nt' else 0
 ISWINDOWS = is_windows()
 
-base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/DeepMIMOv1-LIS-DeepLearning-Taha/'
+base_folder = '/mnt/c/Users/Work/Desktop/deepMIMO/RIS/code/'
 if ISWINDOWS:
     base_folder = subprocess.check_output(["wsl", "wslpath", "-w", base_folder]).decode().strip()
     print(base_folder)
@@ -86,7 +86,7 @@ plt.rc('axes', titlesize=LARGE_SIZE)     # fontsize of the axes title
 plt.rc('figure', titlesize=LARGE_SIZE)  # fontsize of the figure title
 
 # Dimensione dei punti scatter
-markersize = 14
+markersize = 12
 scatter_point_size = markersize**2
 LINEWIDTH_TINY = TINY_SIZE/10
 LINEWIDTH_SMALL = SMALL_SIZE/10
