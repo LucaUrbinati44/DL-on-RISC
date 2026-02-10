@@ -45,7 +45,7 @@ Ur_rows = [1000, 1200]
 My_ar = [32, 64]
 Mz_ar = [32, 64]
 My_ar = [64]
-My_ar = [32]
+#My_ar = [32]
 Mz_ar = My_ar
 Training_Size = [30000]
 Training_Size_dd = Training_Size[0]
@@ -273,7 +273,7 @@ def plot_pareto_subplots(files,
     n_sub = len(active_cells_list)
     #fig, axes = plt.subplots(n_sub, 1, figsize=(7, 2.2 * n_sub), sharex=False)
     fig, axes = plt.subplots(n_sub, 1, figsize=(6, 3.2 * n_sub), sharex=False)
-    fig.subplots_adjust(wspace=0, hspace=0)
+    fig.subplots_adjust(wspace=0, hspace=8)
 
     # se un solo subplot, axes non è array -> normalizziamo
     if n_sub == 1:
@@ -466,7 +466,7 @@ def plot_pareto_subplots(files,
         # -----------------------------
         if mbar == active_cells_list[-1]: 
             ax.set_xlabel("Predicted Achievable Rate on the Test set [bps/Hz]")
-        ax.set_ylabel("Total Execution Latency [ms]")
+        ax.set_ylabel("Execution Latency [ms]")
         ax.grid(True, linestyle='--', alpha=0.4)
         ax.invert_xaxis()  # rate alto a sinistra
 

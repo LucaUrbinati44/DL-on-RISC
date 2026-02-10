@@ -470,7 +470,7 @@ def plot_pareto_scatter(files, pareto_plot_folder, xlim=[0, 0], ylim=[0, 0],
     ax.set_xlabel("Predicted Achievable Rate [bps/Hz]")
     #ax.set_ylabel(f"{y_col} (x1000)")
     if ax is not None and len(My_ar) == 1 and My_ar[0] == 64:
-        ax.set_ylabel(f"Total Execution Latency [ms]")
+        ax.set_ylabel(f"Execution Latency [ms]")
     #ax.set_title(f"Pareto Plot: Rate vs Latency, Test Set")
     ax.grid(True, linestyle="--", alpha=0.4)
 
