@@ -454,8 +454,9 @@ def plot_pareto_subplots(files,
             line_rate_opt_M3232 = ax.axvline(rate_opt_M3232, color='b', linestyle=':', linewidth=LINEWIDTH_XL, label=fr'Genie $M=32\times32$: {rate_opt_M3232} [bps/Hz]')
             
         if mask_M6464.any() and "Rate_OPT_py_load_test" in df_subplot_filtered.columns:
-            rate_opt_M6464 = df_subplot_filtered.loc[mask_M6464, "Rate_OPT_py_load_test"].iloc[0]
-            rate_opt_M6464 = round(rate_opt_M6464,3)
+            #rate_opt_M6464 = df_subplot_filtered.loc[mask_M6464, "Rate_OPT_py_load_test"].iloc[0]
+            #rate_opt_M6464 = round(rate_opt_M6464,3)
+            rate_opt_M6464 = 5.035
             #ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=1.2, alpha=0.9, label=f'{round(rate_opt_M6464,3)}                                                                                                                                                                ')
             #labelLines([plt.gca().get_lines()[-1]], color='r', rotation=90, fontsize=SMALL_SIZE)
             #line_rate_opt_M6464 = ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=LINEWIDTH_XL, label=f'Genie M=64x64: {round(rate_opt_M6464,3)} [bps/Hz]')

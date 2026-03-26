@@ -108,7 +108,8 @@ plot_mode = 2; % 1: matlab, 2: python
 Training_Size_number = 2;
 %Training_Size_number = 11;
 %                1    2     3     4     5     6      7      8      9      10     11
-Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
+%Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
+Training_Size = [2, 10000, 14000, 18000, 22000, 26000, 30000];
 max_epochs_load = 20;
 %max_epochs_load = 40;
 %max_epochs_load = 60;
@@ -151,11 +152,6 @@ K_DL=64; % number of subcarriers as input to the Deep Learning model (to reduce 
 
 Ur_rows = [1000 1200]; % original
 %Ur_rows = [1000 1300]; % paper
-
-%Training_Size=[2  1e4*(1:.4:3)]; % Training Dataset Size vector (x-axis of Fig 12)
-%Training_Size=[1e4*3]; % Semplificazione Luca
-%Training_Size=[10000 30000];
-%Training_Size = [2, 2000, 4000, 6000, 8000, 10000, 14000, 18000, 22000, 26000, 30000];
 
 Validation_Size = 6200; % Validation dataset Size
 Test_Size = 3100; % Test dataset Size
@@ -222,9 +218,20 @@ for rr = 1:1:numel(My_ar)
     Mx = 1;  % number of LIS reflecting elements across the x axis
     My=My_ar(rr);
     Mz=Mz_ar(rr);
-    
+   
     end_folder = strcat('_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My), ' ', ''), strrep(num2str(Mz), ' ', ''));
-    end_folder_M_bar = strcat(end_folder, '_Mbar', num2str(M_bar));
+
+    if Mz == 64
+        fixed = '_fixed';
+        %fixed = '';
+    elseif Mz == 32
+        fixed = '';
+    end
+
+    end_folder_M_bar = strcat(end_folder, '_Mbar', num2str(M_bar), fixed);
+
+    fixed = '_fixed';
+    end_folder_fig12 = strcat('_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), fixed);
 
     %experiment_folder = strcat('experiment_M', num2str(My), num2str(Mz), '_Mbar', num2str(M_bar), '/');
     experiment_folder = 'preliminary_results/';
@@ -486,7 +493,7 @@ if plot_fig12 == 1
     %            Rate_DLt_py_test_100, Rate_DLt_py_test_tflite_100)
 
     Fig12_plot_v2(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
-                epochs_fig12, ...
+                epochs_fig12, end_folder_fig12, ...
                 Rate_OPTt,Rate_DLt_mat, ...
                 Rate_DLt_py_valOld_20,Rate_DLt_py_valOld_40, ...
                 Rate_DLt_py_val_20,Rate_DLt_py_test_20,Rate_DLt_py_test_tflite_20)

@@ -60,8 +60,9 @@ Ur_rows = [1000, 1200]
 # TODO DEVO CAMBIARE QUI
 My_ar = [32]
 Mz_ar = [32]
-#My_ar = [64]
-#Mz_ar = [64]
+My_ar = [64]
+Mz_ar = [64]
+fixed = '_fixed'
 
 My = My_ar[0]
 Mz = Mz_ar[0]
@@ -1494,8 +1495,8 @@ if __name__ == "__main__":
 
     # %%
     for M_bar in active_cells:
-
-        end_folder = '_seed' + str(seed) + '_grid' + str(Ur_rows[1]) + '_M' + str(My) + str(Mz) + '_Mbar' + str(M_bar)
+   
+        end_folder = '_seed' + str(seed) + '_grid' + str(Ur_rows[1]) + '_M' + str(My) + str(Mz) + '_Mbar' + str(M_bar) + fixed
         end_folder_Training_Size_dd = end_folder + '_' + str(Training_Size_dd)
                 
         input_features = M_bar * K_DL * 2 #    8 celle attive x 64 subcarriers x 2 (real/img) = 1024

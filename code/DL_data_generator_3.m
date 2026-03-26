@@ -32,8 +32,9 @@ No_user_pairs = (Ur_rows(2)-Ur_rows(1))*181; % Number of users (= Number of TX-R
 %disp([' No_user_pairs = ' num2str(No_user_pairs)]);
 % In the 'O1' scenario where every row consists of 181 points.
 % Since the number of BS antennas is one, the number of pairs is equal to the number of users.
+rng(44);
 RandP_all = randperm(No_user_pairs).';
-%save(filename_RandP_all,'RandP_all','-v7.3');
+%save(filename_RandP_all_fixed,'RandP_all','-v7.3');
 %return
 
 % randperm(n) restituisce un vettore contenente una permutazione casuale di numeri interi da 1 a n, senza elementi ripetuti.
@@ -100,6 +101,7 @@ else
     count=0;
 
     % The active channel sensors are randomly selected from the M UPA antennas
+    rng(4 + 1);
     Rand_M_bar_all = randperm(M);
     Rand_M_bar =unique(Rand_M_bar_all(1:M_bar)); % prendi i primi M_bar valori di M dopo aver mischiato i valori di M randomly
     disp([' Calculating for M_bar = ' num2str(M_bar)]);  

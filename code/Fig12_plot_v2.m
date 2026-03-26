@@ -1,5 +1,5 @@
 function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
-                        epochs, ...
+                        epochs, end_folder_fig12, ...
                         Rate_OPTt,Rate_DLt_mat, ...
                         Rate_DLt_py_valOld_20,Rate_DLt_py_valOld_40, ...
                         Rate_DLt_py_val_20,Rate_DLt_py_test_20,Rate_DLt_py_test_tflite_20)
@@ -9,11 +9,11 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
     global load_mat_py;
     global seed figure_folder figure_folder_py;
 
-    filename_fig12=strcat(figure_folder, 'Fig12', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.pdf');
-    filename_fig12_mat=strcat(figure_folder_py, 'Fig12_mat', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.pdf');
-    filename_fig12_py=strcat(figure_folder, 'Fig12_py', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '.pdf');
-    filename_fig12_py_test=strcat(figure_folder_py, 'Fig12_py_test', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(epochs), '.pdf');    
-    filename_fig12_py_test_tflite=strcat(figure_folder_py, 'Fig12_py_test_tflite', '_seed', num2str(seed), '_grid', num2str(Ur_rows(2)), '_M', strrep(num2str(My_ar), ' ', ''), strrep(num2str(Mz_ar), ' ', ''), '_Mbar', num2str(M_bar), '_', num2str(epochs), '.pdf');    
+    filename_fig12=strcat(figure_folder, 'Fig12', end_folder_fig12, '.pdf');
+    filename_fig12_mat=strcat(figure_folder_py, 'Fig12_mat', end_folder_fig12, '.pdf');
+    filename_fig12_py=strcat(figure_folder, 'Fig12_py', end_folder_fig12, '.pdf');
+    filename_fig12_py_test=strcat(figure_folder_py, 'Fig12_py_test', end_folder_fig12, '_', num2str(epochs), '.pdf');    
+    filename_fig12_py_test_tflite=strcat(figure_folder_py, 'Fig12_py_test_tflite', end_folder_fig12, '_', num2str(epochs), '.pdf');    
     
     Colour = 'brgm';
     Colour_tflite = 'mg';
@@ -87,7 +87,7 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
             %plot((Training_Size_valid*1e-3),Rate_OPTt_valid,   [Colour(rr) Marker_mat{rr, 1}],'markersize',7,'linewidth',1.2, 'DisplayName', ['Genie-Aided$,\; M \mathbin{=} ' num2str(My_ar(rr)) '\times' num2str(Mz_ar(rr)) '$'])
             %plot((Training_Size_valid*1e-3),Rate_DLt_mat_valid,[Colour(rr) Marker_mat{rr, 2}],'markersize',7,'linewidth',1., 'DisplayName', ['$\mathrm{DL}_{\mathrm{val6400}},\; M \mathbin{=} ' num2str(My_ar(rr)) '\times' num2str(Mz_ar(rr)) ',\; \overline{M} \mathbin{=} 8$'])
             plot((Training_Size_valid*1e-3),Rate_OPTt_valid,   [Colour(rr) Marker_mat{rr, 1}], 'markersize',7,'linewidth',1.2, 'DisplayName', ['Genie-Aided$\,,\; M \mathbin{=} ' num2str(My_ar(rr)) ' \,\times\, ' num2str(Mz_ar(rr)) '$']);
-            plot((Training_Size_valid*1e-3),Rate_DLt_mat_valid,[Colour(rr) Marker_mat{rr, 2}], 'markersize',7,'linewidth',1., 'DisplayName', ['$\mathrm{DL}_{\mathrm{val6400}},\; M \mathbin{=} ' num2str(My_ar(rr)) ' \,\times\, ' num2str(Mz_ar(rr)) ',\; \overline{M} \mathbin{=} 8,\; \mathrm{[8]}$']);
+            plot((Training_Size_valid*1e-3),Rate_DLt_mat_valid,[Colour(rr) Marker_mat{rr, 2}], 'markersize',7,'linewidth',1., 'DisplayName', ['$\mathrm{DL}_{\mathrm{val6400}},\; M \mathbin{=} ' num2str(My_ar(rr)) ' \,\times\, ' num2str(Mz_ar(rr)) ',\; \overline{M} \mathbin{=} 8,\; \mathrm{[10]}$']);
             
             
             if epochs == 20
@@ -100,6 +100,8 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
                 %disp(Rate_DLt_py_valOld_20(rr,:))
                 %disp('Rate_DLt_py_val_20(rr,:)')
                 %disp(Rate_DLt_py_val_20(rr,:))
+                disp('Rate_OPTt(rr,:)')
+                disp(Rate_OPTt(rr,:))
                 disp('Rate_DLt_py_test_20(rr,:)')
                 disp(Rate_DLt_py_test_20(rr,:))            
                 disp(Rate_DLt_py_test_20_valid)            
@@ -110,7 +112,7 @@ function []=Fig12_plot(My_ar,Mz_ar,M_bar,Ur_rows,Training_Size,...
         %legend('Location','SouthEast')
         lgd = legend('Location','East','NumColumns', 1);
         %lgd.Position = [0.61, 0.445, 0.15, 0.2]; % [x, y, width, height]
-        lgd.Position = [0.603, 0.46, 0.15, 0.2]; % [x, y, width, height]
+        lgd.Position = [0.601, 0.46, 0.15, 0.2]; % [x, y, width, height]
         %x: distanza da sinistra (0=sinistra, 1=destra)
         %y: distanza dal basso (0=basso, 1=alto)
         %width, height: dimensioni (puoi lasciarle come quelle di default, oppure ridurle)

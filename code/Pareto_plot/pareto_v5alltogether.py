@@ -555,8 +555,9 @@ def plot_pareto_scatter(files, pareto_plot_folder, xlim=[0, 0], ylim=[0, 0],
     if mask_M6464.any() and "Rate_OPT_py_load_test" in data_all.columns:
         if My_ar[0] == 64:
             #rate_opt_M6464 = data_all.loc[mask_M6464, "Rate_OPT_py_load_test"].iloc[0]
-            rate_opt_M6464_all = data_all.loc[mask_M6464, "Rate_OPT_py_load_test"]
-            rate_opt_M6464 = np.mean(rate_opt_M6464_all)
+            #rate_opt_M6464_all = data_all.loc[mask_M6464, "Rate_OPT_py_load_test"]
+            #rate_opt_M6464 = np.mean(rate_opt_M6464_all)
+            rate_opt_M6464 = 5.035
             #print(rate_opt_M6464)
             ax.axvline(rate_opt_M6464, color='r', linestyle=':', linewidth=LINEWIDTH_XL, label=f'{round(rate_opt_M6464,3)}                                                                                                                                                  ')
             #labelLines([plt.gca().get_lines()[-1]], color='r', rotation=90, fontsize=SMALL_SIZE)

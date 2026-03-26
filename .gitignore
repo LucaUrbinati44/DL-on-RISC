@@ -10,6 +10,7 @@ code/Output_Python/Neural_Network/preliminary_results/*
 code/Output_Python/Neural_Network/preliminary_results/RateDLpy/*
 !code/Output_Python/Neural_Network/preliminary_results/RateDLpy/Rate*
 
+
 !code/Output_Python/Neural_Network/experiment*/
 code/Output_Python/Neural_Network/experiment*/*
 !code/Output_Python/Neural_Network/experiment*/RateDLpy/
@@ -36,6 +37,8 @@ code/profiling_append*
 code/DL_predict_5.m
 code/Fig12_plot.m
 code/DL_training_8_mcu.py
+
+code/compare*
 
 old/renode_portable
 old/renode_boards
