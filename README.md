@@ -6,7 +6,8 @@ L. Urbinati, N. Decarli, F. Guidi, A. Guerra, B. M. Masini, and A. Zanella, "On-
 
 🔬Abstract
 
-Reconfigurable Intelligent Surfaces (RISs) promise a paradigm shift in wireless communication by enabling smart propagation environments. However, traditional RIS control, which relies on base station decisions and high-volume feedback loops, struggles to meet the stringent real-time demands of next-generation systems. To overcome these limitations, this work explores direct on-board RIS control through deep learning (DL) algorithms. Thanks to the use of tiny machine learning (TinyML), these algorithms can be executed on the microcontroller unit (MCU) integrated into the RIS control board. Unlike prior studies that assume such deployment feasibility without empirical validation, we conduct a hardware-aware analysis that quantifies the trade-off between controller design and communication performance across a range of DL models and MCU-class embedded devices, and maps the resulting latency-rate Pareto frontier under realistic constraints. This paper provides guidelines for jointly selecting RIS size, number of active elements, DL model complexity, and MCU class to meet application-specific rate and real-time requirements.
+Reconfigurable Intelligent Surfaces (RISs) promise a paradigm shift in wireless communication by enabling smart propagation environments. However, traditional RIS control, which relies on base station (BS) decisions and high-volume feedback loops, struggles to meet the stringent real-time demands of next-generation systems. To overcome these limitations, this work explores direct on-board RIS control through deep learning (DL) algorithms. In particular, we shift DL-based codebook selection from the BS to the microcontroller unit (MCU) integrated into the RIS control board via a Tiny Machine Learning (TinyML) deployment pipeline. Unlike prior studies that assume such deployment feasibility without empirical validation, we conduct a hardware-aware design-space exploration that quantifies the trade-off between controller design and communication performance across a range of DL models and MCU-class
+embedded devices, and identifies the resulting latency-rate Pareto frontier under realistic constraints. This paper provides design guidelines for jointly selecting RIS size, number of active elements, DL model complexity, and MCU class to meet application-specific rate and real-time requirements.
 
 ---
 
@@ -122,5 +123,6 @@ A. Taha, "LIS-DeepLearning," https://github.com/Abdelrahman-Taha/LIS-DeepLearnin
 ## License 📄 
 
 MIT License — Use it freely for research/academia.
+
 
 
